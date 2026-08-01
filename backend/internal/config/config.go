@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	Address string `env:"POPISOMATOR_BACKEND_ADDR" envDefault:"localhost:8080"`
+	Address     string `env:"POPISOMATOR_BACKEND_ADDR" envDefault:"localhost:8080"`
+	PostgresDSN string `env:"POPISOMATOR_POSTGRES_DSN,required"`
 }
 
 var CurrentConfig Config
