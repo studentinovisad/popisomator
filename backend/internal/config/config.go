@@ -2,11 +2,13 @@ package config
 
 import (
 	"errors"
-	"os"
+
+	"github.com/caarlos0/env/v11"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type Config struct {
-	Address string
+	Address string `env:"POPISOMATOR_BACKEND_ADDR" envDefault:"localhost:8080"`
 }
 
 var CurrentConfig Config
@@ -17,10 +19,8 @@ func Init() error {
 		return errors.New("Already initialised config")
 	}
 
-	if address_env, is_env := os.LookupEnv("POPISOMATOR_BACKEND_ADDR"); is_env {
-		CurrentConfig.Address = address_env
-	} else {
-		CurrentConfig.Address = "localhost:8080"
+	if err := env.Parse(&CurrentConfig); err != nil {
+		return err
 	}
 
 	InitDone = true
