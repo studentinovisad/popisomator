@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/studentinovisad/popisomator/backend/internal/config"
 	"github.com/studentinovisad/popisomator/backend/internal/controller"
+	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
@@ -20,9 +20,9 @@ func main() {
 
 	// Connect to the database
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, config.CurrentConfig.PostgresDSN)
+	pool, err := db.Connect(ctx, config.CurrentConfig.PostgresDSN)
 	if err != nil {
-		log.Fatalf("unable to create postgres connection pool: %v", err)
+		log.Fatalf("unable to connect to postgres: %v", err)
 	}
 	defer pool.Close()
 
