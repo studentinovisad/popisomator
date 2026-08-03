@@ -3,18 +3,23 @@ package config
 import (
 	"errors"
 	"os"
+	"strconv"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Address     string `env:"POPISOMATOR_BACKEND_ADDR" envDefault:"localhost:8080"`
+	BackendPort uint16 `env:"BACKEND_PORT" envDefault:"8080"`
 	PostgresDSN string `env:"POPISOMATOR_POSTGRES_DSN,required"`
 }
 
 var CurrentConfig Config
 var InitDone = false
+
+func (config Config) Address() string {
+	return ":" + strconv.FormatUint(uint64(config.BackendPort), 10)
+}
 
 func Init() error {
 	if InitDone {

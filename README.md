@@ -10,13 +10,13 @@ Reqs: podman/docker compose, pnpm, golang.
 cp .env.example .env
 ```
 
-2. In one terminal, start PostgreSQL, migrations, and the backend itself over compose:
+2. In one terminal, start PostgreSQL, migrations, and the backend:
 
 ```sh
-podman compose up --build
+podman compose up --build backend
 ```
 
-The backend is available at `http://localhost:8080`. On later starts, you can omit `--build` unless an image changed.
+The backend is available at `http://localhost:<BACKEND_PORT>` (`8080` by default). On later starts, you can omit `--build` unless an image changed.
 
 3. In another terminal, install frontend deps and run:
 
@@ -46,7 +46,7 @@ Build and run the same frontend, backend, migration, and Caddy containers used i
 
 ```sh
 cp .env.example .env # once
-podman compose -f docker-compose.demo.yml --env-file .env up --build
+podman compose -p demo --env-file .env up --build
 ```
 
 Open `http://localhost:5173`. This is a production-like integration test, so it does not hot-reload. It uses a separate database volume from development.
@@ -66,13 +66,13 @@ cp .env.production.example .env.production
 3. Build and start the stack:
 
 ```sh
-podman compose -f docker-compose.production.yml --env-file .env.production up -d --build
+podman compose --env-file .env.production up -d --build
 ```
 
 4. Verify it:
 
 ```sh
-podman compose -f docker-compose.production.yml --env-file .env.production ps
+podman compose --env-file .env.production ps
 curl -fsS https://your-domain.example/api/health
 ```
 
