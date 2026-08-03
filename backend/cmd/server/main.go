@@ -9,7 +9,6 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/config"
 	"github.com/studentinovisad/popisomator/backend/internal/controller"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
-	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
 func main() {
@@ -26,12 +25,9 @@ func main() {
 	}
 	defer pool.Close()
 
-	queries := repository.New(pool)
-	healthController := controller.NewHealthController(queries)
-
 	// Routes
 	http.HandleFunc("/ping", controller.Ping)
-	http.HandleFunc("/health", healthController.Healthcheck)
+	http.HandleFunc("/health", controller.Healthcheck)
 
 	// Listen for requests
 	fmt.Println("Starting backend server on", config.CurrentConfig.Address)
