@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	GetUserByEmail(ctx context.Context, email string) (User, error)
 	Healthcheck(ctx context.Context) (int32, error)
 }
 
