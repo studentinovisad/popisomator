@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"strconv"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -23,10 +24,10 @@ func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 		return "", err
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":   user.ID,
-		"role": user.Role,
-	})
+	claims := jwt.MapClaims{
+		"sub": strconv.FormatInt(user.ID, 10),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenStr, err := token.SignedString([]byte(hmacSecret))
 	if err != nil {
@@ -34,4 +35,26 @@ func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 	}
 
 	return tokenStr, nil
+}
+
+// Validates JWT token. If invalid, returns error. If valid, returns ID of user.
+func ValidateToken(tokenStr string) (int64, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
+		return []byte(hmacSecret), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		return 0, err
+	}
+
+	subject, err := token.Claims.GetSubject()
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := strconv.ParseInt(subject, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }

@@ -28,8 +28,9 @@ func main() {
 	// Routes
 	http.HandleFunc("/ping", controller.Ping)
 	http.HandleFunc("/health", controller.Healthcheck)
-	http.HandleFunc("POST /user/login", controller.Login)
-	http.HandleFunc("POST /user/logout", controller.Logout)
+	http.HandleFunc("POST /auth/login", controller.Login)
+	http.HandleFunc("POST /auth/logout", controller.Logout)
+	http.HandleFunc("GET /user/details", controller.UserDetailsPersonal)
 
 	// Listen for requests
 	fmt.Println("Starting backend server on", config.CurrentConfig.Address)
