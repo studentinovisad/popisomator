@@ -18,6 +18,17 @@ podman compose up --build backend
 
 The backend is available at `http://localhost:<BACKEND_PORT>` (`8080` by default). On later starts, you can omit `--build` unless an image changed.
 
+Alternatively, to iterate on the backend without rebuilding the container on every change, run it locally with live reload (uses the `.env` from step 1):
+
+```sh
+podman compose up postgres
+cd backend
+make migrate-apply # once, or after pulling new migrations
+make dev
+```
+
+This uses [air](https://github.com/air-verse/air) (tracked as a `go tool` dependency, invoked as `go tool air`) to rebuild and restart the server on file changes.
+
 3. In another terminal, install frontend deps and run:
 
 ```sh

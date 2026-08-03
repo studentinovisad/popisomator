@@ -9,6 +9,10 @@ type User struct {
 	Role     repository.UserRole `json:"role"`
 }
 
+type UpdateRoleRequest struct {
+	Role string `json:"role" validate:"required,oneof=admin manager user"`
+}
+
 func ToUserDTO(user repository.User) User {
 	return User{
 		ID:       user.ID,

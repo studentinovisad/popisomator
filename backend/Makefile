@@ -1,11 +1,15 @@
 include ../.env
 export
 
-.PHONY: run build migrate-diff migrate-apply migrate-status sqlc generate
+.PHONY: run dev build migrate-diff migrate-apply migrate-status sqlc generate
 
 ## Run the server locally
 run:
 	go run ./cmd/server
+
+## Run the server with live reload
+dev:
+	go tool air -c .air.toml
 
 ## Build a binary
 build:
