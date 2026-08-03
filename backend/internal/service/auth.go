@@ -61,6 +61,10 @@ func ValidateToken(tokenStr string) (int64, error) {
 }
 
 func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.User{}, err
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return dto.User{}, err

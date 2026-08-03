@@ -6,8 +6,8 @@ type LoginRequest struct {
 }
 
 type CreateUserRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	FullName string `json:"full_name"`
-	Role     string `json:"role"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8,password_complexity"`
+	FullName string `json:"full_name" validate:"required"`
+	Role     string `json:"role" validate:"required,oneof=admin manager user"`
 }

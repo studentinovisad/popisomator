@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
@@ -68,6 +69,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := service.CreateUser(r.Context(), req)
 	if err != nil {
+		var validationErrs validator.ValidationErrors
+		if errors.As(err, &validationErrs) {
+			http.Error(w, "validation failed: "+validationErrs.Error(), http.StatusBadRequest)
+			return
+		}
+
 		http.Error(w, "error creating user", http.StatusInternalServerError)
 		log.Printf("error creating user: %v", err)
 		return
