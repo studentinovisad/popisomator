@@ -1,16 +1,49 @@
 services:
   postgres:
-    image: postgres:18
-    container_name: popisomator-postgres
+    image: docker.io/library/postgres:18
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-popisomator}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-popisomator}
       POSTGRES_DB: ${POSTGRES_DB:-popisomator}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     tty: true
+
+  migrate:
+    build:
+      context: ./backend
+      target: migrations
+    command:
+      [
+        "migrate",
+        "apply",
+        "--dir",
+        "file:///migrations",
+        "--url",
+        "postgres://${POSTGRES_USER:-popisomator}:${POSTGRES_PASSWORD:-popisomator}@postgres:5432/${POSTGRES_DB:-popisomator}?sslmode=disable",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    environment:
+      POPISOMATOR_BACKEND_ADDR: :8080
+      POPISOMATOR_POSTGRES_DSN: "postgres://${POSTGRES_USER:-popisomator}:${POSTGRES_PASSWORD:-popisomator}@postgres:5432/${POSTGRES_DB:-popisomator}?sslmode=disable"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

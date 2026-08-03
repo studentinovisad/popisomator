@@ -2,9 +2,10 @@ package config
 
 import (
 	"errors"
+	"os"
 
 	"github.com/caarlos0/env/v11"
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -18,6 +19,12 @@ var InitDone = false
 func Init() error {
 	if InitDone {
 		return errors.New("Already initialised config")
+	}
+
+	for _, path := range []string{".env", "../.env"} {
+		if err := godotenv.Load(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
 
 	if err := env.Parse(&CurrentConfig); err != nil {
