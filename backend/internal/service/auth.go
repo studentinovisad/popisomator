@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -57,4 +58,23 @@ func ValidateToken(tokenStr string) (int64, error) {
 	}
 
 	return id, nil
+}
+
+func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return dto.User{}, err
+	}
+
+	user, err := db.Queries.CreateUser(ctx, repository.CreateUserParams{
+		Email:        req.Email,
+		PasswordHash: string(hash),
+		FullName:     req.FullName,
+		Role:         repository.UserRole(req.Role),
+	})
+	if err != nil {
+		return dto.User{}, err
+	}
+
+	return dto.ToUserDTO(user), nil
 }
