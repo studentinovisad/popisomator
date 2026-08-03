@@ -79,3 +79,27 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	)
 	return i, err
 }
+
+const updateRole = `-- name: UpdateRole :one
+UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, created_at, updated_at
+`
+
+type UpdateRoleParams struct {
+	ID   int64    `json:"id"`
+	Role UserRole `json:"role"`
+}
+
+func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateRole, arg.ID, arg.Role)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FullName,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
