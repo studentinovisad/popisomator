@@ -9,3 +9,44 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TYPE consumption_status AS ENUM ('not_consumed', 'partially_consumed', 'fully_consumed', 'damaged');
+
+CREATE TABLE properties (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    value_type VARCHAR(32) NOT NULL,
+    default_value JSONB
+);
+
+CREATE TABLE item_types (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT
+);
+
+CREATE TABLE item_type_properties (
+    type_id BIGINT REFERENCES item_types(id) ON DELETE CASCADE,
+    property_id BIGINT REFERENCES properties(id) ON DELETE CASCADE,
+    default_value JSONB,
+    PRIMARY KEY (type_id, property_id)
+);
+
+CREATE INDEX idx_item_type_properties_property_id ON item_type_properties(property_id);
+
+CREATE TABLE items (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    consumption consumption_status NOT NULL DEFAULT 'not_consumed',
+    type_id BIGINT REFERENCES item_types(id) ON DELETE SET NULL
+);
+
+CREATE TABLE item_properties (
+    item_id BIGINT REFERENCES items(id) ON DELETE CASCADE,
+    property_id BIGINT REFERENCES properties(id) ON DELETE CASCADE,
+    property_value JSONB NOT NULL,
+    PRIMARY KEY (item_id, property_id)
+);
+
+CREATE INDEX idx_item_properties_property_id ON item_properties(property_id);
