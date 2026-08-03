@@ -6,18 +6,14 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
+	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var hmacSecret string = rand.Text()
 
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 // Returns JWT token if successful, error if not
-func Login(ctx context.Context, req LoginRequest) (string, error) {
+func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 	user, err := db.Queries.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return "", err
