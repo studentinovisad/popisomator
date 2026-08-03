@@ -1,0 +1,9 @@
+{$CADDY_SITE_ADDRESS} {
+	handle_path /api/* {
+		reverse_proxy backend:{$BACKEND_PORT}
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

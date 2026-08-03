@@ -1,4 +1,4 @@
-include .env
+include ../.env
 export
 
 .PHONY: run build migrate-diff migrate-apply migrate-status sqlc generate

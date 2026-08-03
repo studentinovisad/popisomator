@@ -34,8 +34,9 @@ func main() {
 	http.HandleFunc("/health", healthController.Healthcheck)
 
 	// Listen for requests
-	fmt.Println("Starting backend server on", config.CurrentConfig.Address)
-	if err := http.ListenAndServe(config.CurrentConfig.Address, nil); err != nil {
+	address := config.CurrentConfig.Address()
+	fmt.Println("Starting backend server on", address)
+	if err := http.ListenAndServe(address, nil); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}
 }

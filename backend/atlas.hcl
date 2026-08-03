@@ -4,5 +4,5 @@ env "local" {
   migration {
     dir = "file://db/migrations"
   }
-  url = getenv("POPISOMATOR_POSTGRES_DSN")
+  url = getenv("POPISOMATOR_MIGRATION_DSN")
 }
