@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/studentinovisad/popisomator/backend/internal/config"
-	"github.com/studentinovisad/popisomator/backend/internal/controller"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
+	"github.com/studentinovisad/popisomator/backend/internal/router"
 )
 
 func main() {
@@ -25,17 +25,12 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Routes
-	http.HandleFunc("/ping", controller.Ping)
-	http.HandleFunc("/health", controller.Healthcheck)
-	http.HandleFunc("POST /auth/login", controller.Login)
-	http.HandleFunc("POST /auth/logout", controller.Logout)
-	http.HandleFunc("GET /user/details", controller.UserDetailsPersonal)
+	mux := router.New()
 
 	// Listen for requests
 	address := config.CurrentConfig.Address()
 	fmt.Println("Starting backend server on", address)
-	if err := http.ListenAndServe(address, nil); err != nil {
+	if err := http.ListenAndServe(address, mux); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}
 }
