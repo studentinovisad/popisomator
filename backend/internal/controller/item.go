@@ -38,7 +38,15 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateItem(w http.ResponseWriter, r *http.Request) {
-	item, err := service.CreateItem(r.Context())
+	body := http.MaxBytesReader(w, r.Body, 1024*64)
+
+	var req dto.CreateItemRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	item, err := service.CreateItem(r.Context(), req)
 	if err != nil {
 		http.Error(w, "couldn't create item", http.StatusInternalServerError)
 		return

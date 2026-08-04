@@ -3,14 +3,17 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
 var Queries *repository.Queries
+var pool *pgxpool.Pool
 
 func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+	var err error
+	pool, err = pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -23,4 +26,8 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	Queries = repository.New(pool)
 
 	return pool, nil
+}
+
+func BeginTransaction(ctx context.Context) (pgx.Tx, error) {
+	return pool.Begin(ctx)
 }

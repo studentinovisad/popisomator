@@ -55,6 +55,10 @@ func ToPropertyDTO(prop repository.Property) Property {
 	}
 }
 
+type CreateItemRequest struct {
+	Properties []ItemProperty `json:"properties"`
+}
+
 type CreatePropertyRequest struct {
 	Name         string `json:"name" validate:"required"`
 	Description  string `json:"description"`

@@ -45,13 +45,44 @@ func GetItem(ctx context.Context, id int64) (dto.Item, error) {
 	return itemDTO, nil
 }
 
-func CreateItem(ctx context.Context) (dto.Item, error) {
-	item, err := db.Queries.CreateItem(ctx)
+func CreateItem(ctx context.Context, req dto.CreateItemRequest) (dto.Item, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.Item{}, err
+	}
+
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return dto.Item{}, err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	item, err := queriesTx.CreateItem(ctx)
 	if err != nil {
 		return dto.Item{}, err
 	}
 
 	itemDTO := dto.ToItemDTO(item)
+
+	if req.Properties != nil {
+		for _, propRequest := range req.Properties {
+			prop, err := queriesTx.AddItemProperty(ctx, repository.AddItemPropertyParams{
+				ItemID:        item.ID,
+				PropertyID:    propRequest.ID,
+				PropertyValue: propRequest.Value,
+			})
+			if err != nil {
+				return dto.Item{}, err
+			}
+
+			propDTO := dto.ToItemPropertyDTO(prop)
+			itemDTO.Properties = append(itemDTO.Properties, propDTO)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return dto.Item{}, err
+	}
 
 	return itemDTO, nil
 }
