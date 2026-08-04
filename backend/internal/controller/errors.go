@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
@@ -17,18 +19,18 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 	var valErr validator.ValidationErrors
 
 	switch {
-	case errors.Is(err, service.ErrNotFound):
-		http.Error(w, "not found", http.StatusNotFound)
+	case errors.Is(err, service.ErrNotFound), errors.Is(err, pgx.ErrNoRows):
+		response.WriteError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, service.ErrInvalidReference):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, err.Error())
 	case errors.As(err, &valErr):
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
 	case errors.As(err, &pgErr) && pgErr.Code == "23505":
-		http.Error(w, "already exists", http.StatusConflict)
+		response.WriteError(w, http.StatusConflict, "already exists")
 	case errors.As(err, &pgErr) && pgErr.Code == "23503":
-		http.Error(w, "invalid reference", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid reference")
 	default:
-		http.Error(w, fallback, http.StatusInternalServerError)
+		response.WriteError(w, http.StatusInternalServerError, fallback)
 		log.Printf("service error: %v", err)
 	}
 }

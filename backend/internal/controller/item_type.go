@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
@@ -16,14 +17,13 @@ func GetAllItemTypes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(itemTypes)
+	response.WriteJSON(w, http.StatusOK, itemTypes)
 }
 
 func GetItemType(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid type id", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
 		return
 	}
 
@@ -33,8 +33,7 @@ func GetItemType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(itemType)
+	response.WriteJSON(w, http.StatusOK, itemType)
 }
 
 func CreateItemType(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +41,7 @@ func CreateItemType(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.CreateItemTypeRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
@@ -52,14 +51,13 @@ func CreateItemType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(itemType)
+	response.WriteJSON(w, http.StatusOK, itemType)
 }
 
 func DeleteItemType(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid type id", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
 		return
 	}
 

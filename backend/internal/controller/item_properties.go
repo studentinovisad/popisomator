@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
@@ -16,14 +17,13 @@ func GetAllProperties(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(props)
+	response.WriteJSON(w, http.StatusOK, props)
 }
 
 func GetProperty(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid property id", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid property id")
 		return
 	}
 
@@ -33,8 +33,7 @@ func GetProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(prop)
+	response.WriteJSON(w, http.StatusOK, prop)
 }
 
 func CreateProperty(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +41,7 @@ func CreateProperty(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.CreatePropertyRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
@@ -52,14 +51,13 @@ func CreateProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(prop)
+	response.WriteJSON(w, http.StatusOK, prop)
 }
 
 func UpdateProperty(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid property id", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid property id")
 		return
 	}
 
@@ -67,7 +65,7 @@ func UpdateProperty(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.UpdatePropertyRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	req.ID = id
@@ -78,14 +76,13 @@ func UpdateProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(prop)
+	response.WriteJSON(w, http.StatusOK, prop)
 }
 
 func DeleteProperty(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid property id", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid property id")
 		return
 	}
 
