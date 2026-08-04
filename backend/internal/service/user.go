@@ -29,6 +29,33 @@ func GetUserByEmail(ctx context.Context, email string) (dto.User, error) {
 	return userDTO, nil
 }
 
+func ListUsers(ctx context.Context, limit, offset int32) (dto.UsersPage, error) {
+	users, err := db.Queries.ListUsers(ctx, repository.ListUsersParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return dto.UsersPage{}, err
+	}
+
+	total, err := db.Queries.CountUsers(ctx)
+	if err != nil {
+		return dto.UsersPage{}, err
+	}
+
+	items := make([]dto.User, len(users))
+	for index, user := range users {
+		items[index] = dto.ToUserDTO(user)
+	}
+
+	return dto.UsersPage{
+		Items:  items,
+		Limit:  limit,
+		Offset: offset,
+		Total:  total,
+	}, nil
+}
+
 func UpdateUserRole(ctx context.Context, id int64, req dto.UpdateRoleRequest) (dto.User, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.User{}, err

@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
+	CountUsers(ctx context.Context) (int64, error)
 	CreateItem(ctx context.Context, typeID pgtype.Int8) (Item, error)
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
 	CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error)
@@ -38,6 +39,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	Healthcheck(ctx context.Context) (int32, error)
+	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error)
 	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error)
 	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (int64, error)
