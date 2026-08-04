@@ -106,31 +106,40 @@ func (q *Queries) CreateProperty(ctx context.Context, arg CreatePropertyParams) 
 	return i, err
 }
 
-const deleteItem = `-- name: DeleteItem :exec
+const deleteItem = `-- name: DeleteItem :execrows
 DELETE FROM items WHERE id = $1
 `
 
-func (q *Queries) DeleteItem(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteItem, id)
-	return err
+func (q *Queries) DeleteItem(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItem, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const deleteItemType = `-- name: DeleteItemType :exec
+const deleteItemType = `-- name: DeleteItemType :execrows
 DELETE FROM item_types WHERE id = $1
 `
 
-func (q *Queries) DeleteItemType(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteItemType, id)
-	return err
+func (q *Queries) DeleteItemType(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItemType, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const deleteProperty = `-- name: DeleteProperty :exec
+const deleteProperty = `-- name: DeleteProperty :execrows
 DELETE FROM properties WHERE id = $1
 `
 
-func (q *Queries) DeleteProperty(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteProperty, id)
-	return err
+func (q *Queries) DeleteProperty(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProperty, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAllItemTypes = `-- name: GetAllItemTypes :many
@@ -159,6 +168,48 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 	return items, nil
 }
 
+const getAllItemTypesWithProperties = `-- name: GetAllItemTypesWithProperties :many
+SELECT
+    t.id, t.name, t.description,
+    tp.property_id,
+    tp.default_value
+FROM item_types t
+LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+ORDER BY t.id
+`
+
+type GetAllItemTypesWithPropertiesRow struct {
+	ItemType     ItemType    `json:"item_type"`
+	PropertyID   pgtype.Int8 `json:"property_id"`
+	DefaultValue *string     `json:"default_value"`
+}
+
+func (q *Queries) GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error) {
+	rows, err := q.db.Query(ctx, getAllItemTypesWithProperties)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllItemTypesWithPropertiesRow
+	for rows.Next() {
+		var i GetAllItemTypesWithPropertiesRow
+		if err := rows.Scan(
+			&i.ItemType.ID,
+			&i.ItemType.Name,
+			&i.ItemType.Description,
+			&i.PropertyID,
+			&i.DefaultValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllItems = `-- name: GetAllItems :many
 SELECT id, created_at, consumption, type_id FROM items
 `
@@ -177,6 +228,49 @@ func (q *Queries) GetAllItems(ctx context.Context) ([]Item, error) {
 			&i.CreatedAt,
 			&i.Consumption,
 			&i.TypeID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllItemsWithProperties = `-- name: GetAllItemsWithProperties :many
+SELECT
+    i.id, i.created_at, i.consumption, i.type_id,
+    ip.property_id,
+    ip.property_value
+FROM items i
+LEFT JOIN item_properties ip ON ip.item_id = i.id
+ORDER BY i.id
+`
+
+type GetAllItemsWithPropertiesRow struct {
+	Item          Item        `json:"item"`
+	PropertyID    pgtype.Int8 `json:"property_id"`
+	PropertyValue *string     `json:"property_value"`
+}
+
+func (q *Queries) GetAllItemsWithProperties(ctx context.Context) ([]GetAllItemsWithPropertiesRow, error) {
+	rows, err := q.db.Query(ctx, getAllItemsWithProperties)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllItemsWithPropertiesRow
+	for rows.Next() {
+		var i GetAllItemsWithPropertiesRow
+		if err := rows.Scan(
+			&i.Item.ID,
+			&i.Item.CreatedAt,
+			&i.Item.Consumption,
+			&i.Item.TypeID,
+			&i.PropertyID,
+			&i.PropertyValue,
 		); err != nil {
 			return nil, err
 		}
@@ -323,7 +417,7 @@ func (q *Queries) GetPropertyByID(ctx context.Context, id int64) (Property, erro
 	return i, err
 }
 
-const removeItemProperty = `-- name: RemoveItemProperty :exec
+const removeItemProperty = `-- name: RemoveItemProperty :execrows
 DELETE FROM item_properties WHERE item_id = $1 AND property_id = $2
 `
 
@@ -332,12 +426,15 @@ type RemoveItemPropertyParams struct {
 	PropertyID int64 `json:"property_id"`
 }
 
-func (q *Queries) RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) error {
-	_, err := q.db.Exec(ctx, removeItemProperty, arg.ItemID, arg.PropertyID)
-	return err
+func (q *Queries) RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeItemProperty, arg.ItemID, arg.PropertyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const removeItemTypeProperty = `-- name: RemoveItemTypeProperty :exec
+const removeItemTypeProperty = `-- name: RemoveItemTypeProperty :execrows
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2
 `
 
@@ -346,13 +443,16 @@ type RemoveItemTypePropertyParams struct {
 	PropertyID int64 `json:"property_id"`
 }
 
-func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) error {
-	_, err := q.db.Exec(ctx, removeItemTypeProperty, arg.TypeID, arg.PropertyID)
-	return err
+func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeItemTypeProperty, arg.TypeID, arg.PropertyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const updateItemConsumption = `-- name: UpdateItemConsumption :exec
-UPDATE items SET consumption = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id
+const updateItemConsumption = `-- name: UpdateItemConsumption :execrows
+UPDATE items SET consumption = $2 WHERE id = $1
 `
 
 type UpdateItemConsumptionParams struct {
@@ -360,9 +460,12 @@ type UpdateItemConsumptionParams struct {
 	Consumption ConsumptionStatus `json:"consumption"`
 }
 
-func (q *Queries) UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) error {
-	_, err := q.db.Exec(ctx, updateItemConsumption, arg.ID, arg.Consumption)
-	return err
+func (q *Queries) UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateItemConsumption, arg.ID, arg.Consumption)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateItemProperty = `-- name: UpdateItemProperty :one

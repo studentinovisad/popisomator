@@ -7,16 +7,25 @@ WHERE id = $1 LIMIT 1;
 -- name: GetAllItems :many
 SELECT * FROM items;
 
+-- name: GetAllItemsWithProperties :many
+SELECT
+    sqlc.embed(i),
+    ip.property_id,
+    ip.property_value
+FROM items i
+LEFT JOIN item_properties ip ON ip.item_id = i.id
+ORDER BY i.id;
+
 -- name: CreateItem :one
 INSERT INTO items (type_id) VALUES ($1) RETURNING *;
 
 -- name: UpdateItemType :one
 UPDATE items SET type_id = $2 WHERE id = $1 RETURNING *;
 
--- name: UpdateItemConsumption :exec
-UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
+-- name: UpdateItemConsumption :execrows
+UPDATE items SET consumption = $2 WHERE id = $1;
 
--- name: DeleteItem :exec
+-- name: DeleteItem :execrows
 DELETE FROM items WHERE id = $1;
 
 -------- PROPERTIES
@@ -40,7 +49,7 @@ UPDATE properties SET description = $2 WHERE id = $1;
 -- name: UpdatePropertyDefaultValue :exec
 UPDATE properties SET default_value = $2 WHERE id = $1;
 
--- name: DeleteProperty :exec
+-- name: DeleteProperty :execrows
 DELETE FROM properties WHERE id = $1;
 
 
@@ -56,13 +65,22 @@ INSERT INTO item_properties (item_id, property_id, property_value) VALUES ($1, $
 -- name: UpdateItemProperty :one
 UPDATE item_properties SET property_value = $3 WHERE item_id = $1 AND property_id = $2 RETURNING *;
 
--- name: RemoveItemProperty :exec
+-- name: RemoveItemProperty :execrows
 DELETE FROM item_properties WHERE item_id = $1 AND property_id = $2;
 
 -------- ITEM TYPES
 
 -- name: GetAllItemTypes :many
 SELECT * FROM item_types;
+
+-- name: GetAllItemTypesWithProperties :many
+SELECT
+    sqlc.embed(t),
+    tp.property_id,
+    tp.default_value
+FROM item_types t
+LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+ORDER BY t.id;
 
 -- name: GetItemTypeByID :one
 SELECT * FROM item_types
@@ -77,7 +95,7 @@ UPDATE item_types SET name = $2 WHERE id = $1 RETURNING *;
 -- name: UpdateItemTypeDescription :one
 UPDATE item_types SET description = $2 WHERE id = $1 RETURNING *;
 
--- name: DeleteItemType :exec
+-- name: DeleteItemType :execrows
 DELETE FROM item_types WHERE id = $1;
 
 -------- ITEM TYPE PROPERTIES (PROPERTIES TIED TO ITEM TYPES)
@@ -92,5 +110,5 @@ INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($
 -- name: UpdateItemTypeProperty :one
 UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING *;
 
--- name: RemoveItemTypeProperty :exec
+-- name: RemoveItemTypeProperty :execrows
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2;

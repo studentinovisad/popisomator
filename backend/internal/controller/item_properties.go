@@ -12,7 +12,7 @@ import (
 func GetAllProperties(w http.ResponseWriter, r *http.Request) {
 	props, err := service.GetAllProperties(r.Context())
 	if err != nil {
-		http.Error(w, "couldn't get properties", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't get properties")
 		return
 	}
 
@@ -29,7 +29,7 @@ func GetProperty(w http.ResponseWriter, r *http.Request) {
 
 	prop, err := service.GetPropertyByID(r.Context(), id)
 	if err != nil {
-		http.Error(w, "couldn't get property", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't get property")
 		return
 	}
 
@@ -48,7 +48,7 @@ func CreateProperty(w http.ResponseWriter, r *http.Request) {
 
 	prop, err := service.CreateProperty(r.Context(), req)
 	if err != nil {
-		http.Error(w, "couldn't create property", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't create property")
 		return
 	}
 
@@ -74,7 +74,7 @@ func UpdateProperty(w http.ResponseWriter, r *http.Request) {
 
 	prop, err := service.UpdateProperty(r.Context(), req)
 	if err != nil {
-		http.Error(w, "couldn't update property", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't update property")
 		return
 	}
 
@@ -90,7 +90,7 @@ func DeleteProperty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := service.DeleteProperty(r.Context(), id); err != nil {
-		http.Error(w, "couldn't delete property", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't delete property")
 		return
 	}
 

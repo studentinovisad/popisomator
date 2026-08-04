@@ -42,8 +42,8 @@ func ToItemDTO(item repository.Item) Item {
 
 // Property added to an item
 type ItemProperty struct {
-	ID    int64  `json:"id"`
-	Value string `json:"value"`
+	ID    int64  `json:"id" validate:"required"`
+	Value string `json:"value" validate:"required"`
 }
 
 func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
@@ -55,7 +55,7 @@ func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
 
 // Property added to an item type
 type ItemTypeProperty struct {
-	ID           int64   `json:"id"`
+	ID           int64   `json:"id" validate:"required"`
 	DefaultValue *string `json:"default_value"`
 }
 
@@ -85,7 +85,7 @@ func ToPropertyDTO(prop repository.Property) Property {
 }
 
 type CreateItemRequest struct {
-	Properties []ItemProperty `json:"properties"`
+	Properties []ItemProperty `json:"properties" validate:"dive"`
 	TypeID     *int64         `json:"type_id"`
 }
 
@@ -97,14 +97,21 @@ type ConsumeItemRequest struct {
 type CreateItemTypeRequest struct {
 	Name        string             `json:"name" validate:"required"`
 	Description string             `json:"description"`
-	Properties  []ItemTypeProperty `json:"properties"`
+	Properties  []ItemTypeProperty `json:"properties" validate:"dive"`
 }
 
 type CreatePropertyRequest struct {
 	Name         string  `json:"name" validate:"required"`
 	Description  string  `json:"description"`
-	ValueType    string  `json:"value_type" validate:"required"`
+	ValueType    string  `json:"value_type" validate:"required,oneof=string number boolean object array"`
 	DefaultValue *string `json:"default_value"`
+}
+
+// PropertyValueCheck is an internal validation carrier (not a request/response DTO) used to
+// run a raw property value through the "valuetype" tag against a known ValueType.
+type PropertyValueCheck struct {
+	Value     string `validate:"required,valuetype"`
+	ValueType string
 }
 
 type UpdatePropertyRequest struct {

@@ -12,7 +12,7 @@ import (
 func GetAllItemTypes(w http.ResponseWriter, r *http.Request) {
 	itemTypes, err := service.GetAllItemTypes(r.Context())
 	if err != nil {
-		http.Error(w, "couldn't get types", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't get types")
 		return
 	}
 
@@ -29,7 +29,7 @@ func GetItemType(w http.ResponseWriter, r *http.Request) {
 
 	itemType, err := service.GetItemType(r.Context(), id)
 	if err != nil {
-		http.Error(w, "couldn't get type", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't get type")
 		return
 	}
 
@@ -48,9 +48,7 @@ func CreateItemType(w http.ResponseWriter, r *http.Request) {
 
 	itemType, err := service.CreateItemType(r.Context(), req)
 	if err != nil {
-		http.Error(w,
-			"couldn't create item type",
-			http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't create item type")
 		return
 	}
 
@@ -66,7 +64,7 @@ func DeleteItemType(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := service.DeleteItemType(r.Context(), id); err != nil {
-		http.Error(w, "couldn't delete type", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't delete type")
 		return
 	}
 

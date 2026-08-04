@@ -12,7 +12,7 @@ import (
 func GetAllItems(w http.ResponseWriter, r *http.Request) {
 	items, err := service.GetAllItems(r.Context())
 	if err != nil {
-		http.Error(w, "couldn't get items", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't get items")
 		return
 	}
 
@@ -29,7 +29,7 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 
 	item, err := service.GetItem(r.Context(), id)
 	if err != nil {
-		http.Error(w, "couldn't get item", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't get item")
 		return
 	}
 
@@ -54,7 +54,7 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 	req.ID = id
 
 	if err := service.ConsumeItem(r.Context(), req); err != nil {
-		http.Error(w, "couldn't consume item", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't consume item")
 		return
 	}
 
@@ -72,7 +72,7 @@ func CreateItem(w http.ResponseWriter, r *http.Request) {
 
 	item, err := service.CreateItem(r.Context(), req)
 	if err != nil {
-		http.Error(w, "couldn't create item", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't create item")
 		return
 	}
 
@@ -88,7 +88,7 @@ func DeleteItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := service.DeleteItem(r.Context(), id); err != nil {
-		http.Error(w, "couldn't delete item", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't delete item")
 		return
 	}
 
@@ -113,7 +113,7 @@ func AddItemProperty(w http.ResponseWriter, r *http.Request) {
 
 	itemProp, err := service.AddItemProperty(r.Context(), req)
 	if err != nil {
-		http.Error(w, "couldn't add item property", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't add item property")
 		return
 	}
 
@@ -146,7 +146,7 @@ func UpdateItemProperty(w http.ResponseWriter, r *http.Request) {
 
 	itemProp, err := service.UpdateItemProperty(r.Context(), req)
 	if err != nil {
-		http.Error(w, "couldn't update property of item", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't update property of item")
 		return
 	}
 
@@ -168,7 +168,7 @@ func RemoveItemProperty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := service.RemoveItemProperty(r.Context(), itemId, propId); err != nil {
-		http.Error(w, "couldn't remove item property", http.StatusInternalServerError)
+		writeServiceError(w, err, "couldn't remove item property")
 		return
 	}
 

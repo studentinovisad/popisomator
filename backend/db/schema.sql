@@ -42,6 +42,8 @@ CREATE TABLE items (
     type_id BIGINT REFERENCES item_types(id) ON DELETE SET NULL
 );
 
+CREATE INDEX idx_items_type_id ON items(type_id);
+
 CREATE TABLE item_properties (
     item_id BIGINT REFERENCES items(id) ON DELETE CASCADE,
     property_id BIGINT REFERENCES properties(id) ON DELETE CASCADE,

@@ -2,34 +2,59 @@ package service
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
+// validatePropertyValue looks up the property's declared value_type and checks that rawValue's
+// JSON shape matches it. Takes the generated Querier interface so it works identically whether
+// called with db.Queries or a transaction's db.Queries.WithTx(tx).
+func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID int64, rawValue string) error {
+	prop, err := q.GetPropertyByID(ctx, propertyID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInvalidReference
+		}
+		return err
+	}
+
+	return dto.Validate(dto.PropertyValueCheck{Value: rawValue, ValueType: prop.ValueType})
+}
+
 //
 // Items
 //
 
 func GetAllItems(ctx context.Context) ([]dto.Item, error) {
-	items, err := db.Queries.GetAllItems(ctx)
+	rows, err := db.Queries.GetAllItemsWithProperties(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	itemsDTO := make([]dto.Item, len(items))
-	for i, item := range items {
-		itemProps, err := GetItemProperties(ctx, item.ID)
-		if err != nil {
-			return nil, err
+	items := make([]dto.Item, 0, len(rows))
+	index := make(map[int64]int, len(rows))
+	for _, row := range rows {
+		idx, ok := index[row.Item.ID]
+		if !ok {
+			idx = len(items)
+			index[row.Item.ID] = idx
+			items = append(items, dto.ToItemDTO(row.Item))
 		}
-		itemsDTO[i] = dto.ToItemDTO(item)
-		itemsDTO[i].Properties = itemProps
+
+		if row.PropertyID.Valid {
+			items[idx].Properties = append(items[idx].Properties, dto.ItemProperty{
+				ID:    row.PropertyID.Int64,
+				Value: *row.PropertyValue,
+			})
+		}
 	}
 
-	return itemsDTO, nil
+	return items, nil
 }
 
 func GetItem(ctx context.Context, id int64) (dto.Item, error) {
@@ -75,6 +100,10 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) (dto.Item, error
 
 	if req.Properties != nil {
 		for _, propRequest := range req.Properties {
+			if err := validatePropertyValue(ctx, queriesTx, propRequest.ID, propRequest.Value); err != nil {
+				return dto.Item{}, err
+			}
+
 			prop, err := queriesTx.AddItemProperty(ctx, repository.AddItemPropertyParams{
 				ItemID:        item.ID,
 				PropertyID:    propRequest.ID,
@@ -102,20 +131,27 @@ func ConsumeItem(ctx context.Context, req dto.ConsumeItemRequest) error {
 		consumption = *req.Status
 	}
 
-	err := db.Queries.UpdateItemConsumption(ctx, repository.UpdateItemConsumptionParams{
+	rowsAffected, err := db.Queries.UpdateItemConsumption(ctx, repository.UpdateItemConsumptionParams{
 		ID:          req.ID,
 		Consumption: consumption,
 	})
 	if err != nil {
 		return err
 	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
 
 	return nil
 }
 
 func DeleteItem(ctx context.Context, id int64) error {
-	if err := db.Queries.DeleteItem(ctx, id); err != nil {
+	rowsAffected, err := db.Queries.DeleteItem(ctx, id)
+	if err != nil {
 		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
 	}
 
 	return nil
@@ -153,6 +189,12 @@ func GetPropertyByID(ctx context.Context, id int64) (dto.Property, error) {
 func CreateProperty(ctx context.Context, req dto.CreatePropertyRequest) (dto.Property, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.Property{}, err
+	}
+
+	if req.DefaultValue != nil {
+		if err := dto.Validate(dto.PropertyValueCheck{Value: *req.DefaultValue, ValueType: req.ValueType}); err != nil {
+			return dto.Property{}, err
+		}
 	}
 
 	description := pgtype.Text{String: "", Valid: false}
@@ -200,6 +242,15 @@ func UpdateProperty(ctx context.Context, req dto.UpdatePropertyRequest) (dto.Pro
 	}
 
 	if req.DefaultValue != nil {
+		existing, err := db.Queries.GetPropertyByID(ctx, req.ID)
+		if err != nil {
+			return dto.Property{}, err
+		}
+
+		if err := dto.Validate(dto.PropertyValueCheck{Value: *req.DefaultValue, ValueType: existing.ValueType}); err != nil {
+			return dto.Property{}, err
+		}
+
 		if err := db.Queries.UpdatePropertyDefaultValue(ctx, repository.UpdatePropertyDefaultValueParams{
 			ID:           req.ID,
 			DefaultValue: req.DefaultValue,
@@ -219,8 +270,12 @@ func UpdateProperty(ctx context.Context, req dto.UpdatePropertyRequest) (dto.Pro
 }
 
 func DeleteProperty(ctx context.Context, id int64) error {
-	if err := db.Queries.DeleteProperty(ctx, id); err != nil {
+	rowsAffected, err := db.Queries.DeleteProperty(ctx, id)
+	if err != nil {
 		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
 	}
 
 	return nil
@@ -249,6 +304,10 @@ func AddItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyRequest) 
 		return dto.ItemProperty{}, err
 	}
 
+	if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, req.Value); err != nil {
+		return dto.ItemProperty{}, err
+	}
+
 	itemProp, err := db.Queries.AddItemProperty(ctx, repository.AddItemPropertyParams{
 		ItemID:        req.ItemID,
 		PropertyID:    req.PropertyID,
@@ -268,6 +327,10 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 		return dto.ItemProperty{}, err
 	}
 
+	if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, req.Value); err != nil {
+		return dto.ItemProperty{}, err
+	}
+
 	itemProp, err := db.Queries.UpdateItemProperty(ctx, repository.UpdateItemPropertyParams{
 		ItemID:        req.ItemID,
 		PropertyID:    req.PropertyID,
@@ -283,11 +346,15 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 }
 
 func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
-	if err := db.Queries.RemoveItemProperty(ctx, repository.RemoveItemPropertyParams{
+	rowsAffected, err := db.Queries.RemoveItemProperty(ctx, repository.RemoveItemPropertyParams{
 		ItemID:     itemId,
 		PropertyID: propId,
-	}); err != nil {
+	})
+	if err != nil {
 		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
 	}
 
 	return nil
@@ -298,22 +365,30 @@ func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
 //
 
 func GetAllItemTypes(ctx context.Context) ([]dto.ItemType, error) {
-	itemTypes, err := db.Queries.GetAllItemTypes(ctx)
+	rows, err := db.Queries.GetAllItemTypesWithProperties(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	itemTypesDTO := make([]dto.ItemType, len(itemTypes))
-	for i, itemType := range itemTypes {
-		typeProps, err := GetItemTypeProperties(ctx, itemType.ID)
-		if err != nil {
-			return nil, err
+	itemTypes := make([]dto.ItemType, 0, len(rows))
+	index := make(map[int64]int, len(rows))
+	for _, row := range rows {
+		idx, ok := index[row.ItemType.ID]
+		if !ok {
+			idx = len(itemTypes)
+			index[row.ItemType.ID] = idx
+			itemTypes = append(itemTypes, dto.ToItemTypeDTO(row.ItemType))
 		}
-		itemTypesDTO[i] = dto.ToItemTypeDTO(itemType)
-		itemTypesDTO[i].Properties = typeProps
+
+		if row.PropertyID.Valid {
+			itemTypes[idx].Properties = append(itemTypes[idx].Properties, dto.ItemTypeProperty{
+				ID:           row.PropertyID.Int64,
+				DefaultValue: row.DefaultValue,
+			})
+		}
 	}
 
-	return itemTypesDTO, nil
+	return itemTypes, nil
 }
 
 func GetItemType(ctx context.Context, id int64) (dto.ItemType, error) {
@@ -362,6 +437,12 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 
 	if req.Properties != nil {
 		for _, propRequest := range req.Properties {
+			if propRequest.DefaultValue != nil {
+				if err := validatePropertyValue(ctx, queriesTx, propRequest.ID, *propRequest.DefaultValue); err != nil {
+					return dto.ItemType{}, err
+				}
+			}
+
 			prop, err := queriesTx.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 				TypeID:       itemType.ID,
 				PropertyID:   propRequest.ID,
@@ -384,8 +465,12 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 }
 
 func DeleteItemType(ctx context.Context, id int64) error {
-	if err := db.Queries.DeleteItemType(ctx, id); err != nil {
+	rowsAffected, err := db.Queries.DeleteItemType(ctx, id)
+	if err != nil {
 		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
 	}
 
 	return nil
@@ -414,6 +499,12 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 		return dto.ItemTypeProperty{}, err
 	}
 
+	if req.DefaultValue != nil {
+		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, *req.DefaultValue); err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
+	}
+
 	typeProp, err := db.Queries.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 		TypeID:       req.TypeID,
 		PropertyID:   req.PropertyID,
@@ -433,6 +524,12 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 		return dto.ItemTypeProperty{}, err
 	}
 
+	if req.DefaultValue != nil {
+		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, *req.DefaultValue); err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
+	}
+
 	typeProp, err := db.Queries.UpdateItemTypeProperty(ctx, repository.UpdateItemTypePropertyParams{
 		TypeID:       req.TypeID,
 		PropertyID:   req.PropertyID,
@@ -448,11 +545,15 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 }
 
 func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) error {
-	if err := db.Queries.RemoveItemTypeProperty(ctx, repository.RemoveItemTypePropertyParams{
+	rowsAffected, err := db.Queries.RemoveItemTypeProperty(ctx, repository.RemoveItemTypePropertyParams{
 		TypeID:     typeId,
 		PropertyID: propId,
-	}); err != nil {
+	})
+	if err != nil {
 		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
 	}
 
 	return nil

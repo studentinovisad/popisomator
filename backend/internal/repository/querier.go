@@ -17,12 +17,14 @@ type Querier interface {
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
 	CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeleteItem(ctx context.Context, id int64) error
-	DeleteItemType(ctx context.Context, id int64) error
-	DeleteProperty(ctx context.Context, id int64) error
+	DeleteItem(ctx context.Context, id int64) (int64, error)
+	DeleteItemType(ctx context.Context, id int64) (int64, error)
+	DeleteProperty(ctx context.Context, id int64) (int64, error)
 	//------ ITEM TYPES
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
+	GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error)
 	GetAllItems(ctx context.Context) ([]Item, error)
+	GetAllItemsWithProperties(ctx context.Context) ([]GetAllItemsWithPropertiesRow, error)
 	//------ PROPERTIES
 	GetAllProperties(ctx context.Context) ([]Property, error)
 	//------ ITEMS
@@ -36,9 +38,9 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	Healthcheck(ctx context.Context) (int32, error)
-	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) error
-	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) error
-	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) error
+	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error)
+	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error)
+	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (int64, error)
 	UpdateItemProperty(ctx context.Context, arg UpdateItemPropertyParams) (ItemProperty, error)
 	UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) (Item, error)
 	UpdateItemTypeDescription(ctx context.Context, arg UpdateItemTypeDescriptionParams) (ItemType, error)
