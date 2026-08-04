@@ -8,7 +8,7 @@ WHERE id = $1 LIMIT 1;
 SELECT * FROM items;
 
 -- name: CreateItem :one
-INSERT INTO items DEFAULT VALUES RETURNING *;
+INSERT INTO items (type_id) VALUES ($1) RETURNING *;
 
 -- name: UpdateItemType :one
 UPDATE items SET type_id = $2 WHERE id = $1 RETURNING *;
@@ -87,7 +87,10 @@ SELECT * FROM item_type_properties
 WHERE type_id = $1;
 
 -- name: AddItemTypeProperty :one
-INSERT INTO item_type_properties (type_id, property_id) VALUES ($1, $2) RETURNING *;
+INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($1, $2, $3) RETURNING *;
+
+-- name: UpdateItemTypeProperty :one
+UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING *;
 
 -- name: RemoveItemTypeProperty :exec
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2;

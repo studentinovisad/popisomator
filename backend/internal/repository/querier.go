@@ -6,12 +6,14 @@ package repository
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
-	CreateItem(ctx context.Context) (Item, error)
+	CreateItem(ctx context.Context, typeID pgtype.Int8) (Item, error)
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
 	CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -41,6 +43,7 @@ type Querier interface {
 	UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) (Item, error)
 	UpdateItemTypeDescription(ctx context.Context, arg UpdateItemTypeDescriptionParams) (ItemType, error)
 	UpdateItemTypeName(ctx context.Context, arg UpdateItemTypeNameParams) (ItemType, error)
+	UpdateItemTypeProperty(ctx context.Context, arg UpdateItemTypePropertyParams) (ItemTypeProperty, error)
 	UpdatePropertyDefaultValue(ctx context.Context, arg UpdatePropertyDefaultValueParams) error
 	UpdatePropertyDescription(ctx context.Context, arg UpdatePropertyDescriptionParams) error
 	UpdatePropertyName(ctx context.Context, arg UpdatePropertyNameParams) error

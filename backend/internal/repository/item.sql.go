@@ -29,27 +29,28 @@ func (q *Queries) AddItemProperty(ctx context.Context, arg AddItemPropertyParams
 }
 
 const addItemTypeProperty = `-- name: AddItemTypeProperty :one
-INSERT INTO item_type_properties (type_id, property_id) VALUES ($1, $2) RETURNING type_id, property_id, default_value
+INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($1, $2, $3) RETURNING type_id, property_id, default_value
 `
 
 type AddItemTypePropertyParams struct {
-	TypeID     int64 `json:"type_id"`
-	PropertyID int64 `json:"property_id"`
+	TypeID       int64   `json:"type_id"`
+	PropertyID   int64   `json:"property_id"`
+	DefaultValue *string `json:"default_value"`
 }
 
 func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error) {
-	row := q.db.QueryRow(ctx, addItemTypeProperty, arg.TypeID, arg.PropertyID)
+	row := q.db.QueryRow(ctx, addItemTypeProperty, arg.TypeID, arg.PropertyID, arg.DefaultValue)
 	var i ItemTypeProperty
 	err := row.Scan(&i.TypeID, &i.PropertyID, &i.DefaultValue)
 	return i, err
 }
 
 const createItem = `-- name: CreateItem :one
-INSERT INTO items DEFAULT VALUES RETURNING id, created_at, consumption, type_id
+INSERT INTO items (type_id) VALUES ($1) RETURNING id, created_at, consumption, type_id
 `
 
-func (q *Queries) CreateItem(ctx context.Context) (Item, error) {
-	row := q.db.QueryRow(ctx, createItem)
+func (q *Queries) CreateItem(ctx context.Context, typeID pgtype.Int8) (Item, error) {
+	row := q.db.QueryRow(ctx, createItem, typeID)
 	var i Item
 	err := row.Scan(
 		&i.ID,
@@ -84,7 +85,7 @@ type CreatePropertyParams struct {
 	Name         string      `json:"name"`
 	Description  pgtype.Text `json:"description"`
 	ValueType    string      `json:"value_type"`
-	DefaultValue string      `json:"default_value"`
+	DefaultValue *string     `json:"default_value"`
 }
 
 func (q *Queries) CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error) {
@@ -441,13 +442,30 @@ func (q *Queries) UpdateItemTypeName(ctx context.Context, arg UpdateItemTypeName
 	return i, err
 }
 
+const updateItemTypeProperty = `-- name: UpdateItemTypeProperty :one
+UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value
+`
+
+type UpdateItemTypePropertyParams struct {
+	TypeID       int64   `json:"type_id"`
+	PropertyID   int64   `json:"property_id"`
+	DefaultValue *string `json:"default_value"`
+}
+
+func (q *Queries) UpdateItemTypeProperty(ctx context.Context, arg UpdateItemTypePropertyParams) (ItemTypeProperty, error) {
+	row := q.db.QueryRow(ctx, updateItemTypeProperty, arg.TypeID, arg.PropertyID, arg.DefaultValue)
+	var i ItemTypeProperty
+	err := row.Scan(&i.TypeID, &i.PropertyID, &i.DefaultValue)
+	return i, err
+}
+
 const updatePropertyDefaultValue = `-- name: UpdatePropertyDefaultValue :exec
 UPDATE properties SET default_value = $2 WHERE id = $1
 `
 
 type UpdatePropertyDefaultValueParams struct {
-	ID           int64  `json:"id"`
-	DefaultValue string `json:"default_value"`
+	ID           int64   `json:"id"`
+	DefaultValue *string `json:"default_value"`
 }
 
 func (q *Queries) UpdatePropertyDefaultValue(ctx context.Context, arg UpdatePropertyDefaultValueParams) error {

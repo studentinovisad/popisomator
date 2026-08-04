@@ -118,9 +118,9 @@ type ItemType struct {
 }
 
 type ItemTypeProperty struct {
-	TypeID       int64  `json:"type_id"`
-	PropertyID   int64  `json:"property_id"`
-	DefaultValue string `json:"default_value"`
+	TypeID       int64   `json:"type_id"`
+	PropertyID   int64   `json:"property_id"`
+	DefaultValue *string `json:"default_value"`
 }
 
 type Property struct {
@@ -128,7 +128,7 @@ type Property struct {
 	Name         string      `json:"name"`
 	Description  pgtype.Text `json:"description"`
 	ValueType    string      `json:"value_type"`
-	DefaultValue string      `json:"default_value"`
+	DefaultValue *string     `json:"default_value"`
 }
 
 type User struct {
