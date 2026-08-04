@@ -49,7 +49,7 @@ func CreateItemType(w http.ResponseWriter, r *http.Request) {
 	itemType, err := service.CreateItemType(r.Context(), req)
 	if err != nil {
 		http.Error(w,
-			err.Error(), //"couldn't create item type",
+			"couldn't create item type",
 			http.StatusInternalServerError)
 		return
 	}
