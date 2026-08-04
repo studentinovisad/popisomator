@@ -38,7 +38,7 @@ type Querier interface {
 	Healthcheck(ctx context.Context) (int32, error)
 	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) error
 	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) error
-	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (Item, error)
+	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) error
 	UpdateItemProperty(ctx context.Context, arg UpdateItemPropertyParams) (ItemProperty, error)
 	UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) (Item, error)
 	UpdateItemTypeDescription(ctx context.Context, arg UpdateItemTypeDescriptionParams) (ItemType, error)

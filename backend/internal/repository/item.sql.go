@@ -351,7 +351,7 @@ func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemType
 	return err
 }
 
-const updateItemConsumption = `-- name: UpdateItemConsumption :one
+const updateItemConsumption = `-- name: UpdateItemConsumption :exec
 UPDATE items SET consumption = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id
 `
 
@@ -360,16 +360,9 @@ type UpdateItemConsumptionParams struct {
 	Consumption ConsumptionStatus `json:"consumption"`
 }
 
-func (q *Queries) UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (Item, error) {
-	row := q.db.QueryRow(ctx, updateItemConsumption, arg.ID, arg.Consumption)
-	var i Item
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.Consumption,
-		&i.TypeID,
-	)
-	return i, err
+func (q *Queries) UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) error {
+	_, err := q.db.Exec(ctx, updateItemConsumption, arg.ID, arg.Consumption)
+	return err
 }
 
 const updateItemProperty = `-- name: UpdateItemProperty :one

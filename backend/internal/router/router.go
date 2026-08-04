@@ -46,6 +46,10 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.DeleteItem),
 	))
+	mux.Handle("POST /item/{id}/consume", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ConsumeItem),
+	))
 	mux.Handle("GET /item/properties", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetAllProperties),

@@ -37,6 +37,30 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(item)
 }
 
+func ConsumeItem(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid item id", http.StatusBadRequest)
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024)
+
+	var req dto.ConsumeItemRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	req.ID = id
+
+	if err := service.ConsumeItem(r.Context(), req); err != nil {
+		http.Error(w, "couldn't consume item", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func CreateItem(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024*64)
 

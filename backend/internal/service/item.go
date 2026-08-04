@@ -96,6 +96,23 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) (dto.Item, error
 	return itemDTO, nil
 }
 
+func ConsumeItem(ctx context.Context, req dto.ConsumeItemRequest) error {
+	consumption := repository.ConsumptionStatusFullyConsumed
+	if req.Status != nil {
+		consumption = *req.Status
+	}
+
+	err := db.Queries.UpdateItemConsumption(ctx, repository.UpdateItemConsumptionParams{
+		ID:          req.ID,
+		Consumption: consumption,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func DeleteItem(ctx context.Context, id int64) error {
 	if err := db.Queries.DeleteItem(ctx, id); err != nil {
 		return err

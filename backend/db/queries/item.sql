@@ -13,7 +13,7 @@ INSERT INTO items (type_id) VALUES ($1) RETURNING *;
 -- name: UpdateItemType :one
 UPDATE items SET type_id = $2 WHERE id = $1 RETURNING *;
 
--- name: UpdateItemConsumption :one
+-- name: UpdateItemConsumption :exec
 UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
 
 -- name: DeleteItem :exec

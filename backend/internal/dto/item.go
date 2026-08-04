@@ -89,6 +89,11 @@ type CreateItemRequest struct {
 	TypeID     *int64         `json:"type_id"`
 }
 
+type ConsumeItemRequest struct {
+	ID     int64                         `json:"id" validate:"required"`
+	Status *repository.ConsumptionStatus `json:"status"`
+}
+
 type CreateItemTypeRequest struct {
 	Name        string             `json:"name" validate:"required"`
 	Description string             `json:"description"`
