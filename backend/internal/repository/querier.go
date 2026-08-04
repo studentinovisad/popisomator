@@ -9,10 +9,41 @@ import (
 )
 
 type Querier interface {
+	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
+	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
+	CreateItem(ctx context.Context) (Item, error)
+	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
+	CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteItem(ctx context.Context, id int64) error
+	DeleteItemType(ctx context.Context, id int64) error
+	DeleteProperty(ctx context.Context, id int64) error
+	//------ ITEM TYPES
+	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
+	GetAllItems(ctx context.Context) ([]Item, error)
+	//------ PROPERTIES
+	GetAllProperties(ctx context.Context) ([]Property, error)
+	//------ ITEMS
+	GetItemByID(ctx context.Context, id int64) (Item, error)
+	//------ ITEM PROPERTIES (PROPERTIES OF ITEMS)
+	GetItemProperties(ctx context.Context, itemID int64) ([]ItemProperty, error)
+	GetItemTypeByID(ctx context.Context, id int64) (ItemType, error)
+	//------ ITEM TYPE PROPERTIES (PROPERTIES TIED TO ITEM TYPES)
+	GetItemTypeProperties(ctx context.Context, typeID int64) ([]ItemTypeProperty, error)
+	GetPropertyByID(ctx context.Context, id int64) (Property, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	Healthcheck(ctx context.Context) (int32, error)
+	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) error
+	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) error
+	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (Item, error)
+	UpdateItemProperty(ctx context.Context, arg UpdateItemPropertyParams) (ItemProperty, error)
+	UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) (Item, error)
+	UpdateItemTypeDescription(ctx context.Context, arg UpdateItemTypeDescriptionParams) (ItemType, error)
+	UpdateItemTypeName(ctx context.Context, arg UpdateItemTypeNameParams) (ItemType, error)
+	UpdatePropertyDefaultValue(ctx context.Context, arg UpdatePropertyDefaultValueParams) error
+	UpdatePropertyDescription(ctx context.Context, arg UpdatePropertyDescriptionParams) error
+	UpdatePropertyName(ctx context.Context, arg UpdatePropertyNameParams) error
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (User, error)
 }
 

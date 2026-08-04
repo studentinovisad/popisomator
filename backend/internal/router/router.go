@@ -28,6 +28,62 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("admin"),
 		middleware.Handle(controller.UpdateRole),
 	))
+	mux.Handle("GET /item", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetAllItems),
+	))
+	mux.Handle("GET /item/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetItem),
+	))
+	mux.Handle("POST /item", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.CreateItem),
+	))
+	mux.Handle("DELETE /item/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.DeleteItem),
+	))
+	mux.Handle("GET /item/properties", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetAllProperties),
+	))
+	mux.Handle("GET /item/properties/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetProperty),
+	))
+	mux.Handle("POST /item/properties", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.CreateProperty),
+	))
+	mux.Handle("PATCH /item/properties/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.UpdateProperty),
+	))
+	mux.Handle("DELETE /item/properties/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.DeleteProperty),
+	))
+	mux.Handle("POST /item/{id}/properties", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.AddItemProperty),
+	))
+	mux.Handle("PUT /item/{id}/properties/{prop_id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.UpdateItemProperty),
+	))
+	mux.Handle("DELETE /item/{id}/properties/{prop_id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.RemoveItemProperty),
+	))
 
 	return mux
 }

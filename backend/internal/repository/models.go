@@ -11,6 +11,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ConsumptionStatus string
+
+const (
+	ConsumptionStatusNotConsumed       ConsumptionStatus = "not_consumed"
+	ConsumptionStatusPartiallyConsumed ConsumptionStatus = "partially_consumed"
+	ConsumptionStatusFullyConsumed     ConsumptionStatus = "fully_consumed"
+	ConsumptionStatusDamaged           ConsumptionStatus = "damaged"
+)
+
+func (e *ConsumptionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ConsumptionStatus(s)
+	case string:
+		*e = ConsumptionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ConsumptionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullConsumptionStatus struct {
+	ConsumptionStatus ConsumptionStatus `json:"consumption_status"`
+	Valid             bool              `json:"valid"` // Valid is true if ConsumptionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullConsumptionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ConsumptionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ConsumptionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullConsumptionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ConsumptionStatus), nil
+}
+
 type UserRole string
 
 const (
@@ -52,6 +96,39 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.UserRole), nil
+}
+
+type Item struct {
+	ID          int64              `json:"id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Consumption ConsumptionStatus  `json:"consumption"`
+	TypeID      pgtype.Int8        `json:"type_id"`
+}
+
+type ItemProperty struct {
+	ItemID        int64  `json:"item_id"`
+	PropertyID    int64  `json:"property_id"`
+	PropertyValue string `json:"property_value"`
+}
+
+type ItemType struct {
+	ID          int64       `json:"id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+}
+
+type ItemTypeProperty struct {
+	TypeID       int64  `json:"type_id"`
+	PropertyID   int64  `json:"property_id"`
+	DefaultValue string `json:"default_value"`
+}
+
+type Property struct {
+	ID           int64       `json:"id"`
+	Name         string      `json:"name"`
+	Description  pgtype.Text `json:"description"`
+	ValueType    string      `json:"value_type"`
+	DefaultValue string      `json:"default_value"`
 }
 
 type User struct {
