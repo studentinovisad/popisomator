@@ -71,7 +71,7 @@
 				<NavigationLinks
 					items={primaryNavigation}
 					pathname={page.url.pathname}
-					isAdmin={session.user?.role === 'admin'}
+					role={session.user?.role}
 					class="mt-2 space-y-1"
 				/>
 			</nav>
@@ -81,7 +81,7 @@
 			<NavigationLinks
 				items={secondaryNavigation}
 				pathname={page.url.pathname}
-				isAdmin={session.user?.role === 'admin'}
+				role={session.user?.role}
 				class="space-y-1"
 			/>
 			{#if session.user}
@@ -251,7 +251,7 @@
 		<NavigationLinks
 			items={[...primaryNavigation, ...secondaryNavigation]}
 			pathname={page.url.pathname}
-			isAdmin={session.user?.role === 'admin'}
+			role={session.user?.role}
 			iconOnlyOnSmall
 			class="flex h-16 items-center justify-center gap-4 overflow-x-auto px-4 text-sm max-sm:justify-around max-sm:gap-2"
 		/>

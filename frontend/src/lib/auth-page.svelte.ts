@@ -7,12 +7,14 @@ import { session } from '$lib/session.svelte';
 type AuthPageOptions = {
 	unavailableMessage: string;
 	requiredRole?: UserRole;
+	requiredRoles?: UserRole[];
 	unauthorizedRedirect?: AppPath;
 };
 
 export function createAuthPage({
 	unavailableMessage,
 	requiredRole,
+	requiredRoles,
 	unauthorizedRedirect = '/account'
 }: AuthPageOptions) {
 	const state = $state({
@@ -32,7 +34,8 @@ export function createAuthPage({
 			session.setUser(user);
 			state.user = user;
 
-			if (requiredRole && user.role !== requiredRole) {
+			const allowedRoles = requiredRoles ?? (requiredRole ? [requiredRole] : undefined);
+			if (allowedRoles && !allowedRoles.includes(user.role)) {
 				await goto(resolve(unauthorizedRedirect));
 				return;
 			}

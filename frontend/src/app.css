@@ -33,6 +33,8 @@
 	--color-on-chrome: #332c27;
 	--color-danger: #a54c45;
 	--color-danger-soft: #f4dedb;
+	--color-success: #39724d;
+	--color-success-soft: #dcecdf;
 }
 
 .dark {
@@ -54,6 +56,8 @@
 	--color-on-chrome: #f3ece5;
 	--color-danger: #f09a91;
 	--color-danger-soft: #512f2d;
+	--color-success: #9fd5ad;
+	--color-success-soft: #284532;
 }
 
 .theme-changing,
@@ -81,6 +85,12 @@ body {
 
 .page-header-actions:empty {
 	display: none;
+}
+
+.page-header-actions:not(:empty) {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
 }
 
 .page-footer-actions:empty {

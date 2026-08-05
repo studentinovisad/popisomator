@@ -12,11 +12,12 @@
 	stroke-width="2"
 	class="size-4 shrink-0"
 >
-	{#if name === 'overview'}
-		<rect x="3" y="3" width="7" height="7" rx="1" />
-		<rect x="14" y="3" width="7" height="7" rx="1" />
-		<rect x="3" y="14" width="7" height="7" rx="1" />
-		<rect x="14" y="14" width="7" height="7" rx="1" />
+	{#if name === 'inventory'}
+		<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+		<path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+	{:else if name === 'catalog'}
+		<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5a2.5 2.5 0 0 0-2.5-2.5H4v-10.5Z" />
+		<path d="M4 16h13.5A2.5 2.5 0 0 1 20 18.5V21H6.5A2.5 2.5 0 0 1 4 18.5V16Z" />
 	{:else if name === 'users'}
 		<circle cx="9" cy="8" r="3" />
 		<path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
