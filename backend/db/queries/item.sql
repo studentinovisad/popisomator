@@ -7,22 +7,17 @@ WHERE id = $1 LIMIT 1;
 -- name: GetAllItems :many
 SELECT * FROM items;
 
--- name: ListItemsAsc :many
+-- name: ListItems :many
 SELECT * FROM items
 WHERE (sqlc.narg('type_id')::bigint IS NULL OR type_id = sqlc.narg('type_id'))
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at <= sqlc.narg('created_to'))
-ORDER BY created_at ASC, id ASC
-LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
-
--- name: ListItemsDesc :many
-SELECT * FROM items
-WHERE (sqlc.narg('type_id')::bigint IS NULL OR type_id = sqlc.narg('type_id'))
-  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
-  AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from'))
-  AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at <= sqlc.narg('created_to'))
-ORDER BY created_at DESC, id DESC
+ORDER BY
+  CASE WHEN sqlc.arg('order_asc')::bool THEN created_at END ASC,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN id END ASC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN created_at END DESC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN id END DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: CountItems :one

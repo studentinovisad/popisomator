@@ -60,26 +60,15 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		return dto.ItemsPage{}, err
 	}
 
-	var rows []repository.Item
-	if req.Order == "asc" {
-		rows, err = db.Queries.ListItemsAsc(ctx, repository.ListItemsAscParams{
-			TypeID:      typeID,
-			Consumption: req.Consumption,
-			CreatedFrom: createdFrom,
-			CreatedTo:   createdTo,
-			LimitVal:    req.Limit,
-			OffsetVal:   req.Offset,
-		})
-	} else {
-		rows, err = db.Queries.ListItemsDesc(ctx, repository.ListItemsDescParams{
-			TypeID:      typeID,
-			Consumption: req.Consumption,
-			CreatedFrom: createdFrom,
-			CreatedTo:   createdTo,
-			LimitVal:    req.Limit,
-			OffsetVal:   req.Offset,
-		})
-	}
+	rows, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
+		TypeID:      typeID,
+		Consumption: req.Consumption,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
+		LimitVal:    req.Limit,
+		OffsetVal:   req.Offset,
+		OrderAsc:    req.Order == "asc",
+	})
 	if err != nil {
 		return dto.ItemsPage{}, err
 	}

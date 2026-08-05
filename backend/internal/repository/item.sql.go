@@ -426,82 +426,37 @@ func (q *Queries) GetPropertyByID(ctx context.Context, id int64) (Property, erro
 	return i, err
 }
 
-const listItemsAsc = `-- name: ListItemsAsc :many
+const listItems = `-- name: ListItems :many
 SELECT id, created_at, consumption, type_id FROM items
 WHERE ($1::bigint IS NULL OR type_id = $1)
   AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
   AND ($3::timestamptz IS NULL OR created_at >= $3)
   AND ($4::timestamptz IS NULL OR created_at <= $4)
-ORDER BY created_at ASC, id ASC
-LIMIT $6 OFFSET $5
+ORDER BY
+  CASE WHEN $5::bool THEN created_at END ASC,
+  CASE WHEN $5::bool THEN id END ASC,
+  CASE WHEN NOT $5::bool THEN created_at END DESC,
+  CASE WHEN NOT $5::bool THEN id END DESC
+LIMIT $7 OFFSET $6
 `
 
-type ListItemsAscParams struct {
+type ListItemsParams struct {
 	TypeID      pgtype.Int8         `json:"type_id"`
 	Consumption []ConsumptionStatus `json:"consumption"`
 	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	OrderAsc    bool                `json:"order_asc"`
 	OffsetVal   int32               `json:"offset_val"`
 	LimitVal    int32               `json:"limit_val"`
 }
 
-func (q *Queries) ListItemsAsc(ctx context.Context, arg ListItemsAscParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listItemsAsc,
+func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error) {
+	rows, err := q.db.Query(ctx, listItems,
 		arg.TypeID,
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
-		arg.OffsetVal,
-		arg.LimitVal,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Item
-	for rows.Next() {
-		var i Item
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.Consumption,
-			&i.TypeID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listItemsDesc = `-- name: ListItemsDesc :many
-SELECT id, created_at, consumption, type_id FROM items
-WHERE ($1::bigint IS NULL OR type_id = $1)
-  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
-  AND ($3::timestamptz IS NULL OR created_at >= $3)
-  AND ($4::timestamptz IS NULL OR created_at <= $4)
-ORDER BY created_at DESC, id DESC
-LIMIT $6 OFFSET $5
-`
-
-type ListItemsDescParams struct {
-	TypeID      pgtype.Int8         `json:"type_id"`
-	Consumption []ConsumptionStatus `json:"consumption"`
-	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
-	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
-	OffsetVal   int32               `json:"offset_val"`
-	LimitVal    int32               `json:"limit_val"`
-}
-
-func (q *Queries) ListItemsDesc(ctx context.Context, arg ListItemsDescParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listItemsDesc,
-		arg.TypeID,
-		arg.Consumption,
-		arg.CreatedFrom,
-		arg.CreatedTo,
+		arg.OrderAsc,
 		arg.OffsetVal,
 		arg.LimitVal,
 	)
