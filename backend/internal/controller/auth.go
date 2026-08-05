@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
@@ -17,13 +18,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.LoginRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
 	token, err := service.Login(r.Context(), req)
 	if err != nil {
-		http.Error(w, "invalid credentials", http.StatusBadRequest)
+		response.WriteError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
@@ -42,8 +43,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 func Logout(w http.ResponseWriter, r *http.Request) {
 	cookie := http.Cookie{
-		Name:   "session",
-		MaxAge: -1,
+		Name:     "session",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	http.SetCookie(w, &cookie)
@@ -55,15 +60,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.CreateUserRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
 	if _, err := service.GetUserByEmail(r.Context(), req.Email); err == nil {
-		http.Error(w, "user with this email already exists", http.StatusBadRequest)
+		response.WriteError(w, http.StatusConflict, "user with this email already exists")
 		return
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		http.Error(w, "error checking user existence", http.StatusInternalServerError)
+		response.WriteError(w, http.StatusInternalServerError, "error checking user existence")
 		return
 	}
 
@@ -71,16 +76,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var validationErrs validator.ValidationErrors
 		if errors.As(err, &validationErrs) {
-			http.Error(w, "validation failed: "+validationErrs.Error(), http.StatusBadRequest)
+			response.WriteError(w, http.StatusBadRequest, "validation failed")
 			return
 		}
 
-		http.Error(w, "error creating user", http.StatusInternalServerError)
+		response.WriteError(w, http.StatusInternalServerError, "error creating user")
 		log.Printf("error creating user: %v", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	response.WriteJSON(w, http.StatusCreated, user)
 }

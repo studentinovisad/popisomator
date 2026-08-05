@@ -16,26 +16,7 @@ import (
 const defaultItemPageSize int32 = 20
 const maxItemPageSize int32 = 100
 
-// paginationValue parses a query param as an int32, falling back to fallback when absent and
-// erroring when unparseable or outside [minimum, maximum] (maximum <= 0 disables the upper bound).
-func paginationValue(r *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
-	value := r.URL.Query().Get(key)
-	if value == "" {
-		return fallback, nil
-	}
-
-	parsed, err := strconv.ParseInt(value, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-
-	parsedValue := int32(parsed)
-	if parsedValue < minimum || (maximum > 0 && parsedValue > maximum) {
-		return 0, strconv.ErrSyntax
-	}
-
-	return parsedValue, nil
-}
+// paginationValue is defined in user.go (shared within this package).
 
 func GetAllItems(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

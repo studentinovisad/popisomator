@@ -13,6 +13,13 @@ type UpdateRoleRequest struct {
 	Role string `json:"role" validate:"required,oneof=admin manager user"`
 }
 
+type UsersPage struct {
+	Items  []User `json:"items"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Total  int64  `json:"total"`
+}
+
 func ToUserDTO(user repository.User) User {
 	return User{
 		ID:       user.ID,
