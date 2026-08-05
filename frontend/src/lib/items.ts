@@ -20,8 +20,8 @@ export function consumptionLabel(status: ConsumptionStatus) {
 export function consumptionClass(status: ConsumptionStatus) {
 	if (status === 'fully_consumed') return 'bg-soft text-muted';
 	if (status === 'damaged') return 'bg-danger-soft text-danger';
-	if (status === 'partially_consumed') return 'bg-brand-soft text-brand';
-	return 'bg-brand-soft text-brand';
+	if (status === 'partially_consumed') return 'bg-warning-soft text-warning';
+	return 'bg-success-soft text-success';
 }
 
 export function propertyValueTypeLabel(valueType: PropertyValueType) {

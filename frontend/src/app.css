@@ -35,6 +35,8 @@
 	--color-danger-soft: #f4dedb;
 	--color-success: #39724d;
 	--color-success-soft: #dcecdf;
+	--color-warning: #956c12;
+	--color-warning-soft: #f8ebc9;
 }
 
 .dark {
@@ -58,6 +60,8 @@
 	--color-danger-soft: #512f2d;
 	--color-success: #9fd5ad;
 	--color-success-soft: #284532;
+	--color-warning: #f0c66a;
+	--color-warning-soft: #4a391b;
 }
 
 .theme-changing,
