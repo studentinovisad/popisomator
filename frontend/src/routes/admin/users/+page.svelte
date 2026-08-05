@@ -67,6 +67,6 @@
 				</Dialog.Content>
 			</Dialog.Portal>
 		</Dialog.Root>
-		<UserList refreshKey={usersRefreshKey} />
+		<UserList refreshKey={usersRefreshKey} currentUserID={authPage.state.user!.id} />
 	{/if}
 </main>

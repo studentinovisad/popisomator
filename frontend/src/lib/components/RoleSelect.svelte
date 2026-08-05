@@ -7,11 +7,13 @@
 		id,
 		value = $bindable<UserRole>(),
 		ariaLabel,
+		disabled = false,
 		onvaluechange
 	}: {
 		id?: string;
 		value: UserRole;
 		ariaLabel: string;
+		disabled?: boolean;
 		onvaluechange?: (value: UserRole) => void;
 	} = $props();
 </script>
@@ -20,12 +22,14 @@
 	type="single"
 	bind:value={value as never}
 	items={userRoleOptions}
+	{disabled}
 	onValueChange={(value) => onvaluechange?.(value as UserRole)}
 >
 	<Select.Trigger
 		{id}
-		class="flex w-full items-center justify-between rounded-md border border-line bg-surface px-3 py-2 text-left text-ink hover:border-muted"
+		class="flex w-full items-center justify-between rounded-md border border-line bg-surface px-3 py-2 text-left text-ink hover:border-muted disabled:cursor-not-allowed disabled:opacity-50"
 		aria-label={ariaLabel}
+		{disabled}
 	>
 		<Select.Value />
 	</Select.Trigger>

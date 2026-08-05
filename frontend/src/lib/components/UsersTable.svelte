@@ -4,9 +4,11 @@
 
 	let {
 		users,
+		currentUserID,
 		onrolechange
 	}: {
 		users: User[];
+		currentUserID: number;
 		onrolechange: (user: User, role: UserRole) => void;
 	} = $props();
 </script>
@@ -37,6 +39,7 @@
 					<RoleSelect
 						value={user.role}
 						ariaLabel={`Uloga za ${user.full_name}`}
+						disabled={user.id === currentUserID}
 						onvaluechange={(role) => onrolechange(user, role)}
 					/>
 				</td>
