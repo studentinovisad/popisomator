@@ -7,14 +7,25 @@ WHERE id = $1 LIMIT 1;
 -- name: GetAllItems :many
 SELECT * FROM items;
 
--- name: GetAllItemsWithProperties :many
-SELECT
-    sqlc.embed(i),
-    ip.property_id,
-    ip.property_value
-FROM items i
-LEFT JOIN item_properties ip ON ip.item_id = i.id
-ORDER BY i.id;
+-- name: ListItems :many
+SELECT * FROM items
+WHERE (sqlc.narg('type_id')::bigint IS NULL OR type_id = sqlc.narg('type_id'))
+  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at <= sqlc.narg('created_to'))
+ORDER BY
+  CASE WHEN sqlc.arg('order_asc')::bool THEN created_at END ASC,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN id END ASC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN created_at END DESC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN id END DESC
+LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
+
+-- name: CountItems :one
+SELECT count(*) FROM items
+WHERE (sqlc.narg('type_id')::bigint IS NULL OR type_id = sqlc.narg('type_id'))
+  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at <= sqlc.narg('created_to'));
 
 -- name: CreateItem :one
 INSERT INTO items (type_id) VALUES ($1) RETURNING *;
@@ -58,6 +69,10 @@ DELETE FROM properties WHERE id = $1;
 -- name: GetItemProperties :many
 SELECT * FROM item_properties
 WHERE item_id = $1;
+
+-- name: GetItemPropertiesForItems :many
+SELECT * FROM item_properties
+WHERE item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: AddItemProperty :one
 INSERT INTO item_properties (item_id, property_id, property_value) VALUES ($1, $2, $3) RETURNING *;

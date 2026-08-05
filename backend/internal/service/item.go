@@ -30,31 +30,75 @@ func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID
 // Items
 //
 
-func GetAllItems(ctx context.Context) ([]dto.Item, error) {
-	rows, err := db.Queries.GetAllItemsWithProperties(ctx)
+func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.ItemsPage{}, err
+	}
+
+	typeID := pgtype.Int8{}
+	if req.TypeID != nil {
+		typeID = pgtype.Int8{Int64: *req.TypeID, Valid: true}
+	}
+
+	createdFrom := pgtype.Timestamptz{}
+	if req.CreatedFrom != nil {
+		createdFrom = pgtype.Timestamptz{Time: *req.CreatedFrom, Valid: true}
+	}
+
+	createdTo := pgtype.Timestamptz{}
+	if req.CreatedTo != nil {
+		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
+	}
+
+	total, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
+		TypeID:      typeID,
+		Consumption: req.Consumption,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
+	})
 	if err != nil {
-		return nil, err
+		return dto.ItemsPage{}, err
 	}
 
-	items := make([]dto.Item, 0, len(rows))
+	rows, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
+		TypeID:      typeID,
+		Consumption: req.Consumption,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
+		LimitVal:    req.Limit,
+		OffsetVal:   req.Offset,
+		OrderAsc:    req.Order == "asc",
+	})
+	if err != nil {
+		return dto.ItemsPage{}, err
+	}
+
+	items := make([]dto.Item, len(rows))
 	index := make(map[int64]int, len(rows))
-	for _, row := range rows {
-		idx, ok := index[row.Item.ID]
-		if !ok {
-			idx = len(items)
-			index[row.Item.ID] = idx
-			items = append(items, dto.ToItemDTO(row.Item))
-		}
+	ids := make([]int64, len(rows))
+	for i, row := range rows {
+		items[i] = dto.ToItemDTO(row)
+		index[row.ID] = i
+		ids[i] = row.ID
+	}
 
-		if row.PropertyID.Valid {
-			items[idx].Properties = append(items[idx].Properties, dto.ItemProperty{
-				ID:    row.PropertyID.Int64,
-				Value: *row.PropertyValue,
-			})
+	if len(ids) > 0 {
+		propRows, err := db.Queries.GetItemPropertiesForItems(ctx, ids)
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+		for _, p := range propRows {
+			idx := index[p.ItemID]
+			items[idx].Properties = append(items[idx].Properties, dto.ToItemPropertyDTO(p))
 		}
 	}
 
-	return items, nil
+	return dto.ItemsPage{
+		Items:  items,
+		Limit:  req.Limit,
+		Offset: req.Offset,
+		Total:  total,
+	}, nil
 }
 
 func GetItem(ctx context.Context, id int64) (dto.Item, error) {
@@ -143,6 +187,33 @@ func ConsumeItem(ctx context.Context, req dto.ConsumeItemRequest) error {
 	}
 
 	return nil
+}
+
+func SetItemType(ctx context.Context, req dto.SetItemTypeRequest) (dto.Item, error) {
+	typeId := pgtype.Int8{}
+	if req.TypeID != nil {
+		typeId = pgtype.Int8{Int64: *req.TypeID, Valid: true}
+	}
+
+	// db.Queries.UpdateItemType sets items.type_id (reassigns this item's type) — unrelated to
+	// service.UpdateItemType below, which edits an item_type's own name/description.
+	item, err := db.Queries.UpdateItemType(ctx, repository.UpdateItemTypeParams{
+		ID:     req.ID,
+		TypeID: typeId,
+	})
+	if err != nil {
+		return dto.Item{}, err
+	}
+
+	itemProps, err := GetItemProperties(ctx, item.ID)
+	if err != nil {
+		return dto.Item{}, err
+	}
+
+	itemDTO := dto.ToItemDTO(item)
+	itemDTO.Properties = itemProps
+
+	return itemDTO, nil
 }
 
 func DeleteItem(ctx context.Context, id int64) error {
@@ -460,6 +531,60 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 	if err := tx.Commit(ctx); err != nil {
 		return dto.ItemType{}, err
 	}
+
+	return itemTypeDTO, nil
+}
+
+func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.ItemType, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.ItemType{}, err
+	}
+
+	if req.Name != nil || req.Description != nil {
+		tx, err := db.BeginTransaction(ctx)
+		if err != nil {
+			return dto.ItemType{}, err
+		}
+		defer tx.Rollback(ctx)
+		queriesTx := db.Queries.WithTx(tx)
+
+		if req.Name != nil {
+			if _, err := queriesTx.UpdateItemTypeName(ctx, repository.UpdateItemTypeNameParams{
+				ID:   req.ID,
+				Name: *req.Name,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if req.Description != nil {
+			description := pgtype.Text{String: *req.Description, Valid: true}
+
+			if _, err := queriesTx.UpdateItemTypeDescription(ctx, repository.UpdateItemTypeDescriptionParams{
+				ID:          req.ID,
+				Description: description,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return dto.ItemType{}, err
+		}
+	}
+
+	itemType, err := db.Queries.GetItemTypeByID(ctx, req.ID)
+	if err != nil {
+		return dto.ItemType{}, err
+	}
+
+	typeProps, err := GetItemTypeProperties(ctx, req.ID)
+	if err != nil {
+		return dto.ItemType{}, err
+	}
+
+	itemTypeDTO := dto.ToItemTypeDTO(itemType)
+	itemTypeDTO.Properties = typeProps
 
 	return itemTypeDTO, nil
 }

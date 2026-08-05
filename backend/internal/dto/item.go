@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
@@ -84,6 +86,23 @@ func ToPropertyDTO(prop repository.Property) Property {
 	}
 }
 
+type ListItemsRequest struct {
+	TypeID      *int64
+	Consumption []repository.ConsumptionStatus `validate:"omitempty,dive,oneof=not_consumed partially_consumed fully_consumed damaged"`
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
+	Limit       int32
+	Offset      int32
+	Order       string `validate:"oneof=asc desc"`
+}
+
+type ItemsPage struct {
+	Items  []Item `json:"items"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Total  int64  `json:"total"`
+}
+
 type CreateItemRequest struct {
 	Properties []ItemProperty `json:"properties" validate:"dive"`
 	TypeID     *int64         `json:"type_id"`
@@ -98,6 +117,17 @@ type CreateItemTypeRequest struct {
 	Name        string             `json:"name" validate:"required"`
 	Description string             `json:"description"`
 	Properties  []ItemTypeProperty `json:"properties" validate:"dive"`
+}
+
+type UpdateItemTypeRequest struct {
+	ID          int64   `json:"id" validate:"required"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+}
+
+type SetItemTypeRequest struct {
+	ID     int64  `json:"id" validate:"required"`
+	TypeID *int64 `json:"type_id"`
 }
 
 type CreatePropertyRequest struct {

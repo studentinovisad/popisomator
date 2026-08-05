@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
+	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
 	CountUsers(ctx context.Context, arg CountUsersParams) (int64, error)
 	CreateItem(ctx context.Context, typeID pgtype.Int8) (Item, error)
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
@@ -25,13 +26,13 @@ type Querier interface {
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
 	GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error)
 	GetAllItems(ctx context.Context) ([]Item, error)
-	GetAllItemsWithProperties(ctx context.Context) ([]GetAllItemsWithPropertiesRow, error)
 	//------ PROPERTIES
 	GetAllProperties(ctx context.Context) ([]Property, error)
 	//------ ITEMS
 	GetItemByID(ctx context.Context, id int64) (Item, error)
 	//------ ITEM PROPERTIES (PROPERTIES OF ITEMS)
 	GetItemProperties(ctx context.Context, itemID int64) ([]ItemProperty, error)
+	GetItemPropertiesForItems(ctx context.Context, itemIds []int64) ([]ItemProperty, error)
 	GetItemTypeByID(ctx context.Context, id int64) (ItemType, error)
 	//------ ITEM TYPE PROPERTIES (PROPERTIES TIED TO ITEM TYPES)
 	GetItemTypeProperties(ctx context.Context, typeID int64) ([]ItemTypeProperty, error)
@@ -39,6 +40,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	Healthcheck(ctx context.Context) (int32, error)
+	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error)
 	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error)
