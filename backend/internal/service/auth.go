@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
+	"errors"
 	"strconv"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -12,10 +13,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var hmacSecret string = rand.Text()
+const sessionDuration = 24 * time.Hour
+
+var hmacSecret []byte
+
+func ConfigureJWT(secret string) {
+	hmacSecret = []byte(secret)
+}
 
 // Returns JWT token if successful, error if not
 func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
+	if len(hmacSecret) == 0 {
+		return "", errors.New("JWT secret is not configured")
+	}
+
 	user, err := db.Queries.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return "", err
@@ -27,10 +38,11 @@ func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 
 	claims := jwt.MapClaims{
 		"sub": strconv.FormatInt(user.ID, 10),
+		"exp": time.Now().Add(sessionDuration).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenStr, err := token.SignedString([]byte(hmacSecret))
+	tokenStr, err := token.SignedString(hmacSecret)
 	if err != nil {
 		return "", err
 	}
@@ -40,8 +52,12 @@ func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 
 // Validates JWT token. If invalid, returns error. If valid, returns ID of user.
 func ValidateToken(tokenStr string) (int64, error) {
+	if len(hmacSecret) == 0 {
+		return 0, errors.New("JWT secret is not configured")
+	}
+
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
-		return []byte(hmacSecret), nil
+		return hmacSecret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return 0, err

@@ -3,7 +3,21 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="darkreader-lock" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			try {
+				const storedTheme = localStorage.getItem('popisomator-theme');
+				const theme =
+					storedTheme === 'light' || storedTheme === 'dark'
+						? storedTheme
+						: matchMedia('(prefers-color-scheme: dark)').matches
+							? 'dark'
+							: 'light';
+				document.documentElement.classList.toggle('dark', theme === 'dark');
+				document.documentElement.style.colorScheme = theme;
+			} catch {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

@@ -72,7 +72,7 @@ On the deployment server, point `DOMAIN` to the server and allow inbound ports 8
 cp .env.production.example .env.production
 ```
 
-2. Edit `.env.production`: set `DOMAIN` and replace both PostgreSQL password placeholders with strong, different URL-safe passwords.
+2. Edit `.env.production`: set `DOMAIN` and replace the JWT and PostgreSQL secret placeholders with strong values. PostgreSQL passwords must be URL-safe.
 
 3. Build and start the stack:
 

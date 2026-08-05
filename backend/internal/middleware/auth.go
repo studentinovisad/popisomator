@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
+	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
@@ -12,13 +13,13 @@ func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session")
 		if err != nil {
-			http.Error(w, "not logged in", http.StatusForbidden)
+			response.WriteError(w, http.StatusUnauthorized, "not logged in")
 			return
 		}
 
 		id, err := service.ValidateToken(cookie.Value)
 		if err != nil {
-			http.Error(w, "invalid token", http.StatusForbidden)
+			response.WriteError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 
@@ -33,13 +34,13 @@ func RequireRoles(roles ...repository.UserRole) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id, ok := r.Context().Value("userID").(int64)
 			if !ok {
-				http.Error(w, "user ID not found in context", http.StatusInternalServerError)
+				response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
 				return
 			}
 
 			user, err := service.GetUserDetails(r.Context(), id)
 			if err != nil {
-				http.Error(w, "error fetching user details", http.StatusInternalServerError)
+				response.WriteError(w, http.StatusInternalServerError, "error fetching user details")
 				return
 			}
 
@@ -50,7 +51,7 @@ func RequireRoles(roles ...repository.UserRole) Middleware {
 				}
 			}
 
-			http.Error(w, "forbidden", http.StatusForbidden)
+			response.WriteError(w, http.StatusForbidden, "forbidden")
 		})
 	}
 }
