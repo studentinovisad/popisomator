@@ -12,3 +12,7 @@ export const roleFilterOptions: { value: UserRoleFilter; label: string }[] = [
 	{ value: 'all', label: 'Sve uloge' },
 	...userRoleOptions
 ];
+
+export function userRoleLabel(role: UserRole) {
+	return userRoleOptions.find((option) => option.value === role)?.label ?? role;
+}
