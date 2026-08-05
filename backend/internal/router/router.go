@@ -50,6 +50,11 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.ConsumeItem),
 	))
+	mux.Handle("PATCH /item/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.SetItemType),
+	))
 	mux.Handle("GET /item/properties", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetAllProperties),
@@ -101,10 +106,30 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.CreateItemType),
 	))
+	mux.Handle("PATCH /item/types/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.UpdateItemType),
+	))
 	mux.Handle("DELETE /item/types/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.DeleteItemType),
+	))
+	mux.Handle("POST /item/types/{id}/properties", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.AddItemTypeProperty),
+	))
+	mux.Handle("PUT /item/types/{id}/properties/{prop_id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.UpdateItemTypeProperty),
+	))
+	mux.Handle("DELETE /item/types/{id}/properties/{prop_id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.RemoveItemTypeProperty),
 	))
 
 	return mux

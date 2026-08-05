@@ -54,6 +54,31 @@ func CreateItemType(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemType)
 }
 
+func UpdateItemType(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024*32)
+
+	var req dto.UpdateItemTypeRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.ID = id
+
+	itemType, err := service.UpdateItemType(r.Context(), req)
+	if err != nil {
+		writeServiceError(w, err, "couldn't update type")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, itemType)
+}
+
 func DeleteItemType(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -63,6 +88,84 @@ func DeleteItemType(w http.ResponseWriter, r *http.Request) {
 
 	if err := service.DeleteItemType(r.Context(), id); err != nil {
 		writeServiceError(w, err, "couldn't delete type")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func AddItemTypeProperty(w http.ResponseWriter, r *http.Request) {
+	typeId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024*32)
+
+	var req dto.AddUpdateItemTypePropertyRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.TypeID = typeId
+
+	typeProp, err := service.AddItemTypeProperty(r.Context(), req)
+	if err != nil {
+		writeServiceError(w, err, "couldn't add type property")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, typeProp)
+}
+
+func UpdateItemTypeProperty(w http.ResponseWriter, r *http.Request) {
+	typeId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	propId, err := strconv.ParseInt(r.PathValue("prop_id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid property id")
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024*32)
+
+	var req dto.AddUpdateItemTypePropertyRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.TypeID = typeId
+	req.PropertyID = propId
+
+	typeProp, err := service.UpdateItemTypeProperty(r.Context(), req)
+	if err != nil {
+		writeServiceError(w, err, "couldn't update type property")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, typeProp)
+}
+
+func RemoveItemTypeProperty(w http.ResponseWriter, r *http.Request) {
+	typeId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	propId, err := strconv.ParseInt(r.PathValue("prop_id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid property id")
+		return
+	}
+
+	if err := service.RemoveItemTypeProperty(r.Context(), typeId, propId); err != nil {
+		writeServiceError(w, err, "couldn't remove type property")
 		return
 	}
 

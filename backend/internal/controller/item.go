@@ -149,6 +149,34 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func SetItemType(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid item id")
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024)
+
+	decoder := json.NewDecoder(body)
+	decoder.DisallowUnknownFields()
+
+	var req dto.SetItemTypeRequest
+	if err := decoder.Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.ID = id
+
+	item, err := service.SetItemType(r.Context(), req)
+	if err != nil {
+		writeServiceError(w, err, "couldn't set item type")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, item)
+}
+
 func CreateItem(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024*64)
 

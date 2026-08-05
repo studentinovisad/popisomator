@@ -200,6 +200,33 @@ func ConsumeItem(ctx context.Context, req dto.ConsumeItemRequest) error {
 	return nil
 }
 
+func SetItemType(ctx context.Context, req dto.SetItemTypeRequest) (dto.Item, error) {
+	typeId := pgtype.Int8{}
+	if req.TypeID != nil {
+		typeId = pgtype.Int8{Int64: *req.TypeID, Valid: true}
+	}
+
+	// db.Queries.UpdateItemType sets items.type_id (reassigns this item's type) — unrelated to
+	// service.UpdateItemType below, which edits an item_type's own name/description.
+	item, err := db.Queries.UpdateItemType(ctx, repository.UpdateItemTypeParams{
+		ID:     req.ID,
+		TypeID: typeId,
+	})
+	if err != nil {
+		return dto.Item{}, err
+	}
+
+	itemProps, err := GetItemProperties(ctx, item.ID)
+	if err != nil {
+		return dto.Item{}, err
+	}
+
+	itemDTO := dto.ToItemDTO(item)
+	itemDTO.Properties = itemProps
+
+	return itemDTO, nil
+}
+
 func DeleteItem(ctx context.Context, id int64) error {
 	rowsAffected, err := db.Queries.DeleteItem(ctx, id)
 	if err != nil {
@@ -515,6 +542,60 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 	if err := tx.Commit(ctx); err != nil {
 		return dto.ItemType{}, err
 	}
+
+	return itemTypeDTO, nil
+}
+
+func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.ItemType, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.ItemType{}, err
+	}
+
+	if req.Name != nil || req.Description != nil {
+		tx, err := db.BeginTransaction(ctx)
+		if err != nil {
+			return dto.ItemType{}, err
+		}
+		defer tx.Rollback(ctx)
+		queriesTx := db.Queries.WithTx(tx)
+
+		if req.Name != nil {
+			if _, err := queriesTx.UpdateItemTypeName(ctx, repository.UpdateItemTypeNameParams{
+				ID:   req.ID,
+				Name: *req.Name,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if req.Description != nil {
+			description := pgtype.Text{String: *req.Description, Valid: true}
+
+			if _, err := queriesTx.UpdateItemTypeDescription(ctx, repository.UpdateItemTypeDescriptionParams{
+				ID:          req.ID,
+				Description: description,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return dto.ItemType{}, err
+		}
+	}
+
+	itemType, err := db.Queries.GetItemTypeByID(ctx, req.ID)
+	if err != nil {
+		return dto.ItemType{}, err
+	}
+
+	typeProps, err := GetItemTypeProperties(ctx, req.ID)
+	if err != nil {
+		return dto.ItemType{}, err
+	}
+
+	itemTypeDTO := dto.ToItemTypeDTO(itemType)
+	itemTypeDTO.Properties = typeProps
 
 	return itemTypeDTO, nil
 }

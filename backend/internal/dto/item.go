@@ -119,6 +119,17 @@ type CreateItemTypeRequest struct {
 	Properties  []ItemTypeProperty `json:"properties" validate:"dive"`
 }
 
+type UpdateItemTypeRequest struct {
+	ID          int64   `json:"id" validate:"required"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+}
+
+type SetItemTypeRequest struct {
+	ID     int64  `json:"id" validate:"required"`
+	TypeID *int64 `json:"type_id"`
+}
+
 type CreatePropertyRequest struct {
 	Name         string  `json:"name" validate:"required"`
 	Description  string  `json:"description"`
