@@ -43,6 +43,13 @@
 		}
 	});
 
+	$effect(() => {
+		const pathname = page.url.pathname;
+		if (session.ready && !session.user && pathname !== '/login' && pathname !== '/settings') {
+			void goto(resolve('/login'));
+		}
+	});
+
 	async function logout() {
 		session.clear();
 
@@ -69,7 +76,7 @@
 
 			<nav class="mt-10" aria-label="Glavna navigacija">
 				<NavigationLinks
-					items={primaryNavigation}
+					items={session.user ? primaryNavigation : []}
 					pathname={page.url.pathname}
 					role={session.user?.role}
 					class="mt-2 space-y-1"
@@ -249,7 +256,7 @@
 		aria-label="Glavna navigacija"
 	>
 		<NavigationLinks
-			items={[...primaryNavigation, ...secondaryNavigation]}
+			items={session.user ? [...primaryNavigation, ...secondaryNavigation] : secondaryNavigation}
 			pathname={page.url.pathname}
 			role={session.user?.role}
 			iconOnlyOnSmall
