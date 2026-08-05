@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { ItemType } from '$lib/api';
 
 	let {
@@ -26,7 +27,7 @@
 			<col class="w-[28%]" />
 			<col />
 			<col class="w-[35%]" />
-			<col class="w-16" />
+			<col class="w-24" />
 		</colgroup>
 		<thead class="border-b border-line bg-soft text-muted">
 			<tr class="h-12">
@@ -53,25 +54,45 @@
 						>
 					</td>
 					<td class="px-4 py-3 text-right align-middle">
-						<button
-							class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
-							type="button"
-							onclick={() => deleteitemtype(itemType)}
-							aria-label={`Obriši tip stavke ${itemType.name}`}
-							title="Obriši"
-						>
-							<svg
-								aria-hidden="true"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								class="size-4"
+						<div class="flex justify-end gap-1">
+							<a
+								class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
+								href={resolve(`/catalog/item-types/${itemType.id}`)}
+								aria-label={`Izmeni tip stavke ${itemType.name}`}
+								title="Izmeni"
 							>
-								<path d="M3 6h18" />
-								<path d="M8 6V4h8v2M19 6l-1 14H6L5 6" />
-							</svg>
-						</button>
+								<svg
+									aria-hidden="true"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									class="size-4"
+								>
+									<path d="m12 20h9" />
+									<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+								</svg>
+							</a>
+							<button
+								class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
+								type="button"
+								onclick={() => deleteitemtype(itemType)}
+								aria-label={`Obriši tip stavke ${itemType.name}`}
+								title="Obriši"
+							>
+								<svg
+									aria-hidden="true"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									class="size-4"
+								>
+									<path d="M3 6h18" />
+									<path d="M8 6V4h8v2M19 6l-1 14H6L5 6" />
+								</svg>
+							</button>
+						</div>
 					</td>
 				</tr>
 			{/each}
@@ -103,25 +124,45 @@
 							</p>
 						{/if}
 					</div>
-					<button
-						class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
-						type="button"
-						onclick={() => deleteitemtype(itemType)}
-						aria-label={`Obriši tip stavke ${itemType.name}`}
-						title="Obriši"
-					>
-						<svg
-							aria-hidden="true"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							class="size-4"
+					<div class="flex shrink-0 gap-1">
+						<a
+							class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
+							href={resolve(`/catalog/item-types/${itemType.id}`)}
+							aria-label={`Izmeni tip stavke ${itemType.name}`}
+							title="Izmeni"
 						>
-							<path d="M3 6h18" />
-							<path d="M8 6V4h8v2M19 6l-1 14H6L5 6" />
-						</svg>
-					</button>
+							<svg
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								class="size-4"
+							>
+								<path d="m12 20h9" />
+								<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+							</svg>
+						</a>
+						<button
+							class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
+							type="button"
+							onclick={() => deleteitemtype(itemType)}
+							aria-label={`Obriši tip stavke ${itemType.name}`}
+							title="Obriši"
+						>
+							<svg
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								class="size-4"
+							>
+								<path d="M3 6h18" />
+								<path d="M8 6V4h8v2M19 6l-1 14H6L5 6" />
+							</svg>
+						</button>
+					</div>
 					<p class="col-span-2 truncate text-xs text-muted" title={assignedProperties(itemType)}>
 						Svojstva: {assignedProperties(itemType)}
 					</p>

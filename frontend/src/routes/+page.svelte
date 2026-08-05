@@ -10,6 +10,7 @@
 		type Property
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
+	import InventoryPagination from '$lib/components/InventoryPagination.svelte';
 	import ItemPropertiesForm from '$lib/components/ItemPropertiesForm.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
@@ -25,9 +26,15 @@
 	let editItemDialogOpen = $state(false);
 	let editingItem = $state<Item | null>(null);
 	let loadVersion = 0;
+	const itemsPerPage = 20;
+	let itemOffset = $state(0);
+	let itemsTotal = $state(0);
 	let canManage = $derived(
 		authPage.state.user?.role === 'admin' || authPage.state.user?.role === 'manager'
 	);
+	let currentPage = $derived(Math.floor(itemOffset / itemsPerPage) + 1);
+	let hasPreviousPage = $derived(itemOffset > 0);
+	let hasNextPage = $derived(itemOffset + items.length < itemsTotal);
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -35,20 +42,22 @@
 		});
 	});
 
-	async function loadInventory() {
+	async function loadInventory(offset = 0) {
 		const version = ++loadVersion;
 		loadingInventory = true;
 		inventoryError = '';
 
 		try {
 			const [nextItems, nextItemTypes, nextProperties] = await Promise.all([
-				api.listItems(),
+				api.listItems({ limit: itemsPerPage, offset }),
 				api.listItemTypes(),
 				api.listProperties()
 			]);
 			if (version !== loadVersion) return;
 
-			items = nextItems;
+			items = nextItems.items;
+			itemOffset = nextItems.offset;
+			itemsTotal = nextItems.total;
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
 		} catch (reason) {
@@ -80,7 +89,9 @@
 
 		try {
 			await api.deleteItem(item.id);
-			items = items.filter((currentItem) => currentItem.id !== item.id);
+			const nextOffset =
+				items.length === 1 && itemOffset > 0 ? itemOffset - itemsPerPage : itemOffset;
+			void loadInventory(nextOffset);
 		} catch (reason) {
 			inventoryError = reason instanceof ApiError ? reason.message : 'Stavka nije obrisana.';
 		}
@@ -93,7 +104,17 @@
 
 	function itemPropertiesSaved() {
 		editItemDialogOpen = false;
-		void loadInventory();
+		void loadInventory(itemOffset);
+	}
+
+	async function changeItemType(item: Item, typeID: number) {
+		const updatedItem = await api.setItemType(item.id, typeID);
+		items = items.map((listedItem) => (listedItem.id === item.id ? updatedItem : listedItem));
+		editingItem = updatedItem;
+	}
+
+	function goToPage(page: number) {
+		void loadInventory((page - 1) * itemsPerPage);
 	}
 </script>
 
@@ -109,11 +130,9 @@
 			<p class="text-danger" role="alert">{authPage.state.error}</p>
 		</div>
 	{:else if authPage.state.authorized && authPage.state.user}
-		<div class="flex items-center justify-between gap-4">
-			<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
-				UKUPNO: {items.length}
-			</p>
-		</div>
+		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
+			UKUPNO: {itemsTotal}
+		</p>
 
 		{#if canManage}
 			<Portal to="#page-header-actions">
@@ -150,6 +169,7 @@
 								item={editingItem}
 								{itemTypes}
 								{properties}
+								onitemtypechange={(typeID) => changeItemType(editingItem!, typeID)}
 								onsaved={itemPropertiesSaved}
 							/>
 						</div>
@@ -167,6 +187,15 @@
 			onconsumptionchange={changeConsumption}
 			onedititem={editItem}
 			deleteitem={deleteItem}
+		/>
+		<InventoryPagination
+			total={itemsTotal}
+			perPage={itemsPerPage}
+			page={currentPage}
+			{hasPreviousPage}
+			{hasNextPage}
+			loading={loadingInventory}
+			onpagechange={goToPage}
 		/>
 	{/if}
 </main>

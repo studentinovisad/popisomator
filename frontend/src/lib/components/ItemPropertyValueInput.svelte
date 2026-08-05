@@ -5,12 +5,14 @@
 		property,
 		id,
 		value = $bindable(),
-		required = false
+		required = false,
+		onvaluechange
 	}: {
 		property: Property;
 		id: string;
 		value: string;
 		required?: boolean;
+		onvaluechange?: () => void;
 	} = $props();
 
 	let scalarValue = $state('');
@@ -36,12 +38,14 @@
 		const nextValue = property.value_type === 'string' ? JSON.stringify(scalarValue) : scalarValue;
 		lastCommittedValue = nextValue;
 		value = nextValue;
+		onvaluechange?.();
 	}
 
 	function commitBoolean() {
 		const nextValue = String(booleanValue);
 		lastCommittedValue = nextValue;
 		value = nextValue;
+		onvaluechange?.();
 	}
 </script>
 

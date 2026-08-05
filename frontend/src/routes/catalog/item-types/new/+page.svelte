@@ -57,7 +57,7 @@
 				<h2 id="new-item-type-heading" class="text-lg font-semibold text-ink">Novi tip stavke</h2>
 				<p class="mt-1 text-sm text-muted">Odaberite svojstva koja pripadaju ovom tipu.</p>
 			</div>
-			<div class="mt-6"><CreateItemTypeForm {properties} oncreated={itemTypeCreated} /></div>
+			<div class="mt-6"><CreateItemTypeForm {properties} onsaved={itemTypeCreated} /></div>
 		</section>
 	{/if}
 </main>

@@ -15,6 +15,18 @@ export type Item = {
 	type_id: number;
 };
 
+export type ItemsPage = {
+	items: Item[];
+	limit: number;
+	offset: number;
+	total: number;
+};
+
+export type ListItemsParams = {
+	limit?: number;
+	offset?: number;
+};
+
 export type ItemTypeProperty = {
 	id: number;
 	default_value: string | null;
@@ -78,6 +90,8 @@ export type CreateItemTypeRequest = {
 	description: string;
 	properties: ItemTypeProperty[];
 };
+
+export type UpdateItemTypeRequest = Partial<Pick<ItemType, 'name' | 'description'>>;
 
 export type CreatePropertyRequest = {
 	name: string;
@@ -146,8 +160,13 @@ export const api = {
 		request<User>('/auth/register', jsonRequest('POST', payload)),
 	updateUserRole: (id: number, role: UserRole) =>
 		request<User>(`/user/${id}/role`, jsonRequest('PATCH', { role })),
-	listItems: () => request<Item[]>('/item'),
+	listItems: ({ limit = 20, offset = 0 }: ListItemsParams = {}) => {
+		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		return request<ItemsPage>(`/item?${query}`);
+	},
 	createItem: (payload: CreateItemRequest) => request<Item>('/item', jsonRequest('POST', payload)),
+	setItemType: (id: number, typeID: number) =>
+		request<Item>(`/item/${id}`, jsonRequest('PATCH', { type_id: typeID })),
 	consumeItem: (id: number, status: ConsumptionStatus) =>
 		request<void>(`/item/${id}/consume`, jsonRequest('POST', { status })),
 	deleteItem: (id: number) => request<void>(`/item/${id}`, { method: 'DELETE' }),
@@ -164,9 +183,24 @@ export const api = {
 	removeItemProperty: (itemID: number, propertyID: number) =>
 		request<void>(`/item/${itemID}/properties/${propertyID}`, { method: 'DELETE' }),
 	listItemTypes: () => request<ItemType[]>('/item/types'),
+	getItemType: (id: number) => request<ItemType>(`/item/types/${id}`),
 	createItemType: (payload: CreateItemTypeRequest) =>
 		request<ItemType>('/item/types', jsonRequest('POST', payload)),
+	updateItemType: (id: number, payload: UpdateItemTypeRequest) =>
+		request<ItemType>(`/item/types/${id}`, jsonRequest('PATCH', payload)),
 	deleteItemType: (id: number) => request<void>(`/item/types/${id}`, { method: 'DELETE' }),
+	addItemTypeProperty: (itemTypeID: number, propertyID: number, defaultValue: string | null) =>
+		request<ItemTypeProperty>(
+			`/item/types/${itemTypeID}/properties`,
+			jsonRequest('POST', { property_id: propertyID, default_value: defaultValue })
+		),
+	updateItemTypeProperty: (itemTypeID: number, propertyID: number, defaultValue: string | null) =>
+		request<ItemTypeProperty>(
+			`/item/types/${itemTypeID}/properties/${propertyID}`,
+			jsonRequest('PUT', { default_value: defaultValue })
+		),
+	removeItemTypeProperty: (itemTypeID: number, propertyID: number) =>
+		request<void>(`/item/types/${itemTypeID}/properties/${propertyID}`, { method: 'DELETE' }),
 	listProperties: () => request<Property[]>('/item/properties'),
 	getProperty: (id: number) => request<Property>(`/item/properties/${id}`),
 	createProperty: (payload: CreatePropertyRequest) =>
