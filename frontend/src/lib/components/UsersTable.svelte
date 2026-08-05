@@ -24,9 +24,9 @@
 			<th class="px-4 py-3 font-medium">Uloga</th>
 		</tr>
 	</thead>
-	<tbody class="divide-y divide-line text-ink">
+	<tbody class="text-ink">
 		{#each users as user (user.id)}
-			<tr class="h-16">
+			<tr class="h-16 transition-colors hover:bg-soft/35">
 				<td class="px-4 py-3 align-middle"
 					><span class="block truncate" title={user.full_name}>{user.full_name}</span></td
 				>
