@@ -164,7 +164,6 @@
 									id={`item-type-property-${property.id}`}
 									bind:value={defaultValues[property.id]}
 									{property}
-									required
 									onvaluechange={() => markDefaultEdited(property.id)}
 								/>
 							{/if}
