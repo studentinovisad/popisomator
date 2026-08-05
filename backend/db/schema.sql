@@ -39,7 +39,7 @@ CREATE TABLE items (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     consumption consumption_status NOT NULL DEFAULT 'not_consumed',
-    type_id BIGINT REFERENCES item_types(id) ON DELETE SET NULL
+    type_id BIGINT NOT NULL REFERENCES item_types(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_items_type_id ON items(type_id);

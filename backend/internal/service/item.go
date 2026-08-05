@@ -130,12 +130,7 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) (dto.Item, error
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
-	typeId := pgtype.Int8{}
-	if req.TypeID != nil {
-		typeId = pgtype.Int8{Int64: *req.TypeID, Valid: true}
-	}
-
-	item, err := queriesTx.CreateItem(ctx, typeId)
+	item, err := queriesTx.CreateItem(ctx, req.TypeID)
 	if err != nil {
 		return dto.Item{}, err
 	}
@@ -190,16 +185,15 @@ func ConsumeItem(ctx context.Context, req dto.ConsumeItemRequest) error {
 }
 
 func SetItemType(ctx context.Context, req dto.SetItemTypeRequest) (dto.Item, error) {
-	typeId := pgtype.Int8{}
-	if req.TypeID != nil {
-		typeId = pgtype.Int8{Int64: *req.TypeID, Valid: true}
+	if err := dto.Validate(req); err != nil {
+		return dto.Item{}, err
 	}
 
 	// db.Queries.UpdateItemType sets items.type_id (reassigns this item's type) — unrelated to
 	// service.UpdateItemType below, which edits an item_type's own name/description.
 	item, err := db.Queries.UpdateItemType(ctx, repository.UpdateItemTypeParams{
 		ID:     req.ID,
-		TypeID: typeId,
+		TypeID: req.TypeID,
 	})
 	if err != nil {
 		return dto.Item{}, err
@@ -312,14 +306,16 @@ func UpdateProperty(ctx context.Context, req dto.UpdatePropertyRequest) (dto.Pro
 		}
 	}
 
-	if req.DefaultValue != nil {
+	if req.DefaultValueSet {
 		existing, err := db.Queries.GetPropertyByID(ctx, req.ID)
 		if err != nil {
 			return dto.Property{}, err
 		}
 
-		if err := dto.Validate(dto.PropertyValueCheck{Value: *req.DefaultValue, ValueType: existing.ValueType}); err != nil {
-			return dto.Property{}, err
+		if req.DefaultValue != nil {
+			if err := dto.Validate(dto.PropertyValueCheck{Value: *req.DefaultValue, ValueType: existing.ValueType}); err != nil {
+				return dto.Property{}, err
+			}
 		}
 
 		if err := db.Queries.UpdatePropertyDefaultValue(ctx, repository.UpdatePropertyDefaultValueParams{
