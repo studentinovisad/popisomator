@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
@@ -16,6 +17,7 @@ import (
 
 const defaultUserPageSize int32 = 25
 const maxUserPageSize int32 = 100
+const maxUserSearchLength = 100
 
 func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 	id, ok := r.Context().Value("userID").(int64)
@@ -46,7 +48,19 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := service.ListUsers(r.Context(), limit, offset)
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+	if len(search) > maxUserSearchLength {
+		response.WriteError(w, http.StatusBadRequest, "search is too long")
+		return
+	}
+
+	role := strings.TrimSpace(r.URL.Query().Get("role"))
+	if role != "" && role != "admin" && role != "manager" && role != "user" {
+		response.WriteError(w, http.StatusBadRequest, "invalid role")
+		return
+	}
+
+	users, err := service.ListUsers(r.Context(), limit, offset, search, role)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "error fetching users")
 		log.Printf("error fetching users: %v", err)

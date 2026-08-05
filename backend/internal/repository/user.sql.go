@@ -11,10 +11,17 @@ import (
 
 const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM users
+WHERE full_name ILIKE '%' || $1::text || '%'
+  AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
 `
 
-func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsers)
+type CountUsersParams struct {
+	Search     string `json:"search"`
+	RoleFilter string `json:"role_filter"`
+}
+
+func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers, arg.Search, arg.RoleFilter)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -93,17 +100,26 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, password_hash, full_name, role, created_at, updated_at FROM users
+WHERE full_name ILIKE '%' || $1::text || '%'
+  AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
 ORDER BY id
-LIMIT $1 OFFSET $2
+LIMIT $4 OFFSET $3
 `
 
 type ListUsersParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	Search     string `json:"search"`
+	RoleFilter string `json:"role_filter"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
 }
 
 func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
-	rows, err := q.db.Query(ctx, listUsers, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listUsers,
+		arg.Search,
+		arg.RoleFilter,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

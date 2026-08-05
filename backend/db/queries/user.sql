@@ -8,11 +8,15 @@ WHERE id = $1 LIMIT 1;
 
 -- name: ListUsers :many
 SELECT * FROM users
+WHERE full_name ILIKE '%' || sqlc.arg(search)::text || '%'
+  AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
 ORDER BY id
-LIMIT $1 OFFSET $2;
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: CountUsers :one
-SELECT count(*) FROM users;
+SELECT count(*) FROM users
+WHERE full_name ILIKE '%' || sqlc.arg(search)::text || '%'
+  AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role);
 
 -- name: CreateUser :one
 INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING *;
