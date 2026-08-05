@@ -45,6 +45,33 @@ func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypeProper
 	return i, err
 }
 
+const countItems = `-- name: CountItems :one
+SELECT count(*) FROM items
+WHERE ($1::bigint IS NULL OR type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR created_at >= $3)
+  AND ($4::timestamptz IS NULL OR created_at <= $4)
+`
+
+type CountItemsParams struct {
+	TypeID      pgtype.Int8         `json:"type_id"`
+	Consumption []ConsumptionStatus `json:"consumption"`
+	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+}
+
+func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countItems,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (type_id) VALUES ($1) RETURNING id, created_at, consumption, type_id
 `
@@ -239,49 +266,6 @@ func (q *Queries) GetAllItems(ctx context.Context) ([]Item, error) {
 	return items, nil
 }
 
-const getAllItemsWithProperties = `-- name: GetAllItemsWithProperties :many
-SELECT
-    i.id, i.created_at, i.consumption, i.type_id,
-    ip.property_id,
-    ip.property_value
-FROM items i
-LEFT JOIN item_properties ip ON ip.item_id = i.id
-ORDER BY i.id
-`
-
-type GetAllItemsWithPropertiesRow struct {
-	Item          Item        `json:"item"`
-	PropertyID    pgtype.Int8 `json:"property_id"`
-	PropertyValue *string     `json:"property_value"`
-}
-
-func (q *Queries) GetAllItemsWithProperties(ctx context.Context) ([]GetAllItemsWithPropertiesRow, error) {
-	rows, err := q.db.Query(ctx, getAllItemsWithProperties)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetAllItemsWithPropertiesRow
-	for rows.Next() {
-		var i GetAllItemsWithPropertiesRow
-		if err := rows.Scan(
-			&i.Item.ID,
-			&i.Item.CreatedAt,
-			&i.Item.Consumption,
-			&i.Item.TypeID,
-			&i.PropertyID,
-			&i.PropertyValue,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getAllProperties = `-- name: GetAllProperties :many
 
 SELECT id, name, description, value_type, default_value FROM properties
@@ -360,6 +344,31 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemID int64) ([]ItemPr
 	return items, nil
 }
 
+const getItemPropertiesForItems = `-- name: GetItemPropertiesForItems :many
+SELECT item_id, property_id, property_value FROM item_properties
+WHERE item_id = ANY($1::bigint[])
+`
+
+func (q *Queries) GetItemPropertiesForItems(ctx context.Context, itemIds []int64) ([]ItemProperty, error) {
+	rows, err := q.db.Query(ctx, getItemPropertiesForItems, itemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ItemProperty
+	for rows.Next() {
+		var i ItemProperty
+		if err := rows.Scan(&i.ItemID, &i.PropertyID, &i.PropertyValue); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getItemTypeByID = `-- name: GetItemTypeByID :one
 SELECT id, name, description FROM item_types
 WHERE id = $1 LIMIT 1
@@ -415,6 +424,108 @@ func (q *Queries) GetPropertyByID(ctx context.Context, id int64) (Property, erro
 		&i.DefaultValue,
 	)
 	return i, err
+}
+
+const listItemsAsc = `-- name: ListItemsAsc :many
+SELECT id, created_at, consumption, type_id FROM items
+WHERE ($1::bigint IS NULL OR type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR created_at >= $3)
+  AND ($4::timestamptz IS NULL OR created_at <= $4)
+ORDER BY created_at ASC, id ASC
+LIMIT $6 OFFSET $5
+`
+
+type ListItemsAscParams struct {
+	TypeID      pgtype.Int8         `json:"type_id"`
+	Consumption []ConsumptionStatus `json:"consumption"`
+	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	OffsetVal   int32               `json:"offset_val"`
+	LimitVal    int32               `json:"limit_val"`
+}
+
+func (q *Queries) ListItemsAsc(ctx context.Context, arg ListItemsAscParams) ([]Item, error) {
+	rows, err := q.db.Query(ctx, listItemsAsc,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Consumption,
+			&i.TypeID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listItemsDesc = `-- name: ListItemsDesc :many
+SELECT id, created_at, consumption, type_id FROM items
+WHERE ($1::bigint IS NULL OR type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR created_at >= $3)
+  AND ($4::timestamptz IS NULL OR created_at <= $4)
+ORDER BY created_at DESC, id DESC
+LIMIT $6 OFFSET $5
+`
+
+type ListItemsDescParams struct {
+	TypeID      pgtype.Int8         `json:"type_id"`
+	Consumption []ConsumptionStatus `json:"consumption"`
+	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	OffsetVal   int32               `json:"offset_val"`
+	LimitVal    int32               `json:"limit_val"`
+}
+
+func (q *Queries) ListItemsDesc(ctx context.Context, arg ListItemsDescParams) ([]Item, error) {
+	rows, err := q.db.Query(ctx, listItemsDesc,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Consumption,
+			&i.TypeID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const removeItemProperty = `-- name: RemoveItemProperty :execrows

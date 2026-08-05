@@ -30,31 +30,86 @@ func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID
 // Items
 //
 
-func GetAllItems(ctx context.Context) ([]dto.Item, error) {
-	rows, err := db.Queries.GetAllItemsWithProperties(ctx)
+func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.ItemsPage{}, err
+	}
+
+	typeID := pgtype.Int8{}
+	if req.TypeID != nil {
+		typeID = pgtype.Int8{Int64: *req.TypeID, Valid: true}
+	}
+
+	createdFrom := pgtype.Timestamptz{}
+	if req.CreatedFrom != nil {
+		createdFrom = pgtype.Timestamptz{Time: *req.CreatedFrom, Valid: true}
+	}
+
+	createdTo := pgtype.Timestamptz{}
+	if req.CreatedTo != nil {
+		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
+	}
+
+	total, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
+		TypeID:      typeID,
+		Consumption: req.Consumption,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
+	})
 	if err != nil {
-		return nil, err
+		return dto.ItemsPage{}, err
 	}
 
-	items := make([]dto.Item, 0, len(rows))
+	var rows []repository.Item
+	if req.Order == "asc" {
+		rows, err = db.Queries.ListItemsAsc(ctx, repository.ListItemsAscParams{
+			TypeID:      typeID,
+			Consumption: req.Consumption,
+			CreatedFrom: createdFrom,
+			CreatedTo:   createdTo,
+			LimitVal:    req.Limit,
+			OffsetVal:   req.Offset,
+		})
+	} else {
+		rows, err = db.Queries.ListItemsDesc(ctx, repository.ListItemsDescParams{
+			TypeID:      typeID,
+			Consumption: req.Consumption,
+			CreatedFrom: createdFrom,
+			CreatedTo:   createdTo,
+			LimitVal:    req.Limit,
+			OffsetVal:   req.Offset,
+		})
+	}
+	if err != nil {
+		return dto.ItemsPage{}, err
+	}
+
+	items := make([]dto.Item, len(rows))
 	index := make(map[int64]int, len(rows))
-	for _, row := range rows {
-		idx, ok := index[row.Item.ID]
-		if !ok {
-			idx = len(items)
-			index[row.Item.ID] = idx
-			items = append(items, dto.ToItemDTO(row.Item))
-		}
+	ids := make([]int64, len(rows))
+	for i, row := range rows {
+		items[i] = dto.ToItemDTO(row)
+		index[row.ID] = i
+		ids[i] = row.ID
+	}
 
-		if row.PropertyID.Valid {
-			items[idx].Properties = append(items[idx].Properties, dto.ItemProperty{
-				ID:    row.PropertyID.Int64,
-				Value: *row.PropertyValue,
-			})
+	if len(ids) > 0 {
+		propRows, err := db.Queries.GetItemPropertiesForItems(ctx, ids)
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+		for _, p := range propRows {
+			idx := index[p.ItemID]
+			items[idx].Properties = append(items[idx].Properties, dto.ToItemPropertyDTO(p))
 		}
 	}
 
-	return items, nil
+	return dto.ItemsPage{
+		Items:  items,
+		Limit:  req.Limit,
+		Offset: req.Offset,
+		Total:  total,
+	}, nil
 }
 
 func GetItem(ctx context.Context, id int64) (dto.Item, error) {
