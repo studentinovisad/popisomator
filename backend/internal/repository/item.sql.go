@@ -76,7 +76,7 @@ const createItem = `-- name: CreateItem :one
 INSERT INTO items (type_id) VALUES ($1) RETURNING id, created_at, consumption, type_id
 `
 
-func (q *Queries) CreateItem(ctx context.Context, typeID pgtype.Int8) (Item, error) {
+func (q *Queries) CreateItem(ctx context.Context, typeID int64) (Item, error) {
 	row := q.db.QueryRow(ctx, createItem, typeID)
 	var i Item
 	err := row.Scan(
@@ -556,8 +556,8 @@ UPDATE items SET type_id = $2 WHERE id = $1 RETURNING id, created_at, consumptio
 `
 
 type UpdateItemTypeParams struct {
-	ID     int64       `json:"id"`
-	TypeID pgtype.Int8 `json:"type_id"`
+	ID     int64 `json:"id"`
+	TypeID int64 `json:"type_id"`
 }
 
 func (q *Queries) UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) (Item, error) {

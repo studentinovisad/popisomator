@@ -1,12 +1,22 @@
-export type NavigationIconName = 'overview' | 'settings' | 'users';
+import type { UserRole } from '$lib/api';
 
-export type AppPath = '/' | '/account' | '/admin/users' | '/settings' | '/login';
+export type NavigationIconName = 'inventory' | 'catalog' | 'settings' | 'users';
+
+export type AppPath =
+	| '/'
+	| '/items/new'
+	| '/account'
+	| '/admin/users'
+	| '/catalog/item-types'
+	| '/catalog/properties'
+	| '/settings'
+	| '/login';
 
 export type NavigationItem = {
 	path: AppPath;
 	label: string;
 	icon: NavigationIconName;
-	adminOnly?: boolean;
+	requiredRoles?: UserRole[];
 };
 
 type PageMetadata = {
@@ -21,8 +31,12 @@ const fallbackPageMetadata: PageMetadata = {
 
 export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/': {
-		title: 'Pregled',
-		description: 'Pregled trenutnog stanja sistema.'
+		title: 'Stavke',
+		description: 'Pratite stanje stavki i evidentirajte njihovu potrošnju.'
+	},
+	'/items/new': {
+		title: 'Nova stavka',
+		description: 'Dodajte stavku i njene početne vrednosti svojstava.'
 	},
 	'/account': {
 		title: 'Moj nalog',
@@ -31,6 +45,14 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/admin/users': {
 		title: 'Korisnici',
 		description: 'Upravljajte pristupom i ulogama korisnika sistema.'
+	},
+	'/catalog/item-types': {
+		title: 'Tipovi stavki',
+		description: 'Upravljajte tipovima stavki i njihovim pripadajućim svojstvima.'
+	},
+	'/catalog/properties': {
+		title: 'Svojstva',
+		description: 'Upravljajte svojstvima koja se mogu dodeliti stavkama.'
 	},
 	'/settings': {
 		title: 'Podešavanja',
@@ -43,8 +65,14 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 };
 
 export const primaryNavigation: NavigationItem[] = [
-	{ path: '/', label: 'Pregled', icon: 'overview' },
-	{ path: '/admin/users', label: 'Korisnici', icon: 'users', adminOnly: true }
+	{ path: '/', label: 'Stavke', icon: 'inventory' },
+	{
+		path: '/catalog/item-types',
+		label: 'Katalog',
+		icon: 'catalog',
+		requiredRoles: ['admin']
+	},
+	{ path: '/admin/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] }
 ];
 
 export const secondaryNavigation: NavigationItem[] = [
@@ -52,5 +80,13 @@ export const secondaryNavigation: NavigationItem[] = [
 ];
 
 export function getPageMetadata(pathname: string): PageMetadata {
+	if (pathname.startsWith('/catalog/item-types/')) {
+		return pageMetadata['/catalog/item-types'];
+	}
+
+	if (pathname.startsWith('/catalog/properties/')) {
+		return pageMetadata['/catalog/properties'];
+	}
+
 	return pageMetadata[pathname as AppPath] ?? fallbackPageMetadata;
 }

@@ -2,6 +2,7 @@ import { api, type User } from '$lib/api';
 
 class Session {
 	user = $state<User | null>(null);
+	ready = $state(false);
 	private currentUserRequest: Promise<User> | null = null;
 	private version = 0;
 
@@ -17,6 +18,7 @@ class Session {
 
 	async refresh() {
 		const version = this.version;
+		this.ready = false;
 
 		try {
 			const user = await this.getCurrentUser();
@@ -29,6 +31,10 @@ class Session {
 				this.user = null;
 			}
 			return null;
+		} finally {
+			if (version === this.version) {
+				this.ready = true;
+			}
 		}
 	}
 
@@ -40,6 +46,7 @@ class Session {
 	clear() {
 		this.version += 1;
 		this.user = null;
+		this.ready = true;
 	}
 }
 

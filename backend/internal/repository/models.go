@@ -102,7 +102,7 @@ type Item struct {
 	ID          int64              `json:"id"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	Consumption ConsumptionStatus  `json:"consumption"`
-	TypeID      pgtype.Int8        `json:"type_id"`
+	TypeID      int64              `json:"type_id"`
 }
 
 type ItemProperty struct {

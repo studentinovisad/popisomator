@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { createAuthPage } from '$lib/auth-page.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
+	import { userRoleLabel } from '$lib/users';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Nalog trenutno nije dostupan.' });
 
@@ -37,7 +38,7 @@
 					</div>
 					<div class="px-4 py-3">
 						<dt class="font-mono text-xs tracking-wide text-muted">ULOGA</dt>
-						<dd class="mt-1 font-medium text-ink">{authPage.state.user.role}</dd>
+						<dd class="mt-1 font-medium text-ink">{userRoleLabel(authPage.state.user.role)}</dd>
 					</div>
 				</dl>
 			</div>

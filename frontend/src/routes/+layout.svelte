@@ -43,6 +43,13 @@
 		}
 	});
 
+	$effect(() => {
+		const pathname = page.url.pathname;
+		if (session.ready && !session.user && pathname !== '/login' && pathname !== '/settings') {
+			void goto(resolve('/login'));
+		}
+	});
+
 	async function logout() {
 		session.clear();
 
@@ -69,9 +76,9 @@
 
 			<nav class="mt-10" aria-label="Glavna navigacija">
 				<NavigationLinks
-					items={primaryNavigation}
+					items={session.user ? primaryNavigation : []}
 					pathname={page.url.pathname}
-					isAdmin={session.user?.role === 'admin'}
+					role={session.user?.role}
 					class="mt-2 space-y-1"
 				/>
 			</nav>
@@ -81,7 +88,7 @@
 			<NavigationLinks
 				items={secondaryNavigation}
 				pathname={page.url.pathname}
-				isAdmin={session.user?.role === 'admin'}
+				role={session.user?.role}
 				class="space-y-1"
 			/>
 			{#if session.user}
@@ -249,9 +256,9 @@
 		aria-label="Glavna navigacija"
 	>
 		<NavigationLinks
-			items={[...primaryNavigation, ...secondaryNavigation]}
+			items={session.user ? [...primaryNavigation, ...secondaryNavigation] : secondaryNavigation}
 			pathname={page.url.pathname}
-			isAdmin={session.user?.role === 'admin'}
+			role={session.user?.role}
 			iconOnlyOnSmall
 			class="flex h-16 items-center justify-center gap-4 overflow-x-auto px-4 text-sm max-sm:justify-around max-sm:gap-2"
 		/>

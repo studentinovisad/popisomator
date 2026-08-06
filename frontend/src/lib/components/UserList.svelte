@@ -7,7 +7,7 @@
 	import UsersToolbar from '$lib/components/UsersToolbar.svelte';
 	import type { UserRoleFilter } from '$lib/users';
 
-	let { refreshKey }: { refreshKey: number } = $props();
+	let { refreshKey, currentUserID }: { refreshKey: number; currentUserID: number } = $props();
 
 	const usersPerPage = 25;
 
@@ -97,8 +97,8 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<UsersMobileList {users} onrolechange={updateRole} />
-		<UsersTable {users} onrolechange={updateRole} />
+		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} />
+		<UsersTable {users} {currentUserID} onrolechange={updateRole} />
 	</div>
 	<UsersPagination
 		total={usersTotal}
