@@ -55,8 +55,7 @@
 
 	function serializedDefaultValue() {
 		if (!hasDefaultValue) return null;
-		if (valueType === 'string') return JSON.stringify(scalarDefaultValue);
-		if (valueType === 'number') return scalarDefaultValue;
+		if (valueType === 'string' || valueType === 'number') return JSON.stringify(scalarDefaultValue);
 		return String(booleanDefaultValue);
 	}
 

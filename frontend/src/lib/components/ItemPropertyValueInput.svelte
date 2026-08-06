@@ -35,7 +35,7 @@
 	});
 
 	function commitScalar() {
-		const nextValue = property.value_type === 'string' ? JSON.stringify(scalarValue) : scalarValue;
+		const nextValue = JSON.stringify(scalarValue);
 		lastCommittedValue = nextValue;
 		value = nextValue;
 		onvaluechange?.();
