@@ -28,7 +28,7 @@ func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, 
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, password_hash, full_name, role, created_at, updated_at
+INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, password_hash, full_name, role, status
 `
 
 type CreateUserParams struct {
@@ -52,14 +52,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.FullName,
 		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, full_name, role, created_at, updated_at FROM users
+SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -72,14 +71,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.PasswordHash,
 		&i.FullName,
 		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, full_name, role, created_at, updated_at FROM users
+SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -92,14 +90,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.PasswordHash,
 		&i.FullName,
 		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, password_hash, full_name, role, created_at, updated_at FROM users
+SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE full_name ILIKE '%' || $1::text || '%'
   AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
 ORDER BY id
@@ -133,8 +130,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.PasswordHash,
 			&i.FullName,
 			&i.Role,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -147,7 +143,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 }
 
 const updateRole = `-- name: UpdateRole :one
-UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, created_at, updated_at
+UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
 `
 
 type UpdateRoleParams struct {
@@ -164,8 +160,7 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (User, e
 		&i.PasswordHash,
 		&i.FullName,
 		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.Status,
 	)
 	return i, err
 }

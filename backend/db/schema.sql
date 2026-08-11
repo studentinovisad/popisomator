@@ -1,4 +1,5 @@
 CREATE TYPE user_role AS ENUM ('admin', 'manager', 'user');
+CREATE TYPE user_status AS ENUM ('requested', 'active');
 
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
@@ -6,8 +7,7 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     full_name TEXT NOT NULL,
     role user_role NOT NULL DEFAULT 'user',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    status user_status NOT NULL DEFAULT 'active'
 );
 
 CREATE TYPE consumption_status AS ENUM ('not_consumed', 'partially_consumed', 'fully_consumed', 'damaged');

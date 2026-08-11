@@ -4,7 +4,9 @@
 
 package repository
 
-import "context"
+import (
+	"context"
+)
 
 type Querier interface {
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
