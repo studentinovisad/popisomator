@@ -25,6 +25,10 @@
 			submitting = false;
 		}
 	}
+
+	async function registration_page() {
+		await goto(resolve('/register'));
+	}
 </script>
 
 <svelte:head>
@@ -68,6 +72,14 @@
 				type="submit"
 			>
 				{submitting ? 'Prijavljivanje…' : 'Prijavi se'}
+			</Button.Root>
+
+			<Button.Root
+				class="w-full rounded-md bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-strong"
+				type="button"
+				onclick={registration_page}
+			>
+				Zatraži pristup
 			</Button.Root>
 		</form>
 	</div>

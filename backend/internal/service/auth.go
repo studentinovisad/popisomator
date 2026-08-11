@@ -91,6 +91,7 @@ func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error
 		PasswordHash: string(hash),
 		FullName:     req.FullName,
 		Role:         repository.UserRole(req.Role),
+		Status:       repository.UserStatus(req.Status),
 	})
 	if err != nil {
 		return dto.User{}, err

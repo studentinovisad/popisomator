@@ -75,8 +75,11 @@ type LoginRequest = {
 	password: string;
 };
 
-type CreateUserRequest = LoginRequest & {
+type RegistrationRequest = LoginRequest & {
 	full_name: string;
+};
+
+type CreateUserRequest = RegistrationRequest & {
 	role: UserRole;
 };
 
@@ -157,6 +160,8 @@ export const api = {
 		return request<UsersPage>(`/users?${query}`);
 	},
 	createUser: (payload: CreateUserRequest) =>
+		request<User>('/auth/create', jsonRequest('POST', payload)),
+	register: (payload: RegistrationRequest) =>
 		request<User>('/auth/register', jsonRequest('POST', payload)),
 	updateUserRole: (id: number, role: UserRole) =>
 		request<User>(`/user/${id}/role`, jsonRequest('PATCH', { role })),

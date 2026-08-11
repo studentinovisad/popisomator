@@ -10,7 +10,8 @@ export type AppPath =
 	| '/catalog/item-types'
 	| '/catalog/properties'
 	| '/settings'
-	| '/login';
+	| '/login'
+	| '/register';
 
 export type NavigationItem = {
 	path: AppPath;
@@ -60,8 +61,12 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	},
 	'/login': {
 		title: 'Prijava',
-		description: 'Prijavite se nalogom koji je napravio administrator.'
-	}
+		description: 'Prijavite se nalogom koji je napravio ili odobrio administrator.'
+	},
+	'/register': {
+		title: 'Registracija',
+		description: 'Pošaljite zahtev za pravljenje naloga.'
+	},
 };
 
 export const primaryNavigation: NavigationItem[] = [
