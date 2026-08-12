@@ -29,10 +29,20 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("admin"),
 		middleware.Handle(controller.ListUsers),
 	))
+	mux.Handle("DELETE /user/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.DeleteUser),
+	))
 	mux.Handle("PATCH /user/{id}/role", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("admin"),
 		middleware.Handle(controller.UpdateRole),
+	))
+	mux.Handle("POST /user/{id}/activate", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.ActivateUser),
 	))
 	mux.Handle("GET /item", middleware.Chain(
 		middleware.RequireAuth,

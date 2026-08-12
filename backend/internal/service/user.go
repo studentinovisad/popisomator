@@ -73,3 +73,24 @@ func UpdateUserRole(ctx context.Context, id int64, req dto.UpdateRoleRequest) (d
 
 	return dto.ToUserDTO(user), nil
 }
+
+func ActivateUser(ctx context.Context, id int64) (dto.User, error) {
+	user, err := db.Queries.ActivateUser(ctx, id)
+	if err != nil {
+		return dto.User{}, err
+	}
+
+	return dto.ToUserDTO(user), nil
+}
+
+func DeleteUser(ctx context.Context, id int64) error {
+	rowsAffected, err := db.Queries.DeleteUser(ctx, id)
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

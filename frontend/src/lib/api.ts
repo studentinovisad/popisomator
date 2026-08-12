@@ -1,4 +1,5 @@
 export type UserRole = 'admin' | 'manager' | 'user';
+export type UserStatus = 'requested' | 'active';
 
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
@@ -54,6 +55,7 @@ export type User = {
 	email: string;
 	full_name: string;
 	role: UserRole;
+	status: UserStatus;
 };
 
 export type UsersPage = {
@@ -165,6 +167,10 @@ export const api = {
 		request<User>('/auth/register', jsonRequest('POST', payload)),
 	updateUserRole: (id: number, role: UserRole) =>
 		request<User>(`/user/${id}/role`, jsonRequest('PATCH', { role })),
+	activateUser: (id: number) =>
+		request<User>(`/user/${id}/activate`, { method: 'POST' }),
+	deleteUser: (id: number) =>
+		request<void>(`/user/${id}`, { method: 'DELETE' }),
 	listItems: ({ limit = 20, offset = 0 }: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		return request<ItemsPage>(`/item?${query}`);

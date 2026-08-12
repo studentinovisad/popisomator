@@ -9,6 +9,24 @@ import (
 	"context"
 )
 
+const activateUser = `-- name: ActivateUser :one
+UPDATE users SET status = 'active' WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
+`
+
+func (q *Queries) ActivateUser(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, activateUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FullName,
+		&i.Role,
+		&i.Status,
+	)
+	return i, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM users
 WHERE full_name ILIKE '%' || $1::text || '%'
@@ -57,6 +75,18 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Status,
 	)
 	return i, err
+}
+
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one

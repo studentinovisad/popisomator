@@ -23,3 +23,9 @@ INSERT INTO users (email, password_hash, full_name, role, status) VALUES ($1, $2
 
 -- name: UpdateRole :one
 UPDATE users SET role = $2 WHERE id = $1 RETURNING *;
+
+-- name: ActivateUser :one
+UPDATE users SET status = 'active' WHERE id = $1 RETURNING *;
+
+-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = $1;

@@ -68,6 +68,28 @@
 		}
 	}
 
+	async function deleteUser(user: User) {
+		error = '';
+
+		try {
+			await api.deleteUser(user.id);
+			users = users.filter((listedUser) => (listedUser.id !== user.id));
+		} catch (reason) {
+			error = reason instanceof ApiError ? reason.message : 'Korisnik nije obrisan.';
+		}
+	}
+
+	async function activateUser(user: User) {
+		error = '';
+
+		try {
+			const updatedUser = await api.activateUser(user.id);
+			users = users.map((listedUser) => (listedUser.id === user.id ? updatedUser : listedUser));
+		} catch (reason) {
+			error = reason instanceof ApiError ? reason.message : 'Korisnik nije odobren.';
+		}
+	}
+
 	function goToPage(page: number) {
 		void loadUsers((page - 1) * usersPerPage, activeNameSearch, roleFilter);
 	}
@@ -97,8 +119,8 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} />
-		<UsersTable {users} {currentUserID} onrolechange={updateRole} />
+		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} deleteuser={deleteUser} activateuser={activateUser} />
+		<UsersTable {users} {currentUserID} onrolechange={updateRole} deleteuser={deleteUser} activateuser={activateUser} />
 	</div>
 	<UsersPagination
 		total={usersTotal}

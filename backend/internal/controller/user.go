@@ -105,6 +105,43 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, user)
 }
 
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	if err := service.DeleteUser(r.Context(), id); err != nil {
+		writeServiceError(w, err, "couldn't delete user")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func ActivateUser(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	user, err := service.ActivateUser(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			response.WriteError(w, http.StatusNotFound, "user not found")
+			return
+		}
+
+		response.WriteError(w, http.StatusInternalServerError, "error activating user")
+		log.Printf("error activating user: %v", err)
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, user)
+}
+
 func paginationValue(r *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
 	value := r.URL.Query().Get(key)
 	if value == "" {
