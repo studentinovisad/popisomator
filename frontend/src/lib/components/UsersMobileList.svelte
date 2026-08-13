@@ -29,7 +29,7 @@
 					</p>
 					<p class="mt-0.5 truncate text-sm text-muted" title={user.email}>{user.email}</p>
 					{#if user.status !== 'active'}
-						<p class="truncate text-sm text-success font-medium">Zahtev za registraciju</p>
+						<p class="truncate text-sm font-medium text-success">Zahtev za registraciju</p>
 					{/if}
 				</div>
 				<div>
@@ -42,7 +42,7 @@
 						/>
 					{:else}
 						<RegistrationApproval
-							onclick={(approve) => approve ? activateuser(user) : deleteuser(user)}
+							onclick={(approve) => (approve ? activateuser(user) : deleteuser(user))}
 						/>
 					{/if}
 				</div>

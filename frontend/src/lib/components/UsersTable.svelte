@@ -24,7 +24,7 @@
 		<col class="w-[35%]" />
 		<col />
 		<col class="w-44" />
-		<col class="w-0"/>
+		<col class="w-0" />
 	</colgroup>
 	<thead class="border-b border-line bg-soft text-muted">
 		<tr class="h-12">
@@ -40,7 +40,7 @@
 				<td class="px-4 py-3 align-middle">
 					<span class="block truncate" title={user.full_name}>{user.full_name}</span>
 					{#if user.status !== 'active'}
-						<p class="truncate text-success font-medium">Zahtev za registraciju</p>
+						<p class="truncate font-medium text-success">Zahtev za registraciju</p>
 					{/if}
 				</td>
 				<td class="px-4 py-3 align-middle"
@@ -57,10 +57,10 @@
 					{/if}
 				</td>
 				<td class="px-4 align-middle">
-					{#if user.id !== currentUserID} 
+					{#if user.id !== currentUserID}
 						{#if user.status !== 'active'}
 							<RegistrationApproval
-								onclick={(approve) => approve ? activateuser(user) : deleteuser(user)}
+								onclick={(approve) => (approve ? activateuser(user) : deleteuser(user))}
 							/>
 						{/if}
 					{/if}

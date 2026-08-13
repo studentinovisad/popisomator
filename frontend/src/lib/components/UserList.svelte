@@ -73,7 +73,7 @@
 
 		try {
 			await api.deleteUser(user.id);
-			users = users.filter((listedUser) => (listedUser.id !== user.id));
+			users = users.filter((listedUser) => listedUser.id !== user.id);
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Korisnik nije obrisan.';
 		}
@@ -119,8 +119,20 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} deleteuser={deleteUser} activateuser={activateUser} />
-		<UsersTable {users} {currentUserID} onrolechange={updateRole} deleteuser={deleteUser} activateuser={activateUser} />
+		<UsersMobileList
+			{users}
+			{currentUserID}
+			onrolechange={updateRole}
+			deleteuser={deleteUser}
+			activateuser={activateUser}
+		/>
+		<UsersTable
+			{users}
+			{currentUserID}
+			onrolechange={updateRole}
+			deleteuser={deleteUser}
+			activateuser={activateUser}
+		/>
 	</div>
 	<UsersPagination
 		total={usersTotal}

@@ -66,7 +66,7 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/register': {
 		title: 'Registracija',
 		description: 'Pošaljite zahtev za pravljenje naloga.'
-	},
+	}
 };
 
 export const primaryNavigation: NavigationItem[] = [

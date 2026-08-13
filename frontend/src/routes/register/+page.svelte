@@ -20,7 +20,8 @@
 
 		try {
 			await api.register({ full_name, email, password });
-			submit_message = 'Uspešno poslat zahtev za registraciju. Administrator će morati da Vam odobri zahtev za registraciju.'
+			submit_message =
+				'Uspešno poslat zahtev za registraciju. Administrator će morati da Vam odobri zahtev za registraciju.';
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Registracija trenutno nije dostupna.';
 		} finally {
@@ -36,8 +37,10 @@
 <main class="grid min-h-[calc(100svh-14rem)] place-items-center px-4 sm:px-6">
 	<div class="w-full max-w-md text-center">
 		<form class="mt-8 space-y-5 text-left" onsubmit={submit}>
-		<div class="block">
-				<Label.Root class="text-sm font-medium text-ink" for="registration-name">Ime i prezime</Label.Root>
+			<div class="block">
+				<Label.Root class="text-sm font-medium text-ink" for="registration-name"
+					>Ime i prezime</Label.Root
+				>
 				<input
 					id="registration-name"
 					class="mt-1 block w-full"
@@ -61,7 +64,9 @@
 			</div>
 
 			<div class="block">
-				<Label.Root class="text-sm font-medium text-ink" for="registration-password">Lozinka</Label.Root>
+				<Label.Root class="text-sm font-medium text-ink" for="registration-password"
+					>Lozinka</Label.Root
+				>
 				<input
 					id="registration-password"
 					class="mt-1 block w-full"

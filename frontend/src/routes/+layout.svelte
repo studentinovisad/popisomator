@@ -45,7 +45,13 @@
 
 	$effect(() => {
 		const pathname = page.url.pathname;
-		if (session.ready && !session.user && pathname !== '/login' && pathname !== '/register' && pathname !== '/settings') {
+		if (
+			session.ready &&
+			!session.user &&
+			pathname !== '/login' &&
+			pathname !== '/register' &&
+			pathname !== '/settings'
+		) {
 			void goto(resolve('/login'));
 		}
 	});
