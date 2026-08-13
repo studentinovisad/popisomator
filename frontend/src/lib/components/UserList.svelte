@@ -73,7 +73,9 @@
 
 		try {
 			await api.deleteUser(user.id);
-			users = users.filter((listedUser) => listedUser.id !== user.id);
+			const nextOffset =
+				users.length === 1 && userOffset > 0 ? userOffset - usersPerPage : userOffset;
+			await loadUsers(nextOffset, activeNameSearch, roleFilter);
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Korisnik nije obrisan.';
 		}
