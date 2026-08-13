@@ -1,4 +1,5 @@
 export type UserRole = 'admin' | 'manager' | 'user';
+export type UserStatus = 'requested' | 'active';
 
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
@@ -54,6 +55,7 @@ export type User = {
 	email: string;
 	full_name: string;
 	role: UserRole;
+	status: UserStatus;
 };
 
 export type UsersPage = {
@@ -75,8 +77,11 @@ type LoginRequest = {
 	password: string;
 };
 
-type CreateUserRequest = LoginRequest & {
+type RegistrationRequest = LoginRequest & {
 	full_name: string;
+};
+
+type CreateUserRequest = RegistrationRequest & {
 	role: UserRole;
 };
 
@@ -157,9 +162,13 @@ export const api = {
 		return request<UsersPage>(`/users?${query}`);
 	},
 	createUser: (payload: CreateUserRequest) =>
+		request<User>('/auth/create', jsonRequest('POST', payload)),
+	register: (payload: RegistrationRequest) =>
 		request<User>('/auth/register', jsonRequest('POST', payload)),
 	updateUserRole: (id: number, role: UserRole) =>
 		request<User>(`/user/${id}/role`, jsonRequest('PATCH', { role })),
+	approveRegistration: (id: number) => request<User>(`/user/${id}/approve`, { method: 'POST' }),
+	declineRegistration: (id: number) => request<void>(`/user/${id}/decline`, { method: 'POST' }),
 	listItems: ({ limit = 20, offset = 0 }: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		return request<ItemsPage>(`/item?${query}`);

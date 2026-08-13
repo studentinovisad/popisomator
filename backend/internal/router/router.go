@@ -14,10 +14,11 @@ func New() *http.ServeMux {
 	mux.HandleFunc("/health", controller.Healthcheck)
 	mux.HandleFunc("POST /auth/login", controller.Login)
 	mux.HandleFunc("POST /auth/logout", controller.Logout)
-	mux.Handle("POST /auth/register", middleware.Chain(
+	mux.HandleFunc("POST /auth/register", controller.Register)
+	mux.Handle("POST /auth/create", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("admin"),
-		middleware.Handle(controller.Register),
+		middleware.Handle(controller.CreateUser),
 	))
 	mux.Handle("GET /user/details", middleware.Chain(
 		middleware.RequireAuth,
@@ -32,6 +33,16 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.RequireRoles("admin"),
 		middleware.Handle(controller.UpdateRole),
+	))
+	mux.Handle("POST /user/{id}/approve", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.ApproveRegistration),
+	))
+	mux.Handle("POST /user/{id}/decline", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.DeclineRegistration),
 	))
 	mux.Handle("GET /item", middleware.Chain(
 		middleware.RequireAuth,

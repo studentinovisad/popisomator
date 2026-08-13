@@ -32,6 +32,10 @@ func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 		return "", err
 	}
 
+	if user.Status != repository.UserStatusActive {
+		return "", errors.New("User status not active")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return "", err
 	}
@@ -91,6 +95,7 @@ func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error
 		PasswordHash: string(hash),
 		FullName:     req.FullName,
 		Role:         repository.UserRole(req.Role),
+		Status:       repository.UserStatus(req.Status),
 	})
 	if err != nil {
 		return dto.User{}, err

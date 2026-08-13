@@ -55,15 +55,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func Register(w http.ResponseWriter, r *http.Request) {
-	body := http.MaxBytesReader(w, r.Body, 1024)
-
-	var req dto.CreateUserRequest
-	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid request")
-		return
-	}
-
+func doCreateUser(w http.ResponseWriter, r *http.Request, req dto.CreateUserRequest) {
 	if _, err := service.GetUserByEmail(r.Context(), req.Email); err == nil {
 		response.WriteError(w, http.StatusConflict, "user with this email already exists")
 		return
@@ -86,4 +78,37 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusCreated, user)
+}
+
+func Register(w http.ResponseWriter, r *http.Request) {
+	body := http.MaxBytesReader(w, r.Body, 1024)
+
+	var req dto.RegistrationRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	createReq := dto.CreateUserRequest{
+		FullName: req.FullName,
+		Email:    req.Email,
+		Password: req.Password,
+		Role:     "user",
+		Status:   "requested",
+	}
+
+	doCreateUser(w, r, createReq)
+}
+
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+	body := http.MaxBytesReader(w, r.Body, 1024)
+
+	var req dto.CreateUserRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.Status = "active"
+
+	doCreateUser(w, r, req)
 }

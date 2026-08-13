@@ -68,6 +68,30 @@
 		}
 	}
 
+	async function declineUser(user: User) {
+		error = '';
+
+		try {
+			await api.declineRegistration(user.id);
+			const nextOffset =
+				users.length === 1 && userOffset > 0 ? userOffset - usersPerPage : userOffset;
+			await loadUsers(nextOffset, activeNameSearch, roleFilter);
+		} catch (reason) {
+			error = reason instanceof ApiError ? reason.message : 'Korisniku nije odbijena registracija.';
+		}
+	}
+
+	async function approveUser(user: User) {
+		error = '';
+
+		try {
+			const updatedUser = await api.approveRegistration(user.id);
+			users = users.map((listedUser) => (listedUser.id === user.id ? updatedUser : listedUser));
+		} catch (reason) {
+			error = reason instanceof ApiError ? reason.message : 'Korisniku nije odobrena registracija.';
+		}
+	}
+
 	function goToPage(page: number) {
 		void loadUsers((page - 1) * usersPerPage, activeNameSearch, roleFilter);
 	}
@@ -97,8 +121,20 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} />
-		<UsersTable {users} {currentUserID} onrolechange={updateRole} />
+		<UsersMobileList
+			{users}
+			{currentUserID}
+			onrolechange={updateRole}
+			declineuser={declineUser}
+			approveuser={approveUser}
+		/>
+		<UsersTable
+			{users}
+			{currentUserID}
+			onrolechange={updateRole}
+			declineuser={declineUser}
+			approveuser={approveUser}
+		/>
 	</div>
 	<UsersPagination
 		total={usersTotal}

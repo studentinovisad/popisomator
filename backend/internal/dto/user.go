@@ -3,10 +3,11 @@ package dto
 import "github.com/studentinovisad/popisomator/backend/internal/repository"
 
 type User struct {
-	ID       int64               `json:"id"`
-	Email    string              `json:"email"`
-	FullName string              `json:"full_name"`
-	Role     repository.UserRole `json:"role"`
+	ID       int64                 `json:"id"`
+	Email    string                `json:"email"`
+	FullName string                `json:"full_name"`
+	Role     repository.UserRole   `json:"role"`
+	Status   repository.UserStatus `json:"status"`
 }
 
 type UpdateRoleRequest struct {
@@ -26,5 +27,6 @@ func ToUserDTO(user repository.User) User {
 		Email:    user.Email,
 		FullName: user.FullName,
 		Role:     user.Role,
+		Status:   user.Status,
 	}
 }

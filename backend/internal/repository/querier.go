@@ -4,9 +4,12 @@
 
 package repository
 
-import "context"
+import (
+	"context"
+)
 
 type Querier interface {
+	ApproveRegistration(ctx context.Context, id int64) (User, error)
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
 	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
@@ -18,6 +21,7 @@ type Querier interface {
 	DeleteItem(ctx context.Context, id int64) (int64, error)
 	DeleteItemType(ctx context.Context, id int64) (int64, error)
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
+	DeclineRegistration(ctx context.Context, id int64) (int64, error)
 	//------ ITEM TYPES
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
 	GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error)
