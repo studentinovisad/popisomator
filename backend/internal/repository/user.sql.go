@@ -9,12 +9,12 @@ import (
 	"context"
 )
 
-const activateUser = `-- name: ActivateUser :one
-UPDATE users SET status = 'active' WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
+const approveRegistration = `-- name: ApproveRegistration :one
+UPDATE users SET status = 'active' WHERE id = $1 AND status = 'requested' RETURNING id, email, password_hash, full_name, role, status
 `
 
-func (q *Queries) ActivateUser(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, activateUser, id)
+func (q *Queries) ApproveRegistration(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, approveRegistration, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -77,12 +77,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const deleteUser = `-- name: DeleteUser :execrows
-DELETE FROM users WHERE id = $1
+const declineRegistration = `-- name: DeclineRegistration :execrows
+DELETE FROM users WHERE id = $1 AND status = 'requested'
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteUser, id)
+func (q *Queries) DeclineRegistration(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, declineRegistration, id)
 	if err != nil {
 		return 0, err
 	}

@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -75,8 +77,11 @@ func UpdateUserRole(ctx context.Context, id int64, req dto.UpdateRoleRequest) (d
 }
 
 func ActivateUser(ctx context.Context, id int64) (dto.User, error) {
-	user, err := db.Queries.ActivateUser(ctx, id)
+	user, err := db.Queries.ApproveRegistration(ctx, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.User{}, ErrInvalidRegistrationStatus
+		}
 		return dto.User{}, err
 	}
 
@@ -84,12 +89,12 @@ func ActivateUser(ctx context.Context, id int64) (dto.User, error) {
 }
 
 func DeleteUser(ctx context.Context, id int64) error {
-	rowsAffected, err := db.Queries.DeleteUser(ctx, id)
+	rowsAffected, err := db.Queries.DeclineRegistration(ctx, id)
 	if err != nil {
 		return err
 	}
 	if rowsAffected == 0 {
-		return ErrNotFound
+		return ErrInvalidRegistrationStatus
 	}
 
 	return nil

@@ -129,13 +129,7 @@ func ActivateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := service.ActivateUser(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			response.WriteError(w, http.StatusNotFound, "user not found")
-			return
-		}
-
-		response.WriteError(w, http.StatusInternalServerError, "error activating user")
-		log.Printf("error activating user: %v", err)
+		writeServiceError(w, err, "couldn't activate user")
 		return
 	}
 
