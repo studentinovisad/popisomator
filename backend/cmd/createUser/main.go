@@ -53,6 +53,7 @@ func main() {
 		Password: *password,
 		FullName: *fullName,
 		Role:     *role,
+		Status:   "active",
 	})
 	if err != nil {
 		log.Fatalf("unable to create user: %v", err)
