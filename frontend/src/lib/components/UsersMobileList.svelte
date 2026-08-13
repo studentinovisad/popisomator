@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Button } from 'bits-ui';
 	import type { User, UserRole } from '$lib/api';
 	import RoleSelect from '$lib/components/RoleSelect.svelte';
 	import RegistrationApproval from './RegistrationApproval.svelte';

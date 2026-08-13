@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Button } from 'bits-ui';
-	import type { UserRole } from '$lib/api';
 
 	let {
 		onclick

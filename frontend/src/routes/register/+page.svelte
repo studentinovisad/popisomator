@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/api';
-	import { session } from '$lib/session.svelte';
 	import { Button, Label } from 'bits-ui';
 
 	let full_name = $state('');
