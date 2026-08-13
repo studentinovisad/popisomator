@@ -105,31 +105,31 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, user)
 }
 
-func DeleteUser(w http.ResponseWriter, r *http.Request) {
+func DeclineRegistration(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
 
-	if err := service.DeleteUser(r.Context(), id); err != nil {
-		writeServiceError(w, err, "couldn't delete user")
+	if err := service.DeclineRegistration(r.Context(), id); err != nil {
+		writeServiceError(w, err, "couldn't decline user registration")
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func ActivateUser(w http.ResponseWriter, r *http.Request) {
+func ApproveRegistration(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
 
-	user, err := service.ActivateUser(r.Context(), id)
+	user, err := service.ApproveRegistration(r.Context(), id)
 	if err != nil {
-		writeServiceError(w, err, "couldn't activate user")
+		writeServiceError(w, err, "couldn't approve user registration")
 		return
 	}
 

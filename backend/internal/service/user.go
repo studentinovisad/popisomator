@@ -76,7 +76,7 @@ func UpdateUserRole(ctx context.Context, id int64, req dto.UpdateRoleRequest) (d
 	return dto.ToUserDTO(user), nil
 }
 
-func ActivateUser(ctx context.Context, id int64) (dto.User, error) {
+func ApproveRegistration(ctx context.Context, id int64) (dto.User, error) {
 	user, err := db.Queries.ApproveRegistration(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -88,7 +88,7 @@ func ActivateUser(ctx context.Context, id int64) (dto.User, error) {
 	return dto.ToUserDTO(user), nil
 }
 
-func DeleteUser(ctx context.Context, id int64) error {
+func DeclineRegistration(ctx context.Context, id int64) error {
 	rowsAffected, err := db.Queries.DeclineRegistration(ctx, id)
 	if err != nil {
 		return err

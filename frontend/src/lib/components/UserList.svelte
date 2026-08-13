@@ -68,27 +68,27 @@
 		}
 	}
 
-	async function deleteUser(user: User) {
+	async function declineUser(user: User) {
 		error = '';
 
 		try {
-			await api.deleteUser(user.id);
+			await api.declineRegistration(user.id);
 			const nextOffset =
 				users.length === 1 && userOffset > 0 ? userOffset - usersPerPage : userOffset;
 			await loadUsers(nextOffset, activeNameSearch, roleFilter);
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Korisnik nije obrisan.';
+			error = reason instanceof ApiError ? reason.message : 'Korisniku nije odbijena registracija.';
 		}
 	}
 
-	async function activateUser(user: User) {
+	async function approveUser(user: User) {
 		error = '';
 
 		try {
-			const updatedUser = await api.activateUser(user.id);
+			const updatedUser = await api.approveRegistration(user.id);
 			users = users.map((listedUser) => (listedUser.id === user.id ? updatedUser : listedUser));
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Korisnik nije odobren.';
+			error = reason instanceof ApiError ? reason.message : 'Korisniku nije odobrena registracija.';
 		}
 	}
 
@@ -125,15 +125,15 @@
 			{users}
 			{currentUserID}
 			onrolechange={updateRole}
-			deleteuser={deleteUser}
-			activateuser={activateUser}
+			declineuser={declineUser}
+			approveuser={approveUser}
 		/>
 		<UsersTable
 			{users}
 			{currentUserID}
 			onrolechange={updateRole}
-			deleteuser={deleteUser}
-			activateuser={activateUser}
+			declineuser={declineUser}
+			approveuser={approveUser}
 		/>
 	</div>
 	<UsersPagination

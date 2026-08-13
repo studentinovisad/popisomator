@@ -7,14 +7,14 @@
 		users,
 		currentUserID,
 		onrolechange,
-		deleteuser,
-		activateuser
+		declineuser,
+		approveuser
 	}: {
 		users: User[];
 		currentUserID: number;
 		onrolechange: (user: User, role: UserRole) => void;
-		deleteuser: (user: User) => void;
-		activateuser: (user: User) => void;
+		declineuser: (user: User) => void;
+		approveuser: (user: User) => void;
 	} = $props();
 </script>
 
@@ -41,7 +41,7 @@
 						/>
 					{:else}
 						<RegistrationApproval
-							onclick={(approve) => (approve ? activateuser(user) : deleteuser(user))}
+							onclick={(approve) => (approve ? approveuser(user) : declineuser(user))}
 						/>
 					{/if}
 				</div>
