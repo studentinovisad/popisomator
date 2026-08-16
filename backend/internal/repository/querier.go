@@ -52,9 +52,11 @@ type Querier interface {
 	UpdateItemConsumption(ctx context.Context, arg UpdateItemConsumptionParams) (int64, error)
 	UpdateItemProperty(ctx context.Context, arg UpdateItemPropertyParams) (ItemProperty, error)
 	UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) (Item, error)
+	UpdateItemTypeDerivedNameFormat(ctx context.Context, arg UpdateItemTypeDerivedNameFormatParams) (ItemType, error)
 	UpdateItemTypeDescription(ctx context.Context, arg UpdateItemTypeDescriptionParams) (ItemType, error)
 	UpdateItemTypeName(ctx context.Context, arg UpdateItemTypeNameParams) (ItemType, error)
-	UpdateItemTypeProperty(ctx context.Context, arg UpdateItemTypePropertyParams) (ItemTypeProperty, error)
+	UpdateItemTypePropertyDefaultValue(ctx context.Context, arg UpdateItemTypePropertyDefaultValueParams) (ItemTypeProperty, error)
+	UpdateItemTypePropertyVisibility(ctx context.Context, arg UpdateItemTypePropertyVisibilityParams) (ItemTypeProperty, error)
 	UpdatePropertyDefaultValue(ctx context.Context, arg UpdatePropertyDefaultValueParams) error
 	UpdatePropertyDescription(ctx context.Context, arg UpdatePropertyDescriptionParams) error
 	UpdatePropertyName(ctx context.Context, arg UpdatePropertyNameParams) error

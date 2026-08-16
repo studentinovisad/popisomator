@@ -151,6 +151,9 @@ UPDATE item_types SET name = $2 WHERE id = $1 RETURNING *;
 -- name: UpdateItemTypeDescription :one
 UPDATE item_types SET description = $2 WHERE id = $1 RETURNING *;
 
+-- name: UpdateItemTypeDerivedNameFormat :one
+UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING *;
+
 -- name: DeleteItemType :execrows
 DELETE FROM item_types WHERE id = $1;
 
@@ -163,8 +166,11 @@ WHERE type_id = $1;
 -- name: AddItemTypeProperty :one
 INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($1, $2, $3) RETURNING *;
 
--- name: UpdateItemTypeProperty :one
+-- name: UpdateItemTypePropertyDefaultValue :one
 UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING *;
+
+-- name: UpdateItemTypePropertyVisibility :one
+UPDATE item_type_properties SET visibility = $3 WHERE type_id = $1 AND property_id = $2 RETURNING *;
 
 -- name: RemoveItemTypeProperty :execrows
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2;
