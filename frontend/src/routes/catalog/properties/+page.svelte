@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type Property } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
@@ -74,6 +75,14 @@
 				href={resolve('/catalog/properties/new')}
 			>
 				Dodaj svojstvo
+			</a>
+			<a
+				class="inline-flex size-10 items-center justify-center rounded-md border border-line bg-surface text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
+				href={resolve('/catalog/item-types')}
+				aria-label="Nazad na tipove stavki"
+				title="Nazad na tipove stavki"
+			>
+				<ArrowLeft class="size-4" aria-hidden="true" />
 			</a>
 		</Portal>
 

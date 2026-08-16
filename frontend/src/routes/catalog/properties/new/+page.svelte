@@ -16,6 +16,10 @@
 	function propertyCreated() {
 		void goto(resolve('/catalog/properties'));
 	}
+
+	function cancelPropertyCreation() {
+		void goto(resolve('/catalog/properties'));
+	}
 </script>
 
 <svelte:head>
@@ -35,7 +39,9 @@
 				<h2 id="new-property-heading" class="text-lg font-semibold text-ink">Novo svojstvo</h2>
 				<p class="mt-1 text-sm text-muted">Podesite tip i podrazumevanu vrednost svojstva.</p>
 			</div>
-			<div class="mt-6"><PropertyForm onsaved={propertyCreated} /></div>
+			<div class="mt-6">
+				<PropertyForm onsaved={propertyCreated} oncancel={cancelPropertyCreation} />
+			</div>
 		</section>
 	{/if}
 </main>

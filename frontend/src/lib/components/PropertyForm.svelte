@@ -11,10 +11,12 @@
 
 	let {
 		property,
-		onsaved
+		onsaved,
+		oncancel
 	}: {
 		property?: Property;
 		onsaved: () => void;
+		oncancel?: () => void;
 	} = $props();
 
 	let name = $state('');
@@ -126,7 +128,7 @@
 				</Select.Trigger>
 				<Select.Portal>
 					<Select.Content
-						class="z-40 w-[var(--bits-select-anchor-width)] rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+						class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 					>
 						<Select.Viewport>
 							{#each propertyValueTypeOptions as option (option.value)}
@@ -183,13 +185,25 @@
 		{/if}
 	</div>
 	<div class="sm:col-span-2">
-		<Button.Root
-			class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
-			disabled={saving}
-			type="submit"
-		>
-			{saving ? 'Čuvanje…' : property ? 'Sačuvaj izmene' : 'Dodaj svojstvo'}
-		</Button.Root>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button.Root
+				class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
+				disabled={saving}
+				type="submit"
+			>
+				{saving ? 'Čuvanje…' : property ? 'Sačuvaj izmene' : 'Dodaj svojstvo'}
+			</Button.Root>
+			{#if !property && oncancel}
+				<Button.Root
+					class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-soft disabled:opacity-60"
+					disabled={saving}
+					type="button"
+					onclick={oncancel}
+				>
+					Otkaži dodavanje
+				</Button.Root>
+			{/if}
+		</div>
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>

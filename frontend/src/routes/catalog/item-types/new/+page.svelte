@@ -38,6 +38,10 @@
 	function itemTypeCreated() {
 		void goto(resolve('/catalog/item-types'));
 	}
+
+	function cancelItemTypeCreation() {
+		void goto(resolve('/catalog/item-types'));
+	}
 </script>
 
 <svelte:head>
@@ -57,7 +61,13 @@
 				<h2 id="new-item-type-heading" class="text-lg font-semibold text-ink">Novi tip stavke</h2>
 				<p class="mt-1 text-sm text-muted">Odaberite svojstva koja pripadaju ovom tipu.</p>
 			</div>
-			<div class="mt-6"><CreateItemTypeForm {properties} onsaved={itemTypeCreated} /></div>
+			<div class="mt-6">
+				<CreateItemTypeForm
+					{properties}
+					onsaved={itemTypeCreated}
+					oncancel={cancelItemTypeCreation}
+				/>
+			</div>
 		</section>
 	{/if}
 </main>

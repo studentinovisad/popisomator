@@ -39,6 +39,10 @@
 	function itemCreated() {
 		void goto(resolve('/'));
 	}
+
+	function cancelItemCreation() {
+		void goto(resolve('/'));
+	}
 </script>
 
 <svelte:head>
@@ -58,7 +62,14 @@
 				<h2 id="new-item-heading" class="text-lg font-semibold text-ink">Nova stavka</h2>
 				<p class="mt-1 text-sm text-muted">Dodajte stavku i njene početne vrednosti svojstava.</p>
 			</div>
-			<div class="mt-6"><CreateItemForm {itemTypes} {properties} oncreated={itemCreated} /></div>
+			<div class="mt-6">
+				<CreateItemForm
+					{itemTypes}
+					{properties}
+					oncreated={itemCreated}
+					oncancel={cancelItemCreation}
+				/>
+			</div>
 		</section>
 	{/if}
 </main>

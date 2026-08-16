@@ -77,16 +77,16 @@
 
 		<Portal to="#page-header-actions">
 			<a
-				class="inline-flex h-10 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-medium text-ink hover:bg-soft"
-				href={resolve('/catalog/properties')}
-			>
-				Svojstva
-			</a>
-			<a
 				class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-strong"
 				href={resolve('/catalog/item-types/new')}
 			>
 				Dodaj tip
+			</a>
+			<a
+				class="inline-flex h-10 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-medium text-ink hover:bg-soft"
+				href={resolve('/catalog/properties')}
+			>
+				Svojstva
 			</a>
 		</Portal>
 

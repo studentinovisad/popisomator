@@ -7,11 +7,13 @@
 	let {
 		itemTypes,
 		properties,
-		oncreated
+		oncreated,
+		oncancel
 	}: {
 		itemTypes: ItemType[];
 		properties: Property[];
 		oncreated: () => void;
+		oncancel?: () => void;
 	} = $props();
 
 	let selectedTypeID = $state('');
@@ -83,7 +85,7 @@
 			</Select.Trigger>
 			<Select.Portal>
 				<Select.Content
-					class="z-40 w-[var(--bits-select-anchor-width)] rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+					class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 					sideOffset={4}
 				>
 					<Select.Viewport>
@@ -154,6 +156,16 @@
 		>
 			{creating ? 'Čuvanje…' : 'Dodaj stavku'}
 		</Button.Root>
+		{#if oncancel}
+			<Button.Root
+				class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-soft disabled:opacity-60"
+				disabled={creating}
+				type="button"
+				onclick={oncancel}
+			>
+				Otkaži dodavanje
+			</Button.Root>
+		{/if}
 		{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>
