@@ -31,6 +31,7 @@ export type ListItemsParams = {
 export type ItemTypeProperty = {
 	id: number;
 	default_value: string | null;
+	name?: string;
 };
 
 export type ItemType = {
@@ -38,6 +39,13 @@ export type ItemType = {
 	name: string;
 	description: string;
 	properties: ItemTypeProperty[];
+};
+
+export type ItemTypesPage = {
+	items: ItemType[];
+	limit: number;
+	offset: number;
+	total: number;
 };
 
 export type PropertyValueType = 'string' | 'number' | 'boolean';
@@ -48,6 +56,13 @@ export type Property = {
 	description: string;
 	value_type: PropertyValueType;
 	default_value: string | null;
+};
+
+export type PropertiesPage = {
+	items: Property[];
+	limit: number;
+	offset: number;
+	total: number;
 };
 
 export type User = {
@@ -197,6 +212,10 @@ export const api = {
 	removeItemProperty: (itemID: number, propertyID: number) =>
 		request<void>(`/item/${itemID}/properties/${propertyID}`, { method: 'DELETE' }),
 	listItemTypes: () => request<ItemType[]>('/item/types'),
+	listItemTypesPage: ({ limit = 20, offset = 0 }: ListItemsParams = {}) => {
+		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		return request<ItemTypesPage>(`/item/types/page?${query}`);
+	},
 	getItemType: (id: number) => request<ItemType>(`/item/types/${id}`),
 	createItemType: (payload: CreateItemTypeRequest) =>
 		request<ItemType>('/item/types', jsonRequest('POST', payload)),
@@ -216,6 +235,10 @@ export const api = {
 	removeItemTypeProperty: (itemTypeID: number, propertyID: number) =>
 		request<void>(`/item/types/${itemTypeID}/properties/${propertyID}`, { method: 'DELETE' }),
 	listProperties: () => request<Property[]>('/item/properties'),
+	listPropertiesPage: ({ limit = 20, offset = 0 }: ListItemsParams = {}) => {
+		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		return request<PropertiesPage>(`/item/properties/page?${query}`);
+	},
 	getProperty: (id: number) => request<Property>(`/item/properties/${id}`),
 	createProperty: (payload: CreatePropertyRequest) =>
 		request<Property>('/item/properties', jsonRequest('POST', payload)),

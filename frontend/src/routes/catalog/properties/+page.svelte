@@ -4,8 +4,10 @@
 	import { onMount } from 'svelte';
 	import { api, ApiError, type Property } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
+	import InventoryPagination from '$lib/components/InventoryPagination.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
 	import PropertiesList from '$lib/components/PropertiesList.svelte';
+	import { pagination } from '$lib/pagination.svelte';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({
@@ -17,6 +19,12 @@
 	let loading = $state(false);
 	let error = $state('');
 	let loadVersion = 0;
+	let propertiesPerPage = $derived(pagination.perPage);
+	let propertyOffset = $state(0);
+	let propertiesTotal = $state(0);
+	let currentPage = $derived(Math.floor(propertyOffset / propertiesPerPage) + 1);
+	let hasPreviousPage = $derived(propertyOffset > 0);
+	let hasNextPage = $derived(propertyOffset + properties.length < propertiesTotal);
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -24,15 +32,17 @@
 		});
 	});
 
-	async function loadProperties() {
+	async function loadProperties(offset = 0) {
 		const version = ++loadVersion;
 		loading = true;
 		error = '';
 
 		try {
-			const nextProperties = await api.listProperties();
+			const nextProperties = await api.listPropertiesPage({ limit: propertiesPerPage, offset });
 			if (version !== loadVersion) return;
-			properties = nextProperties;
+			properties = nextProperties.items;
+			propertyOffset = nextProperties.offset;
+			propertiesTotal = nextProperties.total;
 		} catch (reason) {
 			if (version !== loadVersion) return;
 			error = reason instanceof ApiError ? reason.message : 'Svojstva nisu učitana.';
@@ -47,10 +57,18 @@
 
 		try {
 			await api.deleteProperty(property.id);
-			properties = properties.filter((currentProperty) => currentProperty.id !== property.id);
+			const nextOffset =
+				properties.length === 1 && propertyOffset > 0
+					? propertyOffset - propertiesPerPage
+					: propertyOffset;
+			void loadProperties(nextOffset);
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Svojstvo nije obrisano.';
 		}
+	}
+
+	function goToPage(page: number) {
+		void loadProperties((page - 1) * propertiesPerPage);
 	}
 </script>
 
@@ -67,7 +85,7 @@
 		</div>
 	{:else if authPage.state.authorized}
 		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
-			UKUPNO: {properties.length}
+			UKUPNO: {propertiesTotal}
 		</p>
 		<Portal to="#page-header-actions">
 			<a
@@ -88,5 +106,14 @@
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 		<PropertiesList {properties} deleteproperty={deleteProperty} />
+		<InventoryPagination
+			total={propertiesTotal}
+			perPage={propertiesPerPage}
+			page={currentPage}
+			{hasPreviousPage}
+			{hasNextPage}
+			{loading}
+			onpagechange={goToPage}
+		/>
 	{/if}
 </main>

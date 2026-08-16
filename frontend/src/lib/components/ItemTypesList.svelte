@@ -6,18 +6,16 @@
 
 	let {
 		itemTypes,
-		propertyNames,
 		deleteitemtype
 	}: {
 		itemTypes: ItemType[];
-		propertyNames: Map<number, string>;
 		deleteitemtype: (itemType: ItemType) => void;
 	} = $props();
 
 	function assignedProperties(itemType: ItemType) {
 		return itemType.properties.length
 			? itemType.properties
-					.map((itemProperty) => propertyNames.get(itemProperty.id) ?? 'Nepoznato svojstvo')
+					.map((itemProperty) => itemProperty.name ?? 'Nepoznato svojstvo')
 					.join(' · ')
 			: 'Bez svojstava';
 	}

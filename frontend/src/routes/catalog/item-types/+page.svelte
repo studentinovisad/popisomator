@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api, ApiError, type ItemType, type Property } from '$lib/api';
+	import { api, ApiError, type ItemType } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
+	import InventoryPagination from '$lib/components/InventoryPagination.svelte';
 	import ItemTypesList from '$lib/components/ItemTypesList.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
+	import { pagination } from '$lib/pagination.svelte';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({
@@ -13,11 +15,15 @@
 	});
 
 	let itemTypes = $state<ItemType[]>([]);
-	let properties = $state<Property[]>([]);
 	let loading = $state(false);
 	let error = $state('');
 	let loadVersion = 0;
-	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
+	let itemTypesPerPage = $derived(pagination.perPage);
+	let itemTypeOffset = $state(0);
+	let itemTypesTotal = $state(0);
+	let currentPage = $derived(Math.floor(itemTypeOffset / itemTypesPerPage) + 1);
+	let hasPreviousPage = $derived(itemTypeOffset > 0);
+	let hasNextPage = $derived(itemTypeOffset + itemTypes.length < itemTypesTotal);
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -25,19 +31,17 @@
 		});
 	});
 
-	async function loadItemTypes() {
+	async function loadItemTypes(offset = 0) {
 		const version = ++loadVersion;
 		loading = true;
 		error = '';
 
 		try {
-			const [nextItemTypes, nextProperties] = await Promise.all([
-				api.listItemTypes(),
-				api.listProperties()
-			]);
+			const nextItemTypes = await api.listItemTypesPage({ limit: itemTypesPerPage, offset });
 			if (version !== loadVersion) return;
-			itemTypes = nextItemTypes;
-			properties = nextProperties;
+			itemTypes = nextItemTypes.items;
+			itemTypeOffset = nextItemTypes.offset;
+			itemTypesTotal = nextItemTypes.total;
 		} catch (reason) {
 			if (version !== loadVersion) return;
 			error = reason instanceof ApiError ? reason.message : 'Tipovi stavki nisu učitani.';
@@ -52,10 +56,18 @@
 
 		try {
 			await api.deleteItemType(itemType.id);
-			itemTypes = itemTypes.filter((currentItemType) => currentItemType.id !== itemType.id);
+			const nextOffset =
+				itemTypes.length === 1 && itemTypeOffset > 0
+					? itemTypeOffset - itemTypesPerPage
+					: itemTypeOffset;
+			void loadItemTypes(nextOffset);
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije obrisan.';
 		}
+	}
+
+	function goToPage(page: number) {
+		void loadItemTypes((page - 1) * itemTypesPerPage);
 	}
 </script>
 
@@ -72,7 +84,7 @@
 		</div>
 	{:else if authPage.state.authorized}
 		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
-			UKUPNO: {itemTypes.length}
+			UKUPNO: {itemTypesTotal}
 		</p>
 
 		<Portal to="#page-header-actions">
@@ -91,6 +103,15 @@
 		</Portal>
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
-		<ItemTypesList {itemTypes} {propertyNames} deleteitemtype={deleteItemType} />
+		<ItemTypesList {itemTypes} deleteitemtype={deleteItemType} />
+		<InventoryPagination
+			total={itemTypesTotal}
+			perPage={itemTypesPerPage}
+			page={currentPage}
+			{hasPreviousPage}
+			{hasNextPage}
+			{loading}
+			onpagechange={goToPage}
+		/>
 	{/if}
 </main>
