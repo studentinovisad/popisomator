@@ -47,6 +47,14 @@ DELETE FROM items WHERE id = $1;
 -- name: GetAllProperties :many
 SELECT * FROM properties;
 
+-- name: ListProperties :many
+SELECT * FROM properties
+ORDER BY id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- name: CountProperties :one
+SELECT count(*) FROM properties;
+
 -- name: GetPropertyByID :one
 SELECT * FROM properties
 WHERE id = $1 LIMIT 1;
@@ -104,10 +112,31 @@ SELECT * FROM item_types;
 SELECT
     sqlc.embed(t),
     tp.property_id,
-    tp.default_value
+    tp.default_value,
+    p.name AS property_name
 FROM item_types t
 LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+LEFT JOIN properties p ON p.id = tp.property_id
 ORDER BY t.id;
+
+-- name: ListItemTypesWithProperties :many
+SELECT
+    sqlc.embed(t),
+    tp.property_id,
+    tp.default_value,
+    p.name AS property_name
+FROM item_types t
+LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+LEFT JOIN properties p ON p.id = tp.property_id
+WHERE t.id IN (
+    SELECT id FROM item_types
+    ORDER BY id
+    LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset)
+)
+ORDER BY t.id;
+
+-- name: CountItemTypes :one
+SELECT count(*) FROM item_types;
 
 -- name: GetItemTypeByID :one
 SELECT * FROM item_types

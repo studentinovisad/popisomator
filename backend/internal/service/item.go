@@ -253,6 +253,28 @@ func GetAllProperties(ctx context.Context) ([]dto.Property, error) {
 	return propsDTO, nil
 }
 
+func ListProperties(ctx context.Context, limit, offset int32) (dto.PropertiesPage, error) {
+	total, err := db.Queries.CountProperties(ctx)
+	if err != nil {
+		return dto.PropertiesPage{}, err
+	}
+
+	properties, err := db.Queries.ListProperties(ctx, repository.ListPropertiesParams{
+		PageLimit:  limit,
+		PageOffset: offset,
+	})
+	if err != nil {
+		return dto.PropertiesPage{}, err
+	}
+
+	items := make([]dto.Property, len(properties))
+	for index, property := range properties {
+		items[index] = dto.ToPropertyDTO(property)
+	}
+
+	return dto.PropertiesPage{Items: items, Limit: limit, Offset: offset, Total: total}, nil
+}
+
 func GetPropertyByID(ctx context.Context, id int64) (dto.Property, error) {
 	prop, err := db.Queries.GetPropertyByID(ctx, id)
 	if err != nil {
@@ -464,11 +486,48 @@ func GetAllItemTypes(ctx context.Context) ([]dto.ItemType, error) {
 			itemTypes[idx].Properties = append(itemTypes[idx].Properties, dto.ItemTypeProperty{
 				ID:           row.PropertyID.Int64,
 				DefaultValue: row.DefaultValue,
+				Name:         row.PropertyName.String,
 			})
 		}
 	}
 
 	return itemTypes, nil
+}
+
+func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage, error) {
+	total, err := db.Queries.CountItemTypes(ctx)
+	if err != nil {
+		return dto.ItemTypesPage{}, err
+	}
+
+	rows, err := db.Queries.ListItemTypesWithProperties(ctx, repository.ListItemTypesWithPropertiesParams{
+		PageLimit:  limit,
+		PageOffset: offset,
+	})
+	if err != nil {
+		return dto.ItemTypesPage{}, err
+	}
+
+	itemTypes := make([]dto.ItemType, 0, len(rows))
+	index := make(map[int64]int, len(rows))
+	for _, row := range rows {
+		idx, ok := index[row.ItemType.ID]
+		if !ok {
+			idx = len(itemTypes)
+			index[row.ItemType.ID] = idx
+			itemTypes = append(itemTypes, dto.ToItemTypeDTO(row.ItemType))
+		}
+
+		if row.PropertyID.Valid {
+			itemTypes[idx].Properties = append(itemTypes[idx].Properties, dto.ItemTypeProperty{
+				ID:           row.PropertyID.Int64,
+				DefaultValue: row.DefaultValue,
+				Name:         row.PropertyName.String,
+			})
+		}
+	}
+
+	return dto.ItemTypesPage{Items: itemTypes, Limit: limit, Offset: offset, Total: total}, nil
 }
 
 func GetItemType(ctx context.Context, id int64) (dto.ItemType, error) {

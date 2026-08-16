@@ -75,6 +75,10 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetAllProperties),
 	))
+	mux.Handle("GET /item/properties/page", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ListProperties),
+	))
 	mux.Handle("GET /item/properties/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetProperty),
@@ -112,6 +116,10 @@ func New() *http.ServeMux {
 	mux.Handle("GET /item/types", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetAllItemTypes),
+	))
+	mux.Handle("GET /item/types/page", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ListItemTypes),
 	))
 	mux.Handle("GET /item/types/{id}", middleware.Chain(
 		middleware.RequireAuth,

@@ -56,6 +56,7 @@ func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
 type ItemTypeProperty struct {
 	ID           int64   `json:"id" validate:"required"`
 	DefaultValue *string `json:"default_value"`
+	Name         string  `json:"name,omitempty"`
 }
 
 func ToItemTypePropertyDTO(itemTypeProp repository.ItemTypeProperty) ItemTypeProperty {
@@ -98,6 +99,20 @@ type ItemsPage struct {
 	Limit  int32  `json:"limit"`
 	Offset int32  `json:"offset"`
 	Total  int64  `json:"total"`
+}
+
+type ItemTypesPage struct {
+	Items  []ItemType `json:"items"`
+	Limit  int32      `json:"limit"`
+	Offset int32      `json:"offset"`
+	Total  int64      `json:"total"`
+}
+
+type PropertiesPage struct {
+	Items  []Property `json:"items"`
+	Limit  int32      `json:"limit"`
+	Offset int32      `json:"offset"`
+	Total  int64      `json:"total"`
 }
 
 type CreateItemRequest struct {

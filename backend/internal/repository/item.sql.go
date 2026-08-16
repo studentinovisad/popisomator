@@ -96,6 +96,28 @@ type CountItemsParams struct {
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
 }
 
+const countItemTypes = `-- name: CountItemTypes :one
+SELECT count(*) FROM item_types
+`
+
+func (q *Queries) CountItemTypes(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countItemTypes)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProperties = `-- name: CountProperties :one
+SELECT count(*) FROM properties
+`
+
+func (q *Queries) CountProperties(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countProperties)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countItems,
 		arg.TypeID,
@@ -256,9 +278,11 @@ const getAllItemTypesWithProperties = `-- name: GetAllItemTypesWithProperties :m
 SELECT
     t.id, t.name, t.description,
     tp.property_id,
-    tp.default_value
+    tp.default_value,
+    p.name AS property_name
 FROM item_types t
 LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+LEFT JOIN properties p ON p.id = tp.property_id
 ORDER BY t.id
 `
 
@@ -266,6 +290,7 @@ type GetAllItemTypesWithPropertiesRow struct {
 	ItemType     ItemType    `json:"item_type"`
 	PropertyID   pgtype.Int8 `json:"property_id"`
 	DefaultValue *string     `json:"default_value"`
+	PropertyName pgtype.Text `json:"property_name"`
 }
 
 func (q *Queries) GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error) {
@@ -283,6 +308,56 @@ func (q *Queries) GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllIt
 			&i.ItemType.Description,
 			&i.PropertyID,
 			&i.DefaultValue,
+			&i.PropertyName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listItemTypesWithProperties = `-- name: ListItemTypesWithProperties :many
+SELECT
+    t.id, t.name, t.description,
+    tp.property_id,
+    tp.default_value,
+    p.name AS property_name
+FROM item_types t
+LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+LEFT JOIN properties p ON p.id = tp.property_id
+WHERE t.id IN (
+    SELECT id FROM item_types
+    ORDER BY id
+    LIMIT $1 OFFSET $2
+)
+ORDER BY t.id
+`
+
+type ListItemTypesWithPropertiesParams struct {
+	PageLimit  int32 `json:"page_limit"`
+	PageOffset int32 `json:"page_offset"`
+}
+
+func (q *Queries) ListItemTypesWithProperties(ctx context.Context, arg ListItemTypesWithPropertiesParams) ([]GetAllItemTypesWithPropertiesRow, error) {
+	rows, err := q.db.Query(ctx, listItemTypesWithProperties, arg.PageLimit, arg.PageOffset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllItemTypesWithPropertiesRow
+	for rows.Next() {
+		var i GetAllItemTypesWithPropertiesRow
+		if err := rows.Scan(
+			&i.ItemType.ID,
+			&i.ItemType.Name,
+			&i.ItemType.Description,
+			&i.PropertyID,
+			&i.DefaultValue,
+			&i.PropertyName,
 		); err != nil {
 			return nil, err
 		}
@@ -331,6 +406,43 @@ SELECT id, name, description, value_type, default_value FROM properties
 // ------ PROPERTIES
 func (q *Queries) GetAllProperties(ctx context.Context) ([]Property, error) {
 	rows, err := q.db.Query(ctx, getAllProperties)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Property
+	for rows.Next() {
+		var i Property
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.ValueType,
+			&i.DefaultValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProperties = `-- name: ListProperties :many
+SELECT id, name, description, value_type, default_value FROM properties
+ORDER BY id
+LIMIT $1 OFFSET $2
+`
+
+type ListPropertiesParams struct {
+	PageLimit  int32 `json:"page_limit"`
+	PageOffset int32 `json:"page_offset"`
+}
+
+func (q *Queries) ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error) {
+	rows, err := q.db.Query(ctx, listProperties, arg.PageLimit, arg.PageOffset)
 	if err != nil {
 		return nil, err
 	}
