@@ -167,13 +167,13 @@ func CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := service.CreateItem(r.Context(), req)
+	items, err := service.CreateItem(r.Context(), req)
 	if err != nil {
-		writeServiceError(w, err, "couldn't create item")
+		writeServiceError(w, err, "couldn't create items")
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, item)
+	response.WriteJSON(w, http.StatusOK, items)
 }
 
 func DeleteItem(w http.ResponseWriter, r *http.Request) {

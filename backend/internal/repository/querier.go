@@ -9,19 +9,20 @@ import (
 )
 
 type Querier interface {
-	ApproveRegistration(ctx context.Context, id int64) (User, error)
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
+	AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBulkParams) ([]ItemProperty, error)
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
+	ApproveRegistration(ctx context.Context, id int64) (User, error)
 	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
 	CountUsers(ctx context.Context, arg CountUsersParams) (int64, error)
-	CreateItem(ctx context.Context, typeID int64) (Item, error)
+	CreateItemBulk(ctx context.Context, arg CreateItemBulkParams) ([]Item, error)
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
 	CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeclineRegistration(ctx context.Context, id int64) (int64, error)
 	DeleteItem(ctx context.Context, id int64) (int64, error)
 	DeleteItemType(ctx context.Context, id int64) (int64, error)
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
-	DeclineRegistration(ctx context.Context, id int64) (int64, error)
 	//------ ITEM TYPES
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
 	GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error)

@@ -118,50 +118,63 @@ func GetItem(ctx context.Context, id int64) (dto.Item, error) {
 	return itemDTO, nil
 }
 
-func CreateItem(ctx context.Context, req dto.CreateItemRequest) (dto.Item, error) {
+func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, error) {
 	if err := dto.Validate(req); err != nil {
-		return dto.Item{}, err
+		return nil, err
 	}
 
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
-		return dto.Item{}, err
+		return nil, err
 	}
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
-	item, err := queriesTx.CreateItem(ctx, req.TypeID)
+	items, err := queriesTx.CreateItemBulk(ctx, repository.CreateItemBulkParams{
+		TypeID: req.TypeID,
+		Amount: req.Amount,
+	})
 	if err != nil {
-		return dto.Item{}, err
+		return nil, err
 	}
 
-	itemDTO := dto.ToItemDTO(item)
+	itemsDTO := make([]dto.Item, len(items))
+	itemIDs := make([]int64, len(items))
+	for i, item := range items {
+		itemsDTO[i] = dto.ToItemDTO(item)
+		itemIDs[i] = item.ID
+	}
 
 	if req.Properties != nil {
 		for _, propRequest := range req.Properties {
 			if err := validatePropertyValue(ctx, queriesTx, propRequest.ID, propRequest.Value); err != nil {
-				return dto.Item{}, err
+				return nil, err
 			}
 
-			prop, err := queriesTx.AddItemProperty(ctx, repository.AddItemPropertyParams{
-				ItemID:        item.ID,
+			props, err := queriesTx.AddItemPropertyBulk(ctx, repository.AddItemPropertyBulkParams{
+				ItemIds:       itemIDs,
 				PropertyID:    propRequest.ID,
 				PropertyValue: propRequest.Value,
 			})
 			if err != nil {
-				return dto.Item{}, err
+				return nil, err
+			}
+			if props != nil && len(props) == 0 {
+				return nil, errors.New("No item properties returned")
 			}
 
-			propDTO := dto.ToItemPropertyDTO(prop)
-			itemDTO.Properties = append(itemDTO.Properties, propDTO)
+			propDTO := dto.ToItemPropertyDTO(props[0])
+			for _, itemDTO := range itemsDTO {
+				itemDTO.Properties = append(itemDTO.Properties, propDTO)
+			}
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return dto.Item{}, err
+		return nil, err
 	}
 
-	return itemDTO, nil
+	return itemsDTO, nil
 }
 
 func ConsumeItem(ctx context.Context, req dto.ConsumeItemRequest) error {
