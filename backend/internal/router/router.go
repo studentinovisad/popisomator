@@ -145,7 +145,7 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.AddItemTypeProperty),
 	))
-	mux.Handle("PUT /item/types/{id}/properties/{prop_id}", middleware.Chain(
+	mux.Handle("PATCH /item/types/{id}/properties/{prop_id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.UpdateItemTypeProperty),

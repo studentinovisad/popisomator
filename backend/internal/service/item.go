@@ -717,19 +717,38 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 		return dto.ItemTypeProperty{}, err
 	}
 
+	var typeProp repository.ItemTypeProperty
+
 	if req.DefaultValue != nil {
 		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, *req.DefaultValue); err != nil {
 			return dto.ItemTypeProperty{}, err
 		}
+
+		var err error
+		typeProp, err = db.Queries.UpdateItemTypePropertyDefaultValue(ctx, repository.UpdateItemTypePropertyDefaultValueParams{
+			TypeID:       req.TypeID,
+			PropertyID:   req.PropertyID,
+			DefaultValue: req.DefaultValue,
+		})
+		if err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
 	}
 
-	typeProp, err := db.Queries.UpdateItemTypeProperty(ctx, repository.UpdateItemTypePropertyParams{
-		TypeID:       req.TypeID,
-		PropertyID:   req.PropertyID,
-		DefaultValue: req.DefaultValue,
-	})
-	if err != nil {
-		return dto.ItemTypeProperty{}, err
+	if req.Visibility != nil {
+		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, string(*req.Visibility)); err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
+
+		var err error
+		typeProp, err = db.Queries.UpdateItemTypePropertyVisibility(ctx, repository.UpdateItemTypePropertyVisibilityParams{
+			TypeID:     req.TypeID,
+			PropertyID: req.PropertyID,
+			Visibility: *req.Visibility,
+		})
+		if err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
 	}
 
 	typePropDTO := dto.ToItemTypePropertyDTO(typeProp)
