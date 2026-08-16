@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, ApiError } from '$lib/api';
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { Button, Label } from 'bits-ui';
 
 	let full_name = $state('');
@@ -64,12 +65,11 @@
 				<Label.Root class="text-sm font-medium text-ink" for="registration-password"
 					>Lozinka</Label.Root
 				>
-				<input
+				<PasswordInput
 					id="registration-password"
-					class="mt-1 block w-full"
-					type="password"
+					className="mt-1"
 					bind:value={password}
-					autocomplete="current-password"
+					autocomplete="new-password"
 					required
 				/>
 			</div>

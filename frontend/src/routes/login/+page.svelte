@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/api';
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { session } from '$lib/session.svelte';
 	import { Button, Label } from 'bits-ui';
 
@@ -52,10 +53,9 @@
 
 			<div class="block">
 				<Label.Root class="text-sm font-medium text-ink" for="login-password">Lozinka</Label.Root>
-				<input
+				<PasswordInput
 					id="login-password"
-					class="mt-1 block w-full"
-					type="password"
+					className="mt-1"
 					bind:value={password}
 					autocomplete="current-password"
 					required
