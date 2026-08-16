@@ -14,6 +14,7 @@
 	import ItemPropertiesForm from '$lib/components/ItemPropertiesForm.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
+	import { pagination } from '$lib/pagination.svelte';
 	import { Dialog, Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Inventar trenutno nije dostupan.' });
@@ -26,7 +27,7 @@
 	let editItemDialogOpen = $state(false);
 	let editingItem = $state<Item | null>(null);
 	let loadVersion = 0;
-	const itemsPerPage = 20;
+	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
 	let itemsTotal = $state(0);
 	let canManage = $derived(
@@ -147,9 +148,9 @@
 
 		<Dialog.Root bind:open={editItemDialogOpen}>
 			<Dialog.Portal>
-				<Dialog.Overlay class="fixed inset-0 z-20 bg-ink/35 backdrop-blur-sm" />
+				<Dialog.Overlay class="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm" />
 				<Dialog.Content
-					class="fixed top-1/2 left-1/2 z-30 max-h-[calc(100svh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface p-6 shadow-xl shadow-ink/20"
+					class="fixed top-1/2 left-1/2 z-30 max-h-[calc(100svh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface p-6 shadow-xl shadow-black/20"
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div>
