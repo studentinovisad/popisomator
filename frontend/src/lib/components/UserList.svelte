@@ -5,15 +5,17 @@
 	import UsersPagination from '$lib/components/UsersPagination.svelte';
 	import UsersTable from '$lib/components/UsersTable.svelte';
 	import UsersToolbar from '$lib/components/UsersToolbar.svelte';
+	import { pagination } from '$lib/pagination.svelte';
 	import type { UserRoleFilter } from '$lib/users';
 
 	let { refreshKey, currentUserID }: { refreshKey: number; currentUserID: number } = $props();
 
-	const usersPerPage = 25;
+	let usersPerPage = $derived(pagination.perPage);
 
 	let users = $state<User[]>([]);
 	let userOffset = $state(0);
 	let usersTotal = $state(0);
+	let pendingUsersTotal = $state(0);
 	let usersLoading = $state(false);
 	let error = $state('');
 	let nameSearch = $state('');
@@ -26,8 +28,20 @@
 
 	$effect(() => {
 		void refreshKey;
-		untrack(() => void loadUsers(0, activeNameSearch, roleFilter));
+		untrack(() => {
+			void loadUsers(0, activeNameSearch, roleFilter);
+			void loadPendingUsersTotal();
+		});
 	});
+
+	async function loadPendingUsersTotal() {
+		try {
+			const page = await api.listUsers({ limit: 1, status: 'requested' });
+			pendingUsersTotal = page.total;
+		} catch {
+			pendingUsersTotal = 0;
+		}
+	}
 
 	async function loadUsers(offset: number, search: string, role: UserRoleFilter) {
 		const version = ++loadVersion;
@@ -39,7 +53,8 @@
 				limit: usersPerPage,
 				offset,
 				search,
-				role: role === 'all' ? undefined : role
+				role: role === 'all' ? undefined : role,
+				status: 'active'
 			});
 			if (version !== loadVersion) return;
 
@@ -68,30 +83,6 @@
 		}
 	}
 
-	async function declineUser(user: User) {
-		error = '';
-
-		try {
-			await api.declineRegistration(user.id);
-			const nextOffset =
-				users.length === 1 && userOffset > 0 ? userOffset - usersPerPage : userOffset;
-			await loadUsers(nextOffset, activeNameSearch, roleFilter);
-		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Korisniku nije odbijena registracija.';
-		}
-	}
-
-	async function approveUser(user: User) {
-		error = '';
-
-		try {
-			const updatedUser = await api.approveRegistration(user.id);
-			users = users.map((listedUser) => (listedUser.id === user.id ? updatedUser : listedUser));
-		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Korisniku nije odobrena registracija.';
-		}
-	}
-
 	function goToPage(page: number) {
 		void loadUsers((page - 1) * usersPerPage, activeNameSearch, roleFilter);
 	}
@@ -111,6 +102,7 @@
 	<h2 id="users-heading" class="sr-only">Tabela korisnika</h2>
 	<UsersToolbar
 		total={usersTotal}
+		hasPendingUsers={pendingUsersTotal > 0}
 		role={roleFilter}
 		bind:search={nameSearch}
 		loading={usersLoading}
@@ -121,20 +113,8 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<UsersMobileList
-			{users}
-			{currentUserID}
-			onrolechange={updateRole}
-			declineuser={declineUser}
-			approveuser={approveUser}
-		/>
-		<UsersTable
-			{users}
-			{currentUserID}
-			onrolechange={updateRole}
-			declineuser={declineUser}
-			approveuser={approveUser}
-		/>
+		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} />
+		<UsersTable {users} {currentUserID} onrolechange={updateRole} />
 	</div>
 	<UsersPagination
 		total={usersTotal}

@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import Search from '@lucide/svelte/icons/search';
 	import { Button, Portal, Select } from 'bits-ui';
 	import { roleFilterOptions, type UserRoleFilter } from '$lib/users';
 
 	let {
 		total,
+		hasPendingUsers,
 		role,
 		search = $bindable(),
 		loading,
@@ -12,6 +14,7 @@
 		onsearch
 	}: {
 		total: number;
+		hasPendingUsers: boolean;
 		role: UserRoleFilter;
 		search: string;
 		loading: boolean;
@@ -31,6 +34,14 @@
 			UKUPNO: {total}
 		</p>
 		<div class="flex items-center gap-2">
+			{#if hasPendingUsers}
+				<a
+					class="pending-requests-link inline-flex h-9 items-center rounded-md border border-chrome-line bg-transparent px-3 text-sm font-medium text-on-chrome transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand"
+					href={resolve('/admin/users/pending')}
+				>
+					Zahtevi
+				</a>
+			{/if}
 			<Select.Root
 				type="single"
 				value={role}
@@ -45,7 +56,7 @@
 				</Select.Trigger>
 				<Select.Portal>
 					<Select.Content
-						class="z-10 w-36 rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+						class="z-10 w-36 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 						sideOffset={4}
 					>
 						<Select.Viewport>

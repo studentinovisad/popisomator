@@ -70,6 +70,7 @@ export type ListUsersParams = {
 	offset?: number;
 	search?: string;
 	role?: UserRole;
+	status?: UserStatus;
 };
 
 type LoginRequest = {
@@ -151,13 +152,16 @@ export const api = {
 	login: (payload: LoginRequest) => request<void>('/auth/login', jsonRequest('POST', payload)),
 	logout: () => request<void>('/auth/logout', { method: 'POST' }),
 	currentUser: () => request<User>('/user/details'),
-	listUsers: ({ limit = 25, offset = 0, search = '', role }: ListUsersParams = {}) => {
+	listUsers: ({ limit = 25, offset = 0, search = '', role, status }: ListUsersParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		if (search) {
 			query.set('search', search);
 		}
 		if (role !== undefined) {
 			query.set('role', role);
+		}
+		if (status !== undefined) {
+			query.set('status', status);
 		}
 
 		return request<UsersPage>(`/users?${query}`);

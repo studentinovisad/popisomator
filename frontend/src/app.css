@@ -91,6 +91,41 @@ body {
 	display: none;
 }
 
+.pagination-page-size {
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+.pagination-page-size::-webkit-inner-spin-button,
+.pagination-page-size::-webkit-outer-spin-button {
+	margin: 0;
+	-webkit-appearance: none;
+}
+
+@keyframes pending-requests-pulse {
+	0%,
+	100% {
+		border-color: var(--color-chrome-line);
+		box-shadow: 0 0 0 0 transparent;
+	}
+
+	50% {
+		border-color: var(--color-brand);
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 20%, transparent);
+	}
+}
+
+.pending-requests-link {
+	animation: pending-requests-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pending-requests-link {
+		animation: none;
+		border-color: var(--color-brand);
+	}
+}
+
 .page-header-actions:not(:empty) {
 	display: flex;
 	align-items: center;

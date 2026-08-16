@@ -7,6 +7,7 @@ export type AppPath =
 	| '/items/new'
 	| '/account'
 	| '/admin/users'
+	| '/admin/users/pending'
 	| '/catalog/item-types'
 	| '/catalog/properties'
 	| '/settings'
@@ -46,6 +47,10 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/admin/users': {
 		title: 'Korisnici',
 		description: 'Upravljajte pristupom i ulogama korisnika sistema.'
+	},
+	'/admin/users/pending': {
+		title: 'Zahtevi za registraciju',
+		description: 'Odobrite ili odbijte zahteve za pristup sistemu.'
 	},
 	'/catalog/item-types': {
 		title: 'Tipovi stavki',
