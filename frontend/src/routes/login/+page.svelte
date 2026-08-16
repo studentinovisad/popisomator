@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/api';
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { session } from '$lib/session.svelte';
 	import { Button, Label } from 'bits-ui';
 
@@ -52,10 +53,9 @@
 
 			<div class="block">
 				<Label.Root class="text-sm font-medium text-ink" for="login-password">Lozinka</Label.Root>
-				<input
+				<PasswordInput
 					id="login-password"
-					class="mt-1 block w-full"
-					type="password"
+					className="mt-1"
 					bind:value={password}
 					autocomplete="current-password"
 					required
@@ -74,13 +74,16 @@
 				{submitting ? 'Prijavljivanje…' : 'Prijavi se'}
 			</Button.Root>
 
-			<Button.Root
-				class="w-full rounded-md bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-strong"
-				type="button"
-				onclick={registration_page}
-			>
-				Zatraži pristup
-			</Button.Root>
+			<div class="space-y-2 pt-2">
+				<p class="text-sm font-medium text-ink">Ako još uvek nemate nalog:</p>
+				<Button.Root
+					class="w-full rounded-md bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-strong"
+					type="button"
+					onclick={registration_page}
+				>
+					Zatražite pristup
+				</Button.Root>
+			</div>
 		</form>
 	</div>
 </main>

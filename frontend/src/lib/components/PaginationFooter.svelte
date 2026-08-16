@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { Pagination, Portal } from 'bits-ui';
 
 	let {
@@ -22,19 +24,22 @@
 
 <Portal to="#page-footer-actions">
 	<Pagination.Root
-		class="flex items-center justify-between gap-4 text-sm"
+		class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 text-sm"
 		count={total}
 		{perPage}
 		{page}
 		onPageChange={onpagechange}
 	>
 		{#snippet children({ pages })}
-			<Pagination.PrevButton
-				class="rounded-md border border-line px-1.5 py-1.5 text-sm font-medium text-ink hover:bg-surface disabled:opacity-50"
-				disabled={!hasPreviousPage || loading}
-			>
-				Prethodna
-			</Pagination.PrevButton>
+			<div>
+				<Pagination.PrevButton
+					class="inline-flex size-9 items-center justify-center rounded-md border border-line text-ink hover:bg-surface disabled:opacity-50"
+					disabled={!hasPreviousPage || loading}
+					aria-label="Prethodna stranica"
+				>
+					<ChevronLeft class="size-4" aria-hidden="true" />
+				</Pagination.PrevButton>
+			</div>
 			<div class="flex items-center gap-1">
 				{#each pages as page (page.key)}
 					{#if page.type === 'ellipsis'}
@@ -49,12 +54,15 @@
 					{/if}
 				{/each}
 			</div>
-			<Pagination.NextButton
-				class="rounded-md border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface disabled:opacity-50"
-				disabled={!hasNextPage || loading}
-			>
-				Sledeća
-			</Pagination.NextButton>
+			<div class="flex justify-end">
+				<Pagination.NextButton
+					class="inline-flex size-9 items-center justify-center rounded-md border border-line text-ink hover:bg-surface disabled:opacity-50"
+					disabled={!hasNextPage || loading}
+					aria-label="Sledeća stranica"
+				>
+					<ChevronRight class="size-4" aria-hidden="true" />
+				</Pagination.NextButton>
+			</div>
 		{/snippet}
 	</Pagination.Root>
 </Portal>

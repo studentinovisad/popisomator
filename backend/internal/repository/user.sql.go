@@ -31,15 +31,17 @@ const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM users
 WHERE full_name ILIKE '%' || $1::text || '%'
   AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
+  AND status = COALESCE(NULLIF($3::text, '')::user_status, status)
 `
 
 type CountUsersParams struct {
-	Search     string `json:"search"`
-	RoleFilter string `json:"role_filter"`
+	Search       string `json:"search"`
+	RoleFilter   string `json:"role_filter"`
+	StatusFilter string `json:"status_filter"`
 }
 
 func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsers, arg.Search, arg.RoleFilter)
+	row := q.db.QueryRow(ctx, countUsers, arg.Search, arg.RoleFilter, arg.StatusFilter)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -131,21 +133,24 @@ const listUsers = `-- name: ListUsers :many
 SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE full_name ILIKE '%' || $1::text || '%'
   AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
+  AND status = COALESCE(NULLIF($3::text, '')::user_status, status)
 ORDER BY id
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type ListUsersParams struct {
-	Search     string `json:"search"`
-	RoleFilter string `json:"role_filter"`
-	PageOffset int32  `json:"page_offset"`
-	PageLimit  int32  `json:"page_limit"`
+	Search       string `json:"search"`
+	RoleFilter   string `json:"role_filter"`
+	StatusFilter string `json:"status_filter"`
+	PageOffset   int32  `json:"page_offset"`
+	PageLimit    int32  `json:"page_limit"`
 }
 
 func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
 	rows, err := q.db.Query(ctx, listUsers,
 		arg.Search,
 		arg.RoleFilter,
+		arg.StatusFilter,
 		arg.PageOffset,
 		arg.PageLimit,
 	)

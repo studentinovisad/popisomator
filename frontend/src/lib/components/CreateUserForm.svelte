@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, ApiError, type UserRole } from '$lib/api';
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import RoleSelect from '$lib/components/RoleSelect.svelte';
 	import { Button, Label } from 'bits-ui';
 
@@ -45,12 +46,12 @@
 	</div>
 	<div class="block">
 		<Label.Root class="text-sm font-medium text-ink" for="new-user-password">Lozinka</Label.Root>
-		<input
+		<PasswordInput
 			id="new-user-password"
-			class="mt-1 block w-full"
-			type="password"
+			className="mt-1"
 			bind:value={password}
-			minlength="8"
+			autocomplete="new-password"
+			minlength={8}
 			required
 		/>
 		<span class="mt-1 block text-xs text-muted">

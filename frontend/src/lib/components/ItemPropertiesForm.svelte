@@ -2,7 +2,7 @@
 	import { api, ApiError, type Item, type ItemType, type Property } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/ItemPropertyValueInput.svelte';
 	import { defaultJsonValue } from '$lib/items';
-	import { Button, Label, Select } from 'bits-ui';
+	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {
 		item,
@@ -109,7 +109,7 @@
 			</Select.Trigger>
 			<Select.Portal>
 				<Select.Content
-					class="z-40 w-[var(--bits-select-anchor-width)] rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+					class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 					sideOffset={4}
 				>
 					<Select.Viewport>
@@ -160,7 +160,8 @@
 	{:else}
 		<p class="text-sm text-muted">Ovaj tip nema dostupna svojstva.</p>
 	{/if}
-	<div class="border-t border-line pt-4">
+	<Separator.Root class="h-px bg-line" decorative />
+	<div>
 		<Button.Root
 			class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
 			disabled={saving}

@@ -20,6 +20,28 @@ func GetAllItemTypes(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemTypes)
 }
 
+func ListItemTypes(w http.ResponseWriter, r *http.Request) {
+	limit, err := paginationValue(r, "limit", defaultItemPageSize, 1, maxItemPageSize)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid limit")
+		return
+	}
+
+	offset, err := paginationValue(r, "offset", 0, 0, 0)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid offset")
+		return
+	}
+
+	itemTypes, err := service.ListItemTypes(r.Context(), limit, offset)
+	if err != nil {
+		writeServiceError(w, err, "couldn't get types")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, itemTypes)
+}
+
 func GetItemType(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

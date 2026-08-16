@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import Search from '@lucide/svelte/icons/search';
 	import { Button, Portal, Select } from 'bits-ui';
 	import { roleFilterOptions, type UserRoleFilter } from '$lib/users';
 
 	let {
 		total,
+		hasPendingUsers,
 		role,
 		search = $bindable(),
 		loading,
@@ -11,6 +14,7 @@
 		onsearch
 	}: {
 		total: number;
+		hasPendingUsers: boolean;
 		role: UserRoleFilter;
 		search: string;
 		loading: boolean;
@@ -30,6 +34,14 @@
 			UKUPNO: {total}
 		</p>
 		<div class="flex items-center gap-2">
+			{#if hasPendingUsers}
+				<a
+					class="pending-requests-link inline-flex h-9 items-center rounded-md border border-brand bg-brand-soft px-3 text-sm font-medium text-brand transition-colors hover:border-brand hover:bg-brand-soft"
+					href={resolve('/admin/users/pending')}
+				>
+					Zahtevi
+				</a>
+			{/if}
 			<Select.Root
 				type="single"
 				value={role}
@@ -44,7 +56,7 @@
 				</Select.Trigger>
 				<Select.Portal>
 					<Select.Content
-						class="z-10 w-36 rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+						class="z-10 w-36 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 						sideOffset={4}
 					>
 						<Select.Viewport>
@@ -68,17 +80,10 @@
 <form class="flex flex-col gap-2 sm:flex-row sm:items-end" onsubmit={submit}>
 	<div class="min-w-0 flex-1">
 		<div class="relative mt-3">
-			<svg
-				aria-hidden="true"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
+			<Search
 				class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint"
-			>
-				<circle cx="11" cy="11" r="6" />
-				<path d="m16 16 4 4" />
-			</svg>
+				aria-hidden="true"
+			/>
 			<input
 				id="user-name-search"
 				class="h-10 w-full pl-9"

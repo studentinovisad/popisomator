@@ -36,12 +36,29 @@
 	});
 </script>
 
-<p class="font-mono text-xs tracking-wide sm:text-right" aria-live="polite">
-	{#if status === 'checking'}
-		Saša vizuelizuje backend…
-	{:else if status === 'available'}
-		Saša ne vidi problem sa backend-om.
-	{:else}
-		Saša ne može da pronađe backend.
-	{/if}
+<p class="inline-flex" role="status">
+	<span
+		class="inline-flex size-10 items-center justify-center rounded-md border border-line bg-surface shadow-sm"
+		aria-hidden="true"
+	>
+		<span
+			class={`size-2.5 rounded-full ${
+				status === 'checking'
+					? 'animate-pulse bg-warning'
+					: status === 'available'
+						? 'bg-success'
+						: 'bg-danger'
+			}`}
+		></span>
+	</span>
+	<span class="sr-only">
+		{#if status === 'checking'}
+			Backend se proverava.
+		{:else if status === 'available'}
+			Backend je dostupan.
+		{:else}
+			Backend nije dostupan.
+		{/if}
+		></span
+	>
 </p>

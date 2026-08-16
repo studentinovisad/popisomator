@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { createAuthPage } from '$lib/auth-page.svelte';
 	import CreateUserForm from '$lib/components/CreateUserForm.svelte';
-	import PageLoader from '$lib/components/PageLoader.svelte';
+	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
 	import UserList from '$lib/components/UserList.svelte';
 	import { Dialog, Portal } from 'bits-ui';
 
@@ -28,13 +28,11 @@
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
-	{#if authPage.state.loading}
-		<PageLoader />
-	{:else if authPage.state.error}
-		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
-			<p class="text-danger" role="alert">{authPage.state.error}</p>
-		</div>
-	{:else if authPage.state.authorized}
+	<ProtectedPageState
+		loading={authPage.state.loading}
+		error={authPage.state.error}
+		authorized={authPage.state.authorized}
+	>
 		<div id="users-summary"></div>
 
 		<Dialog.Root bind:open={createUserDialogOpen}>
@@ -46,9 +44,9 @@
 				</Dialog.Trigger>
 			</Portal>
 			<Dialog.Portal>
-				<Dialog.Overlay class="fixed inset-0 z-20 bg-ink/35 backdrop-blur-sm" />
+				<Dialog.Overlay class="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm" />
 				<Dialog.Content
-					class="fixed top-1/2 left-1/2 z-30 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-surface p-6 shadow-xl shadow-ink/20"
+					class="fixed top-1/2 left-1/2 z-30 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-surface p-6 shadow-black/20"
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div>
@@ -68,5 +66,5 @@
 			</Dialog.Portal>
 		</Dialog.Root>
 		<UserList refreshKey={usersRefreshKey} currentUserID={authPage.state.user!.id} />
-	{/if}
+	</ProtectedPageState>
 </main>

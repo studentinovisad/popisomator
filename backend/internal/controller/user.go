@@ -60,7 +60,13 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := service.ListUsers(r.Context(), limit, offset, search, role)
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+	if status != "" && status != "requested" && status != "active" {
+		response.WriteError(w, http.StatusBadRequest, "invalid status")
+		return
+	}
+
+	users, err := service.ListUsers(r.Context(), limit, offset, search, role, status)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "error fetching users")
 		log.Printf("error fetching users: %v", err)

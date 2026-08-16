@@ -7,14 +7,17 @@
 		type PropertyValueType
 	} from '$lib/api';
 	import { propertyValueTypeOptions } from '$lib/items';
-	import { Button, Label, Select } from 'bits-ui';
+	import NumberInput from '$lib/components/NumberInput.svelte';
+	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {
 		property,
-		onsaved
+		onsaved,
+		oncancel
 	}: {
 		property?: Property;
 		onsaved: () => void;
+		oncancel?: () => void;
 	} = $props();
 
 	let name = $state('');
@@ -126,7 +129,7 @@
 				</Select.Trigger>
 				<Select.Portal>
 					<Select.Content
-						class="z-40 w-[var(--bits-select-anchor-width)] rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+						class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 					>
 						<Select.Viewport>
 							{#each propertyValueTypeOptions as option (option.value)}
@@ -149,6 +152,7 @@
 		<textarea id="property-description" class="mt-1 block min-h-20 w-full" bind:value={description}
 		></textarea>
 	</div>
+	<Separator.Root class="h-px bg-line sm:col-span-2" decorative />
 	<div class="sm:col-span-2">
 		<label class="flex items-center gap-2 text-sm font-medium text-ink">
 			<input type="checkbox" bind:checked={hasDefaultValue} />
@@ -165,11 +169,11 @@
 				/>
 			{:else if valueType === 'number'}
 				<Label.Root class="sr-only" for="property-default-value">Podrazumevani broj</Label.Root>
-				<input
+				<NumberInput
 					id="property-default-value"
-					class="mt-2 block w-full"
-					type="number"
 					bind:value={scalarDefaultValue}
+					ariaLabel="Podrazumevani broj"
+					className="mt-2"
 					required
 				/>
 			{:else if valueType === 'boolean'}
@@ -182,14 +186,27 @@
 			{/if}
 		{/if}
 	</div>
+	<Separator.Root class="h-px bg-line sm:col-span-2" decorative />
 	<div class="sm:col-span-2">
-		<Button.Root
-			class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
-			disabled={saving}
-			type="submit"
-		>
-			{saving ? 'Čuvanje…' : property ? 'Sačuvaj izmene' : 'Dodaj svojstvo'}
-		</Button.Root>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button.Root
+				class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
+				disabled={saving}
+				type="submit"
+			>
+				{saving ? 'Čuvanje…' : property ? 'Sačuvaj izmene' : 'Dodaj svojstvo'}
+			</Button.Root>
+			{#if !property && oncancel}
+				<Button.Root
+					class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-soft disabled:opacity-60"
+					disabled={saving}
+					type="button"
+					onclick={oncancel}
+				>
+					Otkaži dodavanje
+				</Button.Root>
+			{/if}
+		</div>
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>

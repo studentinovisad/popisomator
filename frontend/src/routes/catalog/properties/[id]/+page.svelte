@@ -5,8 +5,8 @@
 	import { onMount } from 'svelte';
 	import { api, ApiError, type Property } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
-	import PageLoader from '$lib/components/PageLoader.svelte';
 	import PropertyForm from '$lib/components/PropertyForm.svelte';
+	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Izmena svojstva trenutno nije dostupna.',
@@ -54,19 +54,19 @@
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
-	{#if authPage.state.loading || (authPage.state.authorized && loadingProperty)}
-		<PageLoader />
-	{:else if authPage.state.error || error}
-		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
-			<p class="text-danger" role="alert">{authPage.state.error || error}</p>
-		</div>
-	{:else if authPage.state.authorized && property}
-		<section class="mx-auto max-w-3xl" aria-labelledby="edit-property-heading">
-			<div class="border-b border-line pb-4">
-				<h2 id="edit-property-heading" class="text-lg font-semibold text-ink">Izmeni svojstvo</h2>
-				<p class="mt-1 text-sm text-muted">{property.name}</p>
-			</div>
-			<div class="mt-6"><PropertyForm {property} onsaved={propertySaved} /></div>
-		</section>
-	{/if}
+	<ProtectedPageState
+		loading={authPage.state.loading || (authPage.state.authorized && loadingProperty)}
+		error={authPage.state.error || error}
+		authorized={authPage.state.authorized}
+	>
+		{#if property}
+			<section class="mx-auto max-w-3xl" aria-labelledby="edit-property-heading">
+				<div class="border-b border-line pb-4">
+					<h2 id="edit-property-heading" class="text-lg font-semibold text-ink">Izmeni svojstvo</h2>
+					<p class="mt-1 text-sm text-muted">{property.name}</p>
+				</div>
+				<div class="mt-6"><PropertyForm {property} onsaved={propertySaved} /></div>
+			</section>
+		{/if}
+	</ProtectedPageState>
 </main>

@@ -1,20 +1,15 @@
 <script lang="ts">
 	import type { User, UserRole } from '$lib/api';
 	import RoleSelect from '$lib/components/RoleSelect.svelte';
-	import RegistrationApproval from './RegistrationApproval.svelte';
 
 	let {
 		users,
 		currentUserID,
-		onrolechange,
-		declineuser,
-		approveuser
+		onrolechange
 	}: {
 		users: User[];
 		currentUserID: number;
 		onrolechange: (user: User, role: UserRole) => void;
-		declineuser: (user: User) => void;
-		approveuser: (user: User) => void;
 	} = $props();
 </script>
 
@@ -27,23 +22,14 @@
 						{user.full_name}
 					</p>
 					<p class="mt-0.5 truncate text-sm text-muted" title={user.email}>{user.email}</p>
-					{#if user.status !== 'active'}
-						<p class="truncate text-sm font-medium text-success">Zahtev za registraciju</p>
-					{/if}
 				</div>
 				<div>
-					{#if user.status === 'active'}
-						<RoleSelect
-							value={user.role}
-							ariaLabel={`Uloga za ${user.full_name}`}
-							disabled={user.id === currentUserID}
-							onvaluechange={(role) => onrolechange(user, role)}
-						/>
-					{:else}
-						<RegistrationApproval
-							onclick={(approve) => (approve ? approveuser(user) : declineuser(user))}
-						/>
-					{/if}
+					<RoleSelect
+						value={user.role}
+						ariaLabel={`Uloga za ${user.full_name}`}
+						disabled={user.id === currentUserID}
+						onvaluechange={(role) => onrolechange(user, role)}
+					/>
 				</div>
 			</div>
 		</li>

@@ -1,17 +1,20 @@
 <script lang="ts">
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/ItemPropertyValueInput.svelte';
+	import NumberInput from '$lib/components/NumberInput.svelte';
 	import { defaultJsonValue } from '$lib/items';
-	import { Button, Label, Select } from 'bits-ui';
+	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {
 		itemTypes,
 		properties,
-		oncreated
+		oncreated,
+		oncancel
 	}: {
 		itemTypes: ItemType[];
 		properties: Property[];
 		oncreated: () => void;
+		oncancel?: () => void;
 	} = $props();
 
 	let selectedTypeID = $state('');
@@ -51,7 +54,10 @@
 		try {
 			await api.createItem({
 				type_id: Number(selectedTypeID),
-				properties: Object.entries(propertyValues).map(([id, value]) => ({ id: Number(id), value })),
+				properties: Object.entries(propertyValues).map(([id, value]) => ({
+					id: Number(id),
+					value
+				})),
 				amount
 			});
 			selectedTypeID = '';
@@ -83,7 +89,7 @@
 			</Select.Trigger>
 			<Select.Portal>
 				<Select.Content
-					class="z-40 w-[var(--bits-select-anchor-width)] rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+					class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 					sideOffset={4}
 				>
 					<Select.Viewport>
@@ -107,15 +113,14 @@
 	</div>
 
 	<Label.Root class="text-sm font-medium text-ink" for="new-item-amount">Količina</Label.Root>
-	<input
+	<NumberInput
 		id="new-item-amount"
-		class="block w-full"
-		type="number"
 		bind:value={amount}
+		ariaLabel="Količina"
 		placeholder="Unesite količinu"
-		aria-required="true"
-		min="1"
-		max="100"
+		min={1}
+		max={100}
+		required
 	/>
 
 	{#if selectedType?.properties.length}
@@ -146,7 +151,8 @@
 		</fieldset>
 	{/if}
 
-	<div class="flex items-center gap-3 border-t border-line pt-4">
+	<Separator.Root class="h-px bg-line" decorative />
+	<div class="flex items-center gap-3">
 		<Button.Root
 			class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
 			disabled={creating || !selectedTypeID}
@@ -154,6 +160,16 @@
 		>
 			{creating ? 'Čuvanje…' : 'Dodaj stavku'}
 		</Button.Root>
+		{#if oncancel}
+			<Button.Root
+				class="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-soft disabled:opacity-60"
+				disabled={creating}
+				type="button"
+				onclick={oncancel}
+			>
+				Otkaži dodavanje
+			</Button.Root>
+		{/if}
 		{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>
