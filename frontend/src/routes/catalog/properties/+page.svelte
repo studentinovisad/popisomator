@@ -7,7 +7,7 @@
 	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
 	import PropertiesList from '$lib/components/PropertiesList.svelte';
 	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import { pagination } from '$lib/pagination.svelte';
+	import { createServerPagination } from '$lib/server-pagination.svelte';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({
@@ -15,41 +15,17 @@
 		requiredRoles: ['admin']
 	});
 
-	let properties = $state<Property[]>([]);
-	let loading = $state(false);
 	let error = $state('');
-	let loadVersion = 0;
-	let propertiesPerPage = $derived(pagination.perPage);
-	let propertyOffset = $state(0);
-	let propertiesTotal = $state(0);
-	let currentPage = $derived(Math.floor(propertyOffset / propertiesPerPage) + 1);
-	let hasPreviousPage = $derived(propertyOffset > 0);
-	let hasNextPage = $derived(propertyOffset + properties.length < propertiesTotal);
+	const propertiesPage = createServerPagination<Property>({
+		loadPage: api.listPropertiesPage,
+		unavailableMessage: 'Svojstva nisu učitana.'
+	});
 
 	onMount(() => {
 		void authPage.load().then(() => {
-			if (authPage.state.authorized) void loadProperties();
+			if (authPage.state.authorized) void propertiesPage.load();
 		});
 	});
-
-	async function loadProperties(offset = 0) {
-		const version = ++loadVersion;
-		loading = true;
-		error = '';
-
-		try {
-			const nextProperties = await api.listPropertiesPage({ limit: propertiesPerPage, offset });
-			if (version !== loadVersion) return;
-			properties = nextProperties.items;
-			propertyOffset = nextProperties.offset;
-			propertiesTotal = nextProperties.total;
-		} catch (reason) {
-			if (version !== loadVersion) return;
-			error = reason instanceof ApiError ? reason.message : 'Svojstva nisu učitana.';
-		} finally {
-			if (version === loadVersion) loading = false;
-		}
-	}
 
 	async function deleteProperty(property: Property) {
 		if (!confirm(`Obrisati svojstvo ${property.name}?`)) return;
@@ -57,18 +33,10 @@
 
 		try {
 			await api.deleteProperty(property.id);
-			const nextOffset =
-				properties.length === 1 && propertyOffset > 0
-					? propertyOffset - propertiesPerPage
-					: propertyOffset;
-			void loadProperties(nextOffset);
+			propertiesPage.reloadAfterDelete();
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Svojstvo nije obrisano.';
 		}
-	}
-
-	function goToPage(page: number) {
-		void loadProperties((page - 1) * propertiesPerPage);
 	}
 </script>
 
@@ -78,12 +46,12 @@
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
-		loading={authPage.state.loading || (authPage.state.authorized && loading)}
-		error={authPage.state.error}
+		loading={authPage.state.loading || (authPage.state.authorized && propertiesPage.loading)}
+		error={authPage.state.error || propertiesPage.error}
 		authorized={authPage.state.authorized}
 	>
 		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
-			UKUPNO: {propertiesTotal}
+			UKUPNO: {propertiesPage.total}
 		</p>
 		<Portal to="#page-header-actions">
 			<a
@@ -103,15 +71,15 @@
 		</Portal>
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
-		<PropertiesList {properties} deleteproperty={deleteProperty} />
+		<PropertiesList properties={propertiesPage.items} deleteproperty={deleteProperty} />
 		<PaginationFooter
-			total={propertiesTotal}
-			perPage={propertiesPerPage}
-			page={currentPage}
-			{hasPreviousPage}
-			{hasNextPage}
-			{loading}
-			onpagechange={goToPage}
+			total={propertiesPage.total}
+			perPage={propertiesPage.perPage}
+			page={propertiesPage.currentPage}
+			hasPreviousPage={propertiesPage.hasPreviousPage}
+			hasNextPage={propertiesPage.hasNextPage}
+			loading={propertiesPage.loading}
+			onpagechange={propertiesPage.goToPage}
 		/>
 	</ProtectedPageState>
 </main>
