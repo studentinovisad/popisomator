@@ -75,13 +75,13 @@
 			</Button.Root>
 
 			<div class="space-y-2 pt-2">
-				<p class="text-sm font-medium text-ink">Ako još uvek nemaš nalog:</p>
+				<p class="text-sm font-medium text-ink">Ako još uvek nemate nalog:</p>
 				<Button.Root
 					class="w-full rounded-md bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-strong"
 					type="button"
 					onclick={registration_page}
 				>
-					Zatraži pristup
+					Zatražite pristup
 				</Button.Root>
 			</div>
 		</form>

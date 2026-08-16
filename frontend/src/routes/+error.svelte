@@ -2,11 +2,7 @@
 	import { page } from '$app/state';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 
-	let message = $derived(
-		page.status === 404
-			? 'Ova stranica ne postoji…'
-			: 'Nastao je problem…'
-	);
+	let message = $derived(page.status === 404 ? 'Ova stranica ne postoji…' : 'Nastao je problem…');
 </script>
 
 <svelte:head>

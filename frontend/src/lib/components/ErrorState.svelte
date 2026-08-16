@@ -14,9 +14,7 @@
 	class="grid w-full max-w-2xl items-center gap-3"
 	aria-label={code ? `Greška ${code}` : 'Greška'}
 >
-	<div
-		class="relative aspect-square w-full justify-self-center min-[380px]:max-w-72"
-	>
+	<div class="relative aspect-square w-full justify-self-center min-[380px]:max-w-72">
 		<FallenClipboard {code} />
 	</div>
 

@@ -36,7 +36,7 @@
 		<div class="flex items-center gap-2">
 			{#if hasPendingUsers}
 				<a
-					class="pending-requests-link inline-flex h-9 items-center rounded-md border border-chrome-line bg-transparent px-3 text-sm font-medium text-on-chrome transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand"
+					class="pending-requests-link inline-flex h-9 items-center rounded-md border border-brand bg-brand-soft px-3 text-sm font-medium text-brand transition-colors hover:border-brand hover:bg-brand-soft"
 					href={resolve('/admin/users/pending')}
 				>
 					Zahtevi
