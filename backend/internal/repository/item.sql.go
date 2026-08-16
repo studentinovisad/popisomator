@@ -28,6 +28,42 @@ func (q *Queries) AddItemProperty(ctx context.Context, arg AddItemPropertyParams
 	return i, err
 }
 
+const addItemPropertyBulk = `-- name: AddItemPropertyBulk :many
+INSERT INTO item_properties (item_id, property_id, property_value) 
+SELECT 
+    i.item_id, 
+    $1, 
+    $2
+FROM unnest($3::bigint[]) AS i(item_id)
+RETURNING item_id, property_id, property_value
+`
+
+type AddItemPropertyBulkParams struct {
+	PropertyID    int64   `json:"property_id"`
+	PropertyValue string  `json:"property_value"`
+	ItemIds       []int64 `json:"item_ids"`
+}
+
+func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBulkParams) ([]ItemProperty, error) {
+	rows, err := q.db.Query(ctx, addItemPropertyBulk, arg.PropertyID, arg.PropertyValue, arg.ItemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ItemProperty
+	for rows.Next() {
+		var i ItemProperty
+		if err := rows.Scan(&i.ItemID, &i.PropertyID, &i.PropertyValue); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const addItemTypeProperty = `-- name: AddItemTypeProperty :one
 INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($1, $2, $3) RETURNING type_id, property_id, default_value
 `
@@ -72,20 +108,41 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 	return count, err
 }
 
-const createItem = `-- name: CreateItem :one
-INSERT INTO items (type_id) VALUES ($1) RETURNING id, created_at, consumption, type_id
+const createItemBulk = `-- name: CreateItemBulk :many
+INSERT INTO items (type_id) 
+SELECT ($1) 
+FROM generate_series(1, $2::integer)
+RETURNING id, created_at, consumption, type_id
 `
 
-func (q *Queries) CreateItem(ctx context.Context, typeID int64) (Item, error) {
-	row := q.db.QueryRow(ctx, createItem, typeID)
-	var i Item
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.Consumption,
-		&i.TypeID,
-	)
-	return i, err
+type CreateItemBulkParams struct {
+	TypeID int64 `json:"type_id"`
+	Amount int32 `json:"amount"`
+}
+
+func (q *Queries) CreateItemBulk(ctx context.Context, arg CreateItemBulkParams) ([]Item, error) {
+	rows, err := q.db.Query(ctx, createItemBulk, arg.TypeID, arg.Amount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Consumption,
+			&i.TypeID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const createItemType = `-- name: CreateItemType :one

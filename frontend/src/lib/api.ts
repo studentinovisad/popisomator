@@ -88,6 +88,7 @@ type CreateUserRequest = RegistrationRequest & {
 export type CreateItemRequest = {
 	type_id: number;
 	properties: ItemProperty[];
+	amount: number;
 };
 
 export type CreateItemTypeRequest = {

@@ -15,6 +15,7 @@
 	} = $props();
 
 	let selectedTypeID = $state('');
+	let amount = $state(1);
 	let propertyValues = $state<Record<number, string>>({});
 	let error = $state('');
 	let creating = $state(false);
@@ -50,7 +51,8 @@
 		try {
 			await api.createItem({
 				type_id: Number(selectedTypeID),
-				properties: Object.entries(propertyValues).map(([id, value]) => ({ id: Number(id), value }))
+				properties: Object.entries(propertyValues).map(([id, value]) => ({ id: Number(id), value })),
+				amount
 			});
 			selectedTypeID = '';
 			propertyValues = {};
@@ -103,6 +105,18 @@
 			<p class="mt-2 text-sm text-danger" role="alert">Prvo dodajte tip stavke u katalogu.</p>
 		{/if}
 	</div>
+
+	<Label.Root class="text-sm font-medium text-ink" for="new-item-amount">Količina</Label.Root>
+	<input
+		id="new-item-amount"
+		class="block w-full"
+		type="number"
+		bind:value={amount}
+		placeholder="Unesite količinu"
+		aria-required="true"
+		min="1"
+		max="100"
+	/>
 
 	{#if selectedType?.properties.length}
 		<fieldset class="grid gap-3 border-t border-line pt-4">

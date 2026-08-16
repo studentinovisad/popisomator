@@ -103,6 +103,7 @@ type ItemsPage struct {
 type CreateItemRequest struct {
 	Properties []ItemProperty `json:"properties" validate:"dive"`
 	TypeID     int64          `json:"type_id" validate:"required,gt=0"`
+	Amount     int32          `json:"amount" validate:"required,gt=0,lte=100"`
 }
 
 type ConsumeItemRequest struct {
