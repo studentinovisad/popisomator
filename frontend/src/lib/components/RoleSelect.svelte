@@ -35,7 +35,7 @@
 	</Select.Trigger>
 	<Select.Portal>
 		<Select.Content
-			class="z-40 w-40 rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+			class="z-40 w-40 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 			sideOffset={4}
 		>
 			<Select.Viewport>

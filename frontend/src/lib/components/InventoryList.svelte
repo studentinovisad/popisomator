@@ -79,7 +79,7 @@
 							</Select.Trigger>
 							<Select.Portal>
 								<Select.Content
-									class="z-30 w-48 rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+									class="z-30 w-48 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 									sideOffset={4}
 								>
 									<Select.Viewport>
@@ -187,7 +187,7 @@
 						</Select.Trigger>
 						<Select.Portal>
 							<Select.Content
-								class="z-30 w-[var(--bits-select-anchor-width)] rounded-md border border-line bg-surface p-1 shadow-lg shadow-ink/10"
+								class="z-30 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
 								sideOffset={4}
 							>
 								<Select.Viewport>

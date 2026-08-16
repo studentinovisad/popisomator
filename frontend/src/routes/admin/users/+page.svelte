@@ -46,9 +46,9 @@
 				</Dialog.Trigger>
 			</Portal>
 			<Dialog.Portal>
-				<Dialog.Overlay class="fixed inset-0 z-20 bg-ink/35 backdrop-blur-sm" />
+				<Dialog.Overlay class="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm" />
 				<Dialog.Content
-					class="fixed top-1/2 left-1/2 z-30 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-surface p-6 shadow-xl shadow-ink/20"
+					class="fixed top-1/2 left-1/2 z-30 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-surface p-6 shadow-black/20"
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div>

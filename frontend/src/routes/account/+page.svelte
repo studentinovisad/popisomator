@@ -26,7 +26,7 @@
 		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
 			<div class="w-full max-w-md">
 				<dl
-					class="divide-y divide-line rounded-lg border border-line bg-surface shadow-sm shadow-ink/5"
+					class="divide-y divide-line rounded-lg border border-line bg-surface shadow-sm shadow-black/5"
 				>
 					<div class="px-4 py-3">
 						<dt class="font-mono text-xs tracking-wide text-muted">IME I PREZIME</dt>
