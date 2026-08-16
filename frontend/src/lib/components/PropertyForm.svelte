@@ -8,7 +8,7 @@
 	} from '$lib/api';
 	import { propertyValueTypeOptions } from '$lib/items';
 	import NumberInput from '$lib/components/NumberInput.svelte';
-	import { Button, Label, Select } from 'bits-ui';
+	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {
 		property,
@@ -152,6 +152,7 @@
 		<textarea id="property-description" class="mt-1 block min-h-20 w-full" bind:value={description}
 		></textarea>
 	</div>
+	<Separator.Root class="h-px bg-line sm:col-span-2" decorative />
 	<div class="sm:col-span-2">
 		<label class="flex items-center gap-2 text-sm font-medium text-ink">
 			<input type="checkbox" bind:checked={hasDefaultValue} />
@@ -185,6 +186,7 @@
 			{/if}
 		{/if}
 	</div>
+	<Separator.Root class="h-px bg-line sm:col-span-2" decorative />
 	<div class="sm:col-span-2">
 		<div class="flex flex-wrap items-center gap-3">
 			<Button.Root

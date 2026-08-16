@@ -3,7 +3,7 @@
 	import ItemPropertyValueInput from '$lib/components/ItemPropertyValueInput.svelte';
 	import NumberInput from '$lib/components/NumberInput.svelte';
 	import { defaultJsonValue } from '$lib/items';
-	import { Button, Label, Select } from 'bits-ui';
+	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {
 		itemTypes,
@@ -151,7 +151,8 @@
 		</fieldset>
 	{/if}
 
-	<div class="flex items-center gap-3 border-t border-line pt-4">
+	<Separator.Root class="h-px bg-line" decorative />
+	<div class="flex items-center gap-3">
 		<Button.Root
 			class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
 			disabled={creating || !selectedTypeID}
