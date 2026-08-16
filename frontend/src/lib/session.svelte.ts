@@ -41,6 +41,7 @@ class Session {
 	setUser(user: User) {
 		this.version += 1;
 		this.user = user;
+		this.ready = true;
 	}
 
 	clear() {
