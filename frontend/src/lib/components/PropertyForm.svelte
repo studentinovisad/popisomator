@@ -7,6 +7,7 @@
 		type PropertyValueType
 	} from '$lib/api';
 	import { propertyValueTypeOptions } from '$lib/items';
+	import NumberInput from '$lib/components/NumberInput.svelte';
 	import { Button, Label, Select } from 'bits-ui';
 
 	let {
@@ -167,11 +168,11 @@
 				/>
 			{:else if valueType === 'number'}
 				<Label.Root class="sr-only" for="property-default-value">Podrazumevani broj</Label.Root>
-				<input
+				<NumberInput
 					id="property-default-value"
-					class="mt-2 block w-full"
-					type="number"
 					bind:value={scalarDefaultValue}
+					ariaLabel="Podrazumevani broj"
+					className="mt-2"
 					required
 				/>
 			{:else if valueType === 'boolean'}

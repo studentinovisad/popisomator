@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Property } from '$lib/api';
+	import NumberInput from '$lib/components/NumberInput.svelte';
 
 	let {
 		property,
@@ -59,14 +60,14 @@
 		{required}
 	/>
 {:else if property.value_type === 'number'}
-	<input
+	<NumberInput
 		{id}
-		class="mt-2 block w-full"
-		type="number"
 		bind:value={scalarValue}
-		oninput={commitScalar}
+		ariaLabel={`Vrednost za ${property.name}`}
+		className="mt-2"
 		placeholder="Unesite broj"
 		{required}
+		onvaluechange={commitScalar}
 	/>
 {:else if property.value_type === 'boolean'}
 	<label

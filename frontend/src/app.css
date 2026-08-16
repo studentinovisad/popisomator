@@ -91,13 +91,16 @@ body {
 	display: none;
 }
 
-.pagination-page-size {
+.pagination-page-size,
+.number-input-field {
 	appearance: textfield;
 	-moz-appearance: textfield;
 }
 
 .pagination-page-size::-webkit-inner-spin-button,
-.pagination-page-size::-webkit-outer-spin-button {
+.pagination-page-size::-webkit-outer-spin-button,
+.number-input-field::-webkit-inner-spin-button,
+.number-input-field::-webkit-outer-spin-button {
 	margin: 0;
 	-webkit-appearance: none;
 }

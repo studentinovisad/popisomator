@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/ItemPropertyValueInput.svelte';
+	import NumberInput from '$lib/components/NumberInput.svelte';
 	import { defaultJsonValue } from '$lib/items';
 	import { Button, Label, Select } from 'bits-ui';
 
@@ -53,7 +54,10 @@
 		try {
 			await api.createItem({
 				type_id: Number(selectedTypeID),
-				properties: Object.entries(propertyValues).map(([id, value]) => ({ id: Number(id), value })),
+				properties: Object.entries(propertyValues).map(([id, value]) => ({
+					id: Number(id),
+					value
+				})),
 				amount
 			});
 			selectedTypeID = '';
@@ -109,15 +113,14 @@
 	</div>
 
 	<Label.Root class="text-sm font-medium text-ink" for="new-item-amount">Količina</Label.Root>
-	<input
+	<NumberInput
 		id="new-item-amount"
-		class="block w-full"
-		type="number"
 		bind:value={amount}
+		ariaLabel="Količina"
 		placeholder="Unesite količinu"
-		aria-required="true"
-		min="1"
-		max="100"
+		min={1}
+		max={100}
+		required
 	/>
 
 	{#if selectedType?.properties.length}
