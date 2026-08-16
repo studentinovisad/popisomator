@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { createAuthPage } from '$lib/auth-page.svelte';
 	import CreateUserForm from '$lib/components/CreateUserForm.svelte';
-	import PageLoader from '$lib/components/PageLoader.svelte';
+	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
 	import UserList from '$lib/components/UserList.svelte';
 	import { Dialog, Portal } from 'bits-ui';
 
@@ -28,13 +28,11 @@
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
-	{#if authPage.state.loading}
-		<PageLoader />
-	{:else if authPage.state.error}
-		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
-			<p class="text-danger" role="alert">{authPage.state.error}</p>
-		</div>
-	{:else if authPage.state.authorized}
+	<ProtectedPageState
+		loading={authPage.state.loading}
+		error={authPage.state.error}
+		authorized={authPage.state.authorized}
+	>
 		<div id="users-summary"></div>
 
 		<Dialog.Root bind:open={createUserDialogOpen}>
@@ -68,5 +66,5 @@
 			</Dialog.Portal>
 		</Dialog.Root>
 		<UserList refreshKey={usersRefreshKey} currentUserID={authPage.state.user!.id} />
-	{/if}
+	</ProtectedPageState>
 </main>

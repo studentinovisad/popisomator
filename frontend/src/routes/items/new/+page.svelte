@@ -5,7 +5,7 @@
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
 	import CreateItemForm from '$lib/components/CreateItemForm.svelte';
-	import PageLoader from '$lib/components/PageLoader.svelte';
+	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Dodavanje stavke trenutno nije dostupno.',
@@ -50,13 +50,11 @@
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
-	{#if authPage.state.loading || (authPage.state.authorized && loading)}
-		<PageLoader />
-	{:else if authPage.state.error || error}
-		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
-			<p class="text-danger" role="alert">{authPage.state.error || error}</p>
-		</div>
-	{:else if authPage.state.authorized}
+	<ProtectedPageState
+		loading={authPage.state.loading || (authPage.state.authorized && loading)}
+		error={authPage.state.error || error}
+		authorized={authPage.state.authorized}
+	>
 		<section class="mx-auto max-w-3xl" aria-labelledby="new-item-heading">
 			<div class="border-b border-line pb-4">
 				<h2 id="new-item-heading" class="text-lg font-semibold text-ink">Nova stavka</h2>
@@ -71,5 +69,5 @@
 				/>
 			</div>
 		</section>
-	{/if}
+	</ProtectedPageState>
 </main>

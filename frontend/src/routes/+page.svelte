@@ -13,7 +13,7 @@
 	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
 	import ItemPropertiesForm from '$lib/components/ItemPropertiesForm.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
-	import PageLoader from '$lib/components/PageLoader.svelte';
+	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
 	import { pagination } from '$lib/pagination.svelte';
 	import { Dialog, Portal } from 'bits-ui';
 
@@ -124,13 +124,11 @@
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
-	{#if authPage.state.loading || (authPage.state.authorized && loadingInventory)}
-		<PageLoader />
-	{:else if authPage.state.error}
-		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
-			<p class="text-danger" role="alert">{authPage.state.error}</p>
-		</div>
-	{:else if authPage.state.authorized && authPage.state.user}
+	<ProtectedPageState
+		loading={authPage.state.loading || (authPage.state.authorized && loadingInventory)}
+		error={authPage.state.error}
+		authorized={authPage.state.authorized && authPage.state.user !== null}
+	>
 		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
 			UKUPNO: {itemsTotal}
 		</p>
@@ -184,7 +182,7 @@
 			{items}
 			{itemTypes}
 			{properties}
-			user={authPage.state.user}
+			user={authPage.state.user!}
 			onconsumptionchange={changeConsumption}
 			onedititem={editItem}
 			deleteitem={deleteItem}
@@ -198,5 +196,5 @@
 			loading={loadingInventory}
 			onpagechange={goToPage}
 		/>
-	{/if}
+	</ProtectedPageState>
 </main>

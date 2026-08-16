@@ -5,8 +5,8 @@
 	import { api, ApiError, type Property } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
 	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
-	import PageLoader from '$lib/components/PageLoader.svelte';
 	import PropertiesList from '$lib/components/PropertiesList.svelte';
+	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
 	import { pagination } from '$lib/pagination.svelte';
 	import { Portal } from 'bits-ui';
 
@@ -77,13 +77,11 @@
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
-	{#if authPage.state.loading || (authPage.state.authorized && loading)}
-		<PageLoader />
-	{:else if authPage.state.error}
-		<div class="grid min-h-[calc(100svh-14rem)] place-items-center">
-			<p class="text-danger" role="alert">{authPage.state.error}</p>
-		</div>
-	{:else if authPage.state.authorized}
+	<ProtectedPageState
+		loading={authPage.state.loading || (authPage.state.authorized && loading)}
+		error={authPage.state.error}
+		authorized={authPage.state.authorized}
+	>
 		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
 			UKUPNO: {propertiesTotal}
 		</p>
@@ -115,5 +113,5 @@
 			{loading}
 			onpagechange={goToPage}
 		/>
-	{/if}
+	</ProtectedPageState>
 </main>
