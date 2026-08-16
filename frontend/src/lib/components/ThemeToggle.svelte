@@ -7,7 +7,7 @@
 
 <Button.Root
 	aria-label={theme.current === 'dark' ? 'Uključi svetlu temu' : 'Uključi tamnu temu'}
-	class="inline-flex size-9 items-center justify-center rounded-md border border-line bg-surface text-muted shadow-sm transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
+	class="inline-flex size-10 items-center justify-center rounded-md border border-line bg-surface text-muted shadow-sm transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
 	type="button"
 	onclick={() => theme.set(theme.current === 'dark' ? 'light' : 'dark')}
 >
