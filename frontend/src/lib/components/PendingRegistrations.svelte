@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api, ApiError, type User } from '$lib/api';
 	import RegistrationApproval from '$lib/components/RegistrationApproval.svelte';
-	import UsersPagination from '$lib/components/UsersPagination.svelte';
+	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
 	import { pagination } from '$lib/pagination.svelte';
 
 	let { onempty }: { onempty: () => void } = $props();
@@ -121,7 +121,7 @@
 			{#if users.length === 0}<li class="px-4 py-3 text-sm text-muted">Nema zahteva.</li>{/if}
 		</ul>
 	</div>
-	<UsersPagination
+	<PaginationFooter
 		total={usersTotal}
 		perPage={usersPerPage}
 		page={currentPage}

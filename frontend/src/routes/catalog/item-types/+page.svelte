@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { api, ApiError, type ItemType } from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
-	import InventoryPagination from '$lib/components/InventoryPagination.svelte';
+	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
 	import ItemTypesList from '$lib/components/ItemTypesList.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
 	import { pagination } from '$lib/pagination.svelte';
@@ -104,7 +104,7 @@
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 		<ItemTypesList {itemTypes} deleteitemtype={deleteItemType} />
-		<InventoryPagination
+		<PaginationFooter
 			total={itemTypesTotal}
 			perPage={itemTypesPerPage}
 			page={currentPage}

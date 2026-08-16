@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import { api, ApiError, type User, type UserRole } from '$lib/api';
 	import UsersMobileList from '$lib/components/UsersMobileList.svelte';
-	import UsersPagination from '$lib/components/UsersPagination.svelte';
+	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
 	import UsersTable from '$lib/components/UsersTable.svelte';
 	import UsersToolbar from '$lib/components/UsersToolbar.svelte';
 	import { pagination } from '$lib/pagination.svelte';
@@ -116,7 +116,7 @@
 		<UsersMobileList {users} {currentUserID} onrolechange={updateRole} />
 		<UsersTable {users} {currentUserID} onrolechange={updateRole} />
 	</div>
-	<UsersPagination
+	<PaginationFooter
 		total={usersTotal}
 		perPage={usersPerPage}
 		page={currentPage}

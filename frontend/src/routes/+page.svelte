@@ -10,7 +10,7 @@
 		type Property
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/auth-page.svelte';
-	import InventoryPagination from '$lib/components/InventoryPagination.svelte';
+	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
 	import ItemPropertiesForm from '$lib/components/ItemPropertiesForm.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import PageLoader from '$lib/components/PageLoader.svelte';
@@ -189,7 +189,7 @@
 			onedititem={editItem}
 			deleteitem={deleteItem}
 		/>
-		<InventoryPagination
+		<PaginationFooter
 			total={itemsTotal}
 			perPage={itemsPerPage}
 			page={currentPage}
