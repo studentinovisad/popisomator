@@ -1,4 +1,7 @@
 <script lang="ts">
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { resolve } from '$app/paths';
 	import { Collapsible } from 'bits-ui';
 	import type { Property } from '$lib/api';
@@ -62,16 +65,7 @@
 											aria-label="Prikaži ili sakrij opis svojstva"
 											title="Prikaži opis"
 										>
-											<svg
-												aria-hidden="true"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												class="size-4"
-											>
-												<path d="m6 9 6 6 6-6" />
-											</svg>
+											<ChevronDown class="size-4" aria-hidden="true" />
 										</Collapsible.Trigger>
 									{/if}
 									<a
@@ -80,17 +74,7 @@
 										aria-label={`Izmeni svojstvo ${property.name}`}
 										title="Izmeni"
 									>
-										<svg
-											aria-hidden="true"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											class="size-4"
-										>
-											<path d="m12 20h9" />
-											<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-										</svg>
+										<Pencil class="size-4" aria-hidden="true" />
 									</a>
 									<button
 										class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
@@ -99,17 +83,7 @@
 										aria-label={`Obriši svojstvo ${property.name}`}
 										title="Obriši"
 									>
-										<svg
-											aria-hidden="true"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											class="size-4"
-										>
-											<path d="M3 6h18" />
-											<path d="M8 6V4h8v2M19 6l-1 14H6L5 6" />
-										</svg>
+										<Trash2 class="size-4" aria-hidden="true" />
 									</button>
 								</div>
 							</td>
@@ -159,16 +133,7 @@
 									aria-label="Prikaži ili sakrij opis svojstva"
 									title="Prikaži opis"
 								>
-									<svg
-										aria-hidden="true"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										class="size-4"
-									>
-										<path d="m6 9 6 6 6-6" />
-									</svg>
+									<ChevronDown class="size-4" aria-hidden="true" />
 								</Collapsible.Trigger>
 							{/if}
 							<a
@@ -177,17 +142,7 @@
 								aria-label={`Izmeni svojstvo ${property.name}`}
 								title="Izmeni"
 							>
-								<svg
-									aria-hidden="true"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									class="size-4"
-								>
-									<path d="m12 20h9" />
-									<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-								</svg>
+								<Pencil class="size-4" aria-hidden="true" />
 							</a>
 							<button
 								class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
@@ -196,17 +151,7 @@
 								aria-label={`Obriši svojstvo ${property.name}`}
 								title="Obriši"
 							>
-								<svg
-									aria-hidden="true"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									class="size-4"
-								>
-									<path d="M3 6h18" />
-									<path d="M8 6V4h8v2M19 6l-1 14H6L5 6" />
-								</svg>
+								<Trash2 class="size-4" aria-hidden="true" />
 							</button>
 						</div>
 						<div class="order-3 flex min-w-0 flex-wrap items-center gap-1.5 text-sm">
