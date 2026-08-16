@@ -16,52 +16,52 @@
 	--font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
 	--font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
 
-	--color-canvas: #f5f2ed;
-	--color-surface: #fffdf9;
-	--color-ink: #332c27;
-	--color-muted: #746962;
-	--color-faint: #93877f;
-	--color-line: #ddd5cc;
-	--color-soft: #eee8e1;
-	--color-brand: #c75c24;
-	--color-brand-strong: #a64818;
-	--color-brand-soft: #f4dfd2;
+	--color-canvas: #f7f7f6;
+	--color-surface: #ffffff;
+	--color-ink: #272726;
+	--color-muted: #6e6e6b;
+	--color-faint: #737370;
+	--color-line: #e2e2df;
+	--color-soft: #f0f0ee;
+	--color-brand: #bd501d;
+	--color-brand-strong: #9e3d16;
+	--color-brand-soft: #fff7f2;
 	--color-on-brand: #ffffff;
-	--color-chrome: #f5f2ed;
-	--color-chrome-line: #ddd5cc;
-	--color-chrome-muted: #746962;
-	--color-on-chrome: #332c27;
-	--color-danger: #a54c45;
-	--color-danger-soft: #f4dedb;
-	--color-success: #39724d;
-	--color-success-soft: #dcecdf;
-	--color-warning: #956c12;
-	--color-warning-soft: #f8ebc9;
+	--color-chrome: #f7f7f6;
+	--color-chrome-line: #e2e2df;
+	--color-chrome-muted: #666662;
+	--color-on-chrome: #272726;
+	--color-danger: #b0443d;
+	--color-danger-soft: #fae8e6;
+	--color-success: #2b754c;
+	--color-success-soft: #e1f2e7;
+	--color-warning: #99620b;
+	--color-warning-soft: #fdf0d2;
 }
 
 .dark {
 	color-scheme: dark;
-	--color-canvas: #1d1815;
-	--color-surface: #2a231f;
-	--color-ink: #f3ece5;
-	--color-muted: #c6b9b0;
-	--color-faint: #95877e;
-	--color-line: #4b4038;
-	--color-soft: #352c27;
-	--color-brand: #ef8951;
-	--color-brand-strong: #d76d36;
-	--color-brand-soft: #593323;
-	--color-on-brand: #2b160d;
-	--color-chrome: #1d1815;
-	--color-chrome-line: #4b4038;
-	--color-chrome-muted: #c6b9b0;
-	--color-on-chrome: #f3ece5;
-	--color-danger: #f09a91;
+	--color-canvas: #181817;
+	--color-surface: #212120;
+	--color-ink: #f3f3f1;
+	--color-muted: #b6b6b2;
+	--color-faint: #898985;
+	--color-line: #393937;
+	--color-soft: #2a2a28;
+	--color-brand: #ef8950;
+	--color-brand-strong: #d46a30;
+	--color-brand-soft: #4d2d1d;
+	--color-on-brand: #2a170e;
+	--color-chrome: #1b1b1a;
+	--color-chrome-line: #393937;
+	--color-chrome-muted: #b6b6b2;
+	--color-on-chrome: #f3f3f1;
+	--color-danger: #ef9690;
 	--color-danger-soft: #512f2d;
-	--color-success: #9fd5ad;
-	--color-success-soft: #284532;
-	--color-warning: #f0c66a;
-	--color-warning-soft: #4a391b;
+	--color-success: #94cfa5;
+	--color-success-soft: #284533;
+	--color-warning: #e9c36b;
+	--color-warning-soft: #4b391d;
 }
 
 .theme-changing,
@@ -129,24 +129,100 @@ body {
 }
 
 @layer base {
-	:where(input, select, textarea) {
+	:where(
+		a[href],
+		button:not(:disabled),
+		[role='button']:not([aria-disabled='true']),
+		[role='menuitem']:not([aria-disabled='true']),
+		[role='option']:not([aria-disabled='true']),
+		[role='tab']:not([aria-disabled='true']),
+		input[type='checkbox']:not(:disabled),
+		input[type='radio']:not(:disabled),
+		input[type='range']:not(:disabled),
+		select:not(:disabled),
+		summary
+	) {
+		cursor: pointer;
+	}
+
+	:where(
+		button:disabled,
+		[aria-disabled='true'],
+		input:disabled,
+		select:disabled,
+		textarea:disabled
+	) {
+		cursor: not-allowed;
+	}
+
+	body
+		:is(
+			input:not([type='button']):not([type='checkbox']):not([type='color']):not([type='file']):not(
+					[type='hidden']
+				):not([type='image']):not([type='radio']):not([type='range']):not([type='reset']):not(
+					[type='submit']
+				),
+			select,
+			textarea
+		) {
+		accent-color: var(--color-brand);
 		border-color: var(--color-line);
 		border-radius: 0.375rem;
 		background-color: var(--color-surface);
+		caret-color: var(--color-brand);
 		color: var(--color-ink);
 	}
 
-	:where(input, select, textarea)::placeholder {
+	body
+		:is(
+			input:not([type='button']):not([type='checkbox']):not([type='color']):not([type='file']):not(
+					[type='hidden']
+				):not([type='image']):not([type='radio']):not([type='range']):not([type='reset']):not(
+					[type='submit']
+				),
+			textarea
+		)::placeholder {
 		color: var(--color-faint);
 	}
 
+	body input:-webkit-autofill,
+	body input:-webkit-autofill:hover,
+	body input:-webkit-autofill:focus {
+		-webkit-text-fill-color: var(--color-ink);
+		-webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+		caret-color: var(--color-brand);
+	}
+
+	body
+		:is(
+			input:not([type='button']):not([type='checkbox']):not([type='color']):not([type='file']):not(
+					[type='hidden']
+				):not([type='image']):not([type='radio']):not([type='range']):not([type='reset']):not(
+					[type='submit']
+				),
+			select,
+			textarea
+		):focus {
+		--tw-ring-color: var(--color-brand);
+		--tw-ring-offset-color: var(--color-surface);
+	}
+
 	:where(a, button, input, select, textarea):focus-visible {
-		outline: 1px solid var(--color-ink);
+		outline: 1px solid var(--color-brand);
 		outline-offset: 2px;
 	}
 
-	:where(input, select, textarea):focus-visible {
-		border-color: var(--color-ink) !important;
-		box-shadow: 0 0 0 1px var(--color-ink) !important;
+	body
+		:is(
+			input:not([type='button']):not([type='checkbox']):not([type='color']):not([type='file']):not(
+					[type='hidden']
+				):not([type='image']):not([type='radio']):not([type='range']):not([type='reset']):not(
+					[type='submit']
+				),
+			select,
+			textarea
+		):focus-visible {
+		border-color: var(--color-brand) !important;
+		box-shadow: 0 0 0 1px var(--color-brand) !important;
 	}
 }
