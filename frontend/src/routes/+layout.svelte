@@ -109,29 +109,31 @@
 		}`}
 	>
 		<aside class="flex h-full w-full flex-col border-r border-chrome-line bg-chrome">
-			<div class="px-3 py-5">
-				<div
-					class={`flex h-9 items-center ${sidebarExpanded ? 'justify-between gap-3' : 'justify-center'}`}
-				>
-					<a
-						class={`min-w-0 overflow-hidden font-semibold tracking-tight whitespace-nowrap text-on-chrome transition-[max-width,opacity] duration-200 ease-out ${
-							sidebarExpanded ? 'max-w-32 opacity-100' : 'max-w-0 opacity-0'
-						}`}
-						href={resolve('/')}
+			<div class="px-3">
+				<div class="flex h-16 items-center">
+					<div
+					class={`flex h-9 w-full items-center ${sidebarExpanded ? 'justify-between gap-3' : 'justify-center'}`}
 					>
-						Popisomator
-					</a>
-					<Collapsible.Trigger
-						class="inline-grid size-9 shrink-0 place-items-center rounded-md text-chrome-muted transition-colors hover:bg-on-chrome/10 hover:text-on-chrome"
-						aria-label={sidebarExpanded ? 'Skupi bočnu navigaciju' : 'Raširi bočnu navigaciju'}
-						title={sidebarExpanded ? 'Skupi bočnu navigaciju' : 'Raširi bočnu navigaciju'}
-					>
-						{#if sidebarExpanded}
-							<ChevronLeft class="size-4" aria-hidden="true" />
-						{:else}
-							<ChevronRight class="size-4" aria-hidden="true" />
-						{/if}
-					</Collapsible.Trigger>
+						<a
+							class={`min-w-0 overflow-hidden font-semibold tracking-tight whitespace-nowrap text-on-chrome transition-[max-width,opacity] duration-200 ease-out ${
+								sidebarExpanded ? 'max-w-32 opacity-100' : 'max-w-0 opacity-0'
+							}`}
+							href={resolve('/')}
+						>
+							Popisomator
+						</a>
+						<Collapsible.Trigger
+							class="inline-grid size-9 shrink-0 place-items-center rounded-md text-chrome-muted transition-colors hover:bg-on-chrome/10 hover:text-on-chrome"
+							aria-label={sidebarExpanded ? 'Skupi bočnu navigaciju' : 'Raširi bočnu navigaciju'}
+							title={sidebarExpanded ? 'Skupi bočnu navigaciju' : 'Raširi bočnu navigaciju'}
+						>
+							{#if sidebarExpanded}
+								<ChevronLeft class="size-4" aria-hidden="true" />
+							{:else}
+								<ChevronRight class="size-4" aria-hidden="true" />
+							{/if}
+						</Collapsible.Trigger>
+					</div>
 				</div>
 
 				<nav class="mt-10" aria-label="Glavna navigacija">
