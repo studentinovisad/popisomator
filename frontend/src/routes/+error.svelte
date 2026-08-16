@@ -4,8 +4,8 @@
 
 	let message = $derived(
 		page.status === 404
-			? 'Saša ne vidi stranicu.'
-			: 'Saša je naišao na problem. Probaće da vidi kasnije.'
+			? 'Ova stranica ne postoji…'
+			: 'Nastao je problem…'
 	);
 </script>
 
