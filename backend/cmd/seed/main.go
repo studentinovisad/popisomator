@@ -33,12 +33,27 @@ type chemicalRow struct {
 	Box            string
 }
 
-// generateChemicalRows fabricates a chemical inventory shaped like a real one (varied names,
-// manufacturers, purity grades and package sizes) without using any real data. Each row becomes
-// exactly one item. Selection is index-based (no randomness) so the output is stable across runs.
+// generateChemicalRows fabricates a chemical inventory shaped like a real one. Chemical names are
+// real (common lab reagents), since a chemical's name isn't sensitive on its own; everything tied
+// to this specific inventory (manufacturer, person in charge, dates, box) is still made up so no
+// real data is committed. Each row becomes exactly one item. Selection is index-based (no
+// randomness) so the output is stable across runs.
 func generateChemicalRows() []chemicalRow {
-	nameStems := []string{"Zen", "Vor", "Qui", "Flor", "Nebu", "Tryc", "Modax", "Peril", "Sorv", "Cryot", "Bexal", "Dracyl", "Fumor", "Glyzon", "Halvex"}
-	nameSuffixes := []string{"ox", "in", "yl", "ane", "ide", "ol", "ex", "an", "yte", "one"}
+	chemicalNames := []string{
+		"Acetone", "Methanol", "Ethanol", "Isopropanol", "Hexane", "Heptane", "Pentane",
+		"Cyclohexane", "Toluene", "Xylene", "Benzene", "Dichloromethane", "Chloroform",
+		"Diethyl ether", "Tetrahydrofuran", "Dimethyl sulfoxide", "Acetonitrile", "Ethyl acetate",
+		"Formaldehyde", "Glycerol", "Sulfuric acid", "Hydrochloric acid", "Nitric acid",
+		"Phosphoric acid", "Acetic acid", "Oxalic acid", "Citric acid", "Tartaric acid",
+		"Boric acid", "Sodium hydroxide", "Potassium hydroxide", "Ammonium hydroxide",
+		"Sodium chloride", "Potassium chloride", "Sodium carbonate", "Sodium bicarbonate",
+		"Sodium sulfate", "Sodium acetate", "Sodium thiosulfate", "Sodium hypochlorite",
+		"Ammonium chloride", "Ammonium nitrate", "Ammonium acetate", "Calcium chloride",
+		"Magnesium sulfate", "Barium chloride", "Zinc sulfate", "Copper sulfate",
+		"Iron(III) chloride", "Silver nitrate", "Potassium iodide", "Potassium permanganate",
+		"Hydrogen peroxide", "Iodine", "Bromine", "EDTA", "Phenolphthalein", "Methyl orange",
+		"Pyridine", "Triethylamine",
+	}
 	manufacturers := []string{"NovaChem", "Solvex Labs", "Ferronova", "BluePeak Reagents", "Cryotech Supply", "Meridian Chemicals", "Vertex Labs", "Arcadia Chemical", "Lumen Scientific", "Pinegrove Labs"}
 	purities := []string{"PA", "HPLC", "GC", "ultrapure", "technical", "0.99", "0.995", "0.997", "ACS"}
 	packageAmounts := []float64{1.0, 2.5, 5.0}
@@ -46,13 +61,13 @@ func generateChemicalRows() []chemicalRow {
 	noteDates := []string{"", "", "12.03.2023", "05.07.2024", "21.11.2022", ""}
 	boxes := []string{"", "", "Box 1", "Box 2", "Box 3", ""}
 
-	const rowCount = 60
+	rowCount := len(chemicalNames)
 	rows := make([]chemicalRow, 0, rowCount)
 	for i := 0; i < rowCount; i++ {
 		packageAmount := packageAmounts[i%len(packageAmounts)]
 
 		rows = append(rows, chemicalRow{
-			Name:           fmt.Sprintf("%s%s-%02d", nameStems[i%len(nameStems)], nameSuffixes[(i/len(nameStems))%len(nameSuffixes)], i+1),
+			Name:           chemicalNames[i],
 			Manufacturer:   manufacturers[i%len(manufacturers)],
 			Purity:         purities[i%len(purities)],
 			PackageAmount:  &packageAmount,
