@@ -3,9 +3,9 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import CreateItemForm from '$lib/components/CreateItemForm.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import CreateItemForm from '$lib/components/inventory/CreateItemForm.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Dodavanje stavke trenutno nije dostupno.',

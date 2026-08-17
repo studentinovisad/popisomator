@@ -2,9 +2,9 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import PropertyForm from '$lib/components/PropertyForm.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import PropertyForm from '$lib/components/catalog/PropertyForm.svelte';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Dodavanje svojstva trenutno nije dostupno.',

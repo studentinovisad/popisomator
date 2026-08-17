@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
-	import ItemPropertyValueInput from '$lib/components/ItemPropertyValueInput.svelte';
-	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/items';
+	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
+	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/domain/items';
 	import { Button, Label, ScrollArea, Separator } from 'bits-ui';
 
 	let {

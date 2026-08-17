@@ -10,12 +10,12 @@
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import { api } from '$lib/api';
-	import AccountLink from '$lib/components/AccountLink.svelte';
-	import NavigationLinks from '$lib/components/NavigationLinks.svelte';
-	import UserAvatar from '$lib/components/UserAvatar.svelte';
-	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/navigation';
-	import { session } from '$lib/session.svelte';
-	import { theme } from '$lib/theme.svelte';
+	import AccountLink from '$lib/components/app/AccountLink.svelte';
+	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
+	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
+	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/domain/navigation';
+	import { session } from '$lib/state/session.svelte';
+	import { theme } from '$lib/state/theme.svelte';
 	import { Button, Collapsible, Popover } from 'bits-ui';
 	import '../app.css';
 
@@ -112,7 +112,7 @@
 			<div class="px-3">
 				<div class="flex h-16 items-center">
 					<div
-					class={`flex h-9 w-full items-center ${sidebarExpanded ? 'justify-between gap-3' : 'justify-center'}`}
+						class={`flex h-9 w-full items-center ${sidebarExpanded ? 'justify-between gap-3' : 'justify-center'}`}
 					>
 						<a
 							class={`min-w-0 overflow-hidden font-semibold tracking-tight whitespace-nowrap text-on-chrome transition-[max-width,opacity] duration-200 ease-out ${

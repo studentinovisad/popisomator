@@ -472,26 +472,7 @@ func GetAllItemTypes(ctx context.Context) ([]dto.ItemType, error) {
 		return nil, err
 	}
 
-	itemTypes := make([]dto.ItemType, 0, len(rows))
-	index := make(map[int64]int, len(rows))
-	for _, row := range rows {
-		idx, ok := index[row.ItemType.ID]
-		if !ok {
-			idx = len(itemTypes)
-			index[row.ItemType.ID] = idx
-			itemTypes = append(itemTypes, dto.ToItemTypeDTO(row.ItemType))
-		}
-
-		if row.PropertyID.Valid {
-			itemTypes[idx].Properties = append(itemTypes[idx].Properties, dto.ItemTypeProperty{
-				ID:           row.PropertyID.Int64,
-				DefaultValue: row.DefaultValue,
-				Name:         row.PropertyName.String,
-			})
-		}
-	}
-
-	return itemTypes, nil
+	return itemTypesFromRows(rows), nil
 }
 
 func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage, error) {
@@ -508,6 +489,15 @@ func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage,
 		return dto.ItemTypesPage{}, err
 	}
 
+	return dto.ItemTypesPage{
+		Items:  itemTypesFromRows(rows),
+		Limit:  limit,
+		Offset: offset,
+		Total:  total,
+	}, nil
+}
+
+func itemTypesFromRows(rows []repository.GetAllItemTypesWithPropertiesRow) []dto.ItemType {
 	itemTypes := make([]dto.ItemType, 0, len(rows))
 	index := make(map[int64]int, len(rows))
 	for _, row := range rows {
@@ -527,7 +517,7 @@ func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage,
 		}
 	}
 
-	return dto.ItemTypesPage{Items: itemTypes, Limit: limit, Offset: offset, Total: total}, nil
+	return itemTypes
 }
 
 func GetItemType(ctx context.Context, id int64) (dto.ItemType, error) {

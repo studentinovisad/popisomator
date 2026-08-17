@@ -1,8 +1,8 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { ApiError, type UserRole } from '$lib/api';
-import type { AppPath } from '$lib/navigation';
-import { session } from '$lib/session.svelte';
+import type { AppPath } from '$lib/domain/navigation';
+import { session } from '$lib/state/session.svelte';
 
 type AuthPageOptions = {
 	unavailableMessage: string;

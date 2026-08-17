@@ -2,7 +2,7 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
 	import { Button } from 'bits-ui';
-	import { theme } from '$lib/theme.svelte';
+	import { theme } from '$lib/state/theme.svelte';
 </script>
 
 <Button.Root
