@@ -41,14 +41,23 @@ func ToItemDTO(item repository.Item) Item {
 
 // Property added to an item
 type ItemProperty struct {
-	ID    int64  `json:"id" validate:"required"`
-	Value string `json:"value" validate:"required"`
+	ID         int64  `json:"id" validate:"required"`
+	Value      string `json:"value" validate:"required"`
+	Visibility string `json:"visibility"`
 }
 
 func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
 	return ItemProperty{
 		ID:    itemProp.PropertyID,
 		Value: itemProp.PropertyValue,
+	}
+}
+
+func RowToItemPropertyDTO(propRow repository.GetItemPropertiesForItemsRow) ItemProperty {
+	return ItemProperty{
+		ID:         propRow.PropertyID,
+		Value:      propRow.PropertyValue,
+		Visibility: string(propRow.Visibility),
 	}
 }
 

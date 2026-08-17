@@ -50,7 +50,7 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
-	total, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
+	totalItems, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
 		TypeID:      typeID,
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
@@ -60,7 +60,7 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		return dto.ItemsPage{}, err
 	}
 
-	rows, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
+	items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
 		TypeID:      typeID,
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
@@ -73,31 +73,31 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		return dto.ItemsPage{}, err
 	}
 
-	items := make([]dto.Item, len(rows))
-	index := make(map[int64]int, len(rows))
-	ids := make([]int64, len(rows))
-	for i, row := range rows {
-		items[i] = dto.ToItemDTO(row)
-		index[row.ID] = i
-		ids[i] = row.ID
+	itemsDTO := make([]dto.Item, len(items))
+	index := make(map[int64]int, len(items))
+	itemIDs := make([]int64, len(items))
+	for i, item := range items {
+		itemsDTO[i] = dto.ToItemDTO(item)
+		index[item.ID] = i
+		itemIDs[i] = item.ID
 	}
 
-	if len(ids) > 0 {
-		propRows, err := db.Queries.GetItemPropertiesForItems(ctx, ids)
+	if len(itemIDs) > 0 {
+		propRows, err := db.Queries.GetItemPropertiesForItems(ctx, itemIDs)
 		if err != nil {
 			return dto.ItemsPage{}, err
 		}
-		for _, p := range propRows {
-			idx := index[p.ItemID]
-			items[idx].Properties = append(items[idx].Properties, dto.ToItemPropertyDTO(p))
+		for _, propRow := range propRows {
+			idx := index[propRow.ItemID]
+			itemsDTO[idx].Properties = append(itemsDTO[idx].Properties, dto.RowToItemPropertyDTO(propRow))
 		}
 	}
 
 	return dto.ItemsPage{
-		Items:  items,
+		Items:  itemsDTO,
 		Limit:  req.Limit,
 		Offset: req.Offset,
-		Total:  total,
+		Total:  totalItems,
 	}, nil
 }
 
