@@ -173,16 +173,17 @@ func (q *Queries) CreateItemBulk(ctx context.Context, arg CreateItemBulkParams) 
 }
 
 const createItemType = `-- name: CreateItemType :one
-INSERT INTO item_types (name, description) VALUES ($1, $2) RETURNING id, name, description, derived_name_format
+INSERT INTO item_types (name, description, derived_name_format) VALUES ($1, $2, $3) RETURNING id, name, description, derived_name_format
 `
 
 type CreateItemTypeParams struct {
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
 }
 
 func (q *Queries) CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error) {
-	row := q.db.QueryRow(ctx, createItemType, arg.Name, arg.Description)
+	row := q.db.QueryRow(ctx, createItemType, arg.Name, arg.Description, arg.DerivedNameFormat)
 	var i ItemType
 	err := row.Scan(
 		&i.ID,

@@ -145,7 +145,7 @@ SELECT * FROM item_types
 WHERE id = $1 LIMIT 1;
 
 -- name: CreateItemType :one
-INSERT INTO item_types (name, description) VALUES ($1, $2) RETURNING *;
+INSERT INTO item_types (name, description, derived_name_format) VALUES ($1, $2, $3) RETURNING *;
 
 -- name: UpdateItemTypeName :one
 UPDATE item_types SET name = $2 WHERE id = $1 RETURNING *;

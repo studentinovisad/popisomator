@@ -564,9 +564,15 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 		description = pgtype.Text{String: req.Description, Valid: true}
 	}
 
+	derived_name_format := pgtype.Text{String: "", Valid: false}
+	if len(req.DerivedNameFormat) > 0 {
+		derived_name_format = pgtype.Text{String: req.DerivedNameFormat, Valid: true}
+	}
+
 	itemType, err := queriesTx.CreateItemType(ctx, repository.CreateItemTypeParams{
-		Name:        req.Name,
-		Description: description,
+		Name:              req.Name,
+		Description:       description,
+		DerivedNameFormat: derived_name_format,
 	})
 	if err != nil {
 		return dto.ItemType{}, err
@@ -631,6 +637,17 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 			if _, err := queriesTx.UpdateItemTypeDescription(ctx, repository.UpdateItemTypeDescriptionParams{
 				ID:          req.ID,
 				Description: description,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if req.DerivedNameFormat != nil {
+			derived_name_format := pgtype.Text{String: *req.DerivedNameFormat, Valid: true}
+
+			if _, err := queriesTx.UpdateItemTypeDerivedNameFormat(ctx, repository.UpdateItemTypeDerivedNameFormatParams{
+				ID:                req.ID,
+				DerivedNameFormat: derived_name_format,
 			}); err != nil {
 				return dto.ItemType{}, err
 			}

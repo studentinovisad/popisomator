@@ -8,18 +8,20 @@ import (
 )
 
 type ItemType struct {
-	ID          int64              `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Properties  []ItemTypeProperty `json:"properties"`
+	ID                int64              `json:"id"`
+	Name              string             `json:"name"`
+	Description       string             `json:"description"`
+	Properties        []ItemTypeProperty `json:"properties"`
+	DerivedNameFormat string             `json:"derived_name_format"`
 }
 
 func ToItemTypeDTO(itemType repository.ItemType) ItemType {
 	return ItemType{
-		ID:          itemType.ID,
-		Name:        itemType.Name,
-		Description: itemType.Description.String,
-		Properties:  make([]ItemTypeProperty, 0),
+		ID:                itemType.ID,
+		Name:              itemType.Name,
+		Description:       itemType.Description.String,
+		Properties:        make([]ItemTypeProperty, 0),
+		DerivedNameFormat: itemType.DerivedNameFormat.String,
 	}
 }
 
@@ -28,6 +30,7 @@ type Item struct {
 	Consumption repository.ConsumptionStatus `json:"consumption"`
 	Properties  []ItemProperty               `json:"properties"`
 	TypeID      int64                        `json:"type_id"`
+	DerivedName string                       `json:"derived_name,omitempty"`
 }
 
 func ToItemDTO(item repository.Item) Item {
@@ -138,15 +141,17 @@ type ConsumeItemRequest struct {
 }
 
 type CreateItemTypeRequest struct {
-	Name        string             `json:"name" validate:"required"`
-	Description string             `json:"description"`
-	Properties  []ItemTypeProperty `json:"properties" validate:"dive"`
+	Name              string             `json:"name" validate:"required"`
+	Description       string             `json:"description"`
+	Properties        []ItemTypeProperty `json:"properties" validate:"dive"`
+	DerivedNameFormat string             `json:"derived_name_format"`
 }
 
 type UpdateItemTypeRequest struct {
-	ID          int64   `json:"id" validate:"required"`
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
+	ID                int64   `json:"id" validate:"required"`
+	Name              *string `json:"name"`
+	Description       *string `json:"description"`
+	DerivedNameFormat *string `json:"derived_name_format"`
 }
 
 type SetItemTypeRequest struct {
