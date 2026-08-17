@@ -133,24 +133,24 @@ func main() {
 }
 
 func seedUsers(ctx context.Context) error {
-	for _, u := range testUsers {
-		if _, err := service.GetUserByEmail(ctx, u.Email); err == nil {
-			fmt.Printf("user %s already exists, skipping\n", u.Email)
+	for _, testUser := range testUsers {
+		if _, err := service.GetUserByEmail(ctx, testUser.Email); err == nil {
+			fmt.Printf("user %s already exists, skipping\n", testUser.Email)
 			continue
 		} else if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 
 		created, err := service.CreateUser(ctx, dto.CreateUserRequest{
-			Email:    u.Email,
-			Password: u.Password,
-			FullName: u.FullName,
-			Role:     u.Role,
+			Email:    testUser.Email,
+			Password: testUser.Password,
+			FullName: testUser.FullName,
+			Role:     testUser.Role,
 		})
 		if err != nil {
-			return fmt.Errorf("creating user %s: %w", u.Email, err)
+			return fmt.Errorf("creating user %s: %w", testUser.Email, err)
 		}
-		fmt.Printf("created user %d (%s / %s)\n", created.ID, created.Email, u.Password)
+		fmt.Printf("created user %d (%s / %s)\n", created.ID, created.Email, testUser.Password)
 	}
 
 	return nil
@@ -162,14 +162,14 @@ func seedProperties(ctx context.Context) (map[string]int64, error) {
 		return nil, err
 	}
 	byName := make(map[string]int64, len(existing))
-	for _, p := range existing {
-		byName[p.Name] = p.ID
+	for _, property := range existing {
+		byName[property.Name] = property.ID
 	}
 
 	propIDs := make(map[string]int64, len(propertyDefs))
 	for _, def := range propertyDefs {
-		if id, ok := byName[def.name]; ok {
-			propIDs[def.key] = id
+		if propertyID, ok := byName[def.name]; ok {
+			propIDs[def.key] = propertyID
 			continue
 		}
 
@@ -192,13 +192,13 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 	if err != nil {
 		return 0, err
 	}
-	for _, t := range existing {
-		if t.Name == name {
-			fmt.Printf("item type %s already exists (%d), ensuring properties are attached\n", name, t.ID)
-			if err := attachMissingItemTypeProperties(ctx, t, propIDs); err != nil {
+	for _, existingType := range existing {
+		if existingType.Name == name {
+			fmt.Printf("item type %s already exists (%d), ensuring properties are attached\n", name, existingType.ID)
+			if err := attachMissingItemTypeProperties(ctx, existingType, propIDs); err != nil {
 				return 0, err
 			}
-			return t.ID, nil
+			return existingType.ID, nil
 		}
 	}
 
@@ -221,18 +221,18 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 
 func attachMissingItemTypeProperties(ctx context.Context, itemType dto.ItemType, propIDs map[string]int64) error {
 	attached := make(map[int64]bool, len(itemType.Properties))
-	for _, p := range itemType.Properties {
-		attached[p.ID] = true
+	for _, property := range itemType.Properties {
+		attached[property.ID] = true
 	}
 
 	for _, def := range propertyDefs {
-		id := propIDs[def.key]
-		if attached[id] {
+		propertyID := propIDs[def.key]
+		if attached[propertyID] {
 			continue
 		}
 		if _, err := service.AddItemTypeProperty(ctx, dto.AddUpdateItemTypePropertyRequest{
 			TypeID:     itemType.ID,
-			PropertyID: id,
+			PropertyID: propertyID,
 		}); err != nil {
 			return fmt.Errorf("attaching property %s to item type: %w", def.name, err)
 		}
@@ -299,20 +299,20 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 // formatPurity turns a bare decimal fraction (e.g. "0.995", as some rows record purity) into a
 // percentage string (e.g. "99.5%"). Values that aren't a plain fraction (grades like "P.A." or
 // "HPLC", or already-percented strings) pass through unchanged.
-func formatPurity(v string) string {
-	fraction, err := strconv.ParseFloat(v, 64)
+func formatPurity(purity string) string {
+	fraction, err := strconv.ParseFloat(purity, 64)
 	if err != nil {
-		return v
+		return purity
 	}
 	return strconv.FormatFloat(fraction*100, 'f', -1, 64) + "%"
 }
 
-func jsonString(v string) string {
-	b, _ := json.Marshal(v)
-	return string(b)
+func jsonString(value string) string {
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
 }
 
-func jsonNumber(v float64) string {
-	b, _ := json.Marshal(v)
-	return string(b)
+func jsonNumber(value float64) string {
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
 }
