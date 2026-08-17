@@ -1,5 +1,6 @@
 import { jsonRequest, request } from '$lib/api/client';
 import type {
+	AddUpdateItemTypePropertyRequest,
 	CreateItemTypeRequest,
 	CreatePropertyRequest,
 	ItemType,
@@ -24,15 +25,15 @@ export const catalogApi = {
 	updateItemType: (id: number, payload: UpdateItemTypeRequest) =>
 		request<ItemType>(`/item/types/${id}`, jsonRequest('PATCH', payload)),
 	deleteItemType: (id: number) => request<void>(`/item/types/${id}`, { method: 'DELETE' }),
-	addItemTypeProperty: (itemTypeID: number, propertyID: number, defaultValue: string | null) =>
+	addItemTypeProperty: (itemTypeID: number, payload: AddUpdateItemTypePropertyRequest) =>
 		request<ItemTypeProperty>(
 			`/item/types/${itemTypeID}/properties`,
-			jsonRequest('POST', { property_id: propertyID, default_value: defaultValue })
+			jsonRequest('POST', payload)
 		),
-	updateItemTypeProperty: (itemTypeID: number, propertyID: number, defaultValue: string | null) =>
+	updateItemTypeProperty: (itemTypeID: number, propertyID: number, payload: AddUpdateItemTypePropertyRequest) =>
 		request<ItemTypeProperty>(
 			`/item/types/${itemTypeID}/properties/${propertyID}`,
-			jsonRequest('PUT', { default_value: defaultValue })
+			jsonRequest('PATCH', payload)
 		),
 	removeItemTypeProperty: (itemTypeID: number, propertyID: number) =>
 		request<void>(`/item/types/${itemTypeID}/properties/${propertyID}`, { method: 'DELETE' }),

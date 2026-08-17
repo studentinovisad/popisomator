@@ -101,6 +101,12 @@ export type CreateItemTypeRequest = {
 
 export type UpdateItemTypeRequest = Partial<Pick<ItemType, 'name' | 'description'>>;
 
+export type AddUpdateItemTypePropertyRequest = {
+	property_id?: number;
+	default_value?: string;
+	visibility?: string;
+}
+
 export type PropertyValueType = 'string' | 'number' | 'boolean';
 
 export type Property = {
