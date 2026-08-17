@@ -21,7 +21,7 @@ func GetAllProperties(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListProperties(w http.ResponseWriter, r *http.Request) {
-	limit, err := paginationValue(r, "limit", defaultItemPageSize, 1, maxItemPageSize)
+	limit, err := paginationValue(r, "limit", defaultPageSize, minimumPageSize, maximumPageSize)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid limit")
 		return

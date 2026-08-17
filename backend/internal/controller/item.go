@@ -13,15 +13,10 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-const defaultItemPageSize int32 = 20
-const maxItemPageSize int32 = 100
-
-// paginationValue is defined in user.go (shared within this package).
-
 func GetAllItems(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	limit, err := paginationValue(r, "limit", defaultItemPageSize, 1, maxItemPageSize)
+	limit, err := paginationValue(r, "limit", defaultPageSize, minimumPageSize, maximumPageSize)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid limit")
 		return

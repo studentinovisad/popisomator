@@ -15,8 +15,6 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-const defaultUserPageSize int32 = 25
-const maxUserPageSize int32 = 100
 const maxUserSearchLength = 100
 
 func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +34,7 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, err := paginationValue(r, "limit", defaultUserPageSize, 1, maxUserPageSize)
+	limit, err := paginationValue(r, "limit", defaultPageSize, minimumPageSize, maximumPageSize)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid limit")
 		return
@@ -146,23 +144,4 @@ func ApproveRegistration(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, user)
-}
-
-func paginationValue(r *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
-	value := r.URL.Query().Get(key)
-	if value == "" {
-		return fallback, nil
-	}
-
-	parsed, err := strconv.ParseInt(value, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-
-	parsedValue := int32(parsed)
-	if parsedValue < minimum || (maximum > 0 && parsedValue > maximum) {
-		return 0, strconv.ErrSyntax
-	}
-
-	return parsedValue, nil
 }
