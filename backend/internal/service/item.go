@@ -466,18 +466,13 @@ func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
 // Item Types
 //
 
-func ListItemTypeOptions(ctx context.Context) ([]dto.ItemTypeOption, error) {
-	rows, err := db.Queries.ListItemTypeOptions(ctx)
+func GetAllItemTypes(ctx context.Context) ([]dto.ItemType, error) {
+	rows, err := db.Queries.GetAllItemTypesWithProperties(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	itemTypeOptions := make([]dto.ItemTypeOption, len(rows))
-	for index, row := range rows {
-		itemTypeOptions[index] = dto.ItemTypeOption{ID: row.ID, Name: row.Name}
-	}
-
-	return itemTypeOptions, nil
+	return itemTypesFromRows(rows), nil
 }
 
 func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage, error) {
@@ -502,7 +497,7 @@ func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage,
 	}, nil
 }
 
-func itemTypesFromRows(rows []repository.ListItemTypesWithPropertiesRow) []dto.ItemType {
+func itemTypesFromRows(rows []repository.GetAllItemTypesWithPropertiesRow) []dto.ItemType {
 	itemTypes := make([]dto.ItemType, 0, len(rows))
 	index := make(map[int64]int, len(rows))
 	for _, row := range rows {

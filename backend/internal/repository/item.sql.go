@@ -259,29 +259,73 @@ func (q *Queries) DeleteProperty(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const listItemTypeOptions = `-- name: ListItemTypeOptions :many
-SELECT id, name FROM item_types
-ORDER BY name
+const getAllItemTypes = `-- name: GetAllItemTypes :many
+
+SELECT id, name, description, derived_name_format FROM item_types
 `
 
-type ListItemTypeOptionsRow struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
 // ------ ITEM TYPES
-func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error) {
-	rows, err := q.db.Query(ctx, listItemTypeOptions)
+func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
+	rows, err := q.db.Query(ctx, getAllItemTypes)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListItemTypeOptionsRow
+	var items []ItemType
 	for rows.Next() {
-		var i ListItemTypeOptionsRow
+		var i ItemType
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Description,
+			&i.DerivedNameFormat,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllItemTypesWithProperties = `-- name: GetAllItemTypesWithProperties :many
+SELECT
+    t.id, t.name, t.description, t.derived_name_format,
+    tp.property_id,
+    tp.default_value,
+    p.name AS property_name
+FROM item_types t
+LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+LEFT JOIN properties p ON p.id = tp.property_id
+ORDER BY t.id
+`
+
+type GetAllItemTypesWithPropertiesRow struct {
+	ItemType     ItemType    `json:"item_type"`
+	PropertyID   pgtype.Int8 `json:"property_id"`
+	DefaultValue *string     `json:"default_value"`
+	PropertyName pgtype.Text `json:"property_name"`
+}
+
+func (q *Queries) GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error) {
+	rows, err := q.db.Query(ctx, getAllItemTypesWithProperties)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllItemTypesWithPropertiesRow
+	for rows.Next() {
+		var i GetAllItemTypesWithPropertiesRow
+		if err := rows.Scan(
+			&i.ItemType.ID,
+			&i.ItemType.Name,
+			&i.ItemType.Description,
+			&i.ItemType.DerivedNameFormat,
+			&i.PropertyID,
+			&i.DefaultValue,
+			&i.PropertyName,
 		); err != nil {
 			return nil, err
 		}

@@ -25,11 +25,6 @@ func ToItemTypeDTO(itemType repository.ItemType) ItemType {
 	}
 }
 
-type ItemTypeOption struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
 type Item struct {
 	ID          int64                        `json:"id"`
 	Consumption repository.ConsumptionStatus `json:"consumption"`

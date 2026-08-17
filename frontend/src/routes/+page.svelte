@@ -6,7 +6,7 @@
 		ApiError,
 		type ConsumptionStatus,
 		type Item,
-		type ItemTypeOption,
+		type ItemType,
 		type Property
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
@@ -20,7 +20,7 @@
 	const authPage = createAuthPage({ unavailableMessage: 'Inventar trenutno nije dostupan.' });
 
 	let items = $state<Item[]>([]);
-	let itemTypes = $state<ItemTypeOption[]>([]);
+	let itemTypes = $state<ItemType[]>([]);
 	let properties = $state<Property[]>([]);
 	let loadingInventory = $state(false);
 	let inventoryError = $state('');
