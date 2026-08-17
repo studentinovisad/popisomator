@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/studentinovisad/popisomator/backend/internal/config"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
@@ -34,5 +35,9 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 	default:
 		response.WriteError(w, http.StatusInternalServerError, fallback)
 		log.Printf("service error: %v", err)
+	}
+
+	if config.CurrentConfig.DebugMode {
+		log.Printf("[DEBUG] Service error occurred. Fallback %v, Error %v", fallback, err)
 	}
 }

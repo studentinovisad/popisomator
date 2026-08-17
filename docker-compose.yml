@@ -47,6 +47,7 @@ services:
       BACKEND_PORT: ${BACKEND_PORT:-8080}
       POPISOMATOR_JWT_SECRET: ${POPISOMATOR_JWT_SECRET}
       POPISOMATOR_POSTGRES_DSN: "postgres://${POSTGRES_APP_USER:-popisomator}:${POSTGRES_APP_PASSWORD:-popisomator}@postgres:5432/${POSTGRES_DB:-popisomator}?sslmode=disable"
+      POPISOMATOR_DEBUG: ${POPISOMATOR_DEBUG}
     depends_on:
       migrate:
         condition: service_completed_successfully
