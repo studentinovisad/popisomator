@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { NavigationItem } from '$lib/navigation';
-	import NavigationIcon from '$lib/components/NavigationIcon.svelte';
+	import type { NavigationItem } from '$lib/domain/navigation';
+	import NavigationIcon from '$lib/components/app/NavigationIcon.svelte';
 
 	let {
 		items,

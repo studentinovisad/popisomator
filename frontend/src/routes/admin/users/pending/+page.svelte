@@ -3,9 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import PendingRegistrations from '$lib/components/PendingRegistrations.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import PendingRegistrations from '$lib/components/auth/PendingRegistrations.svelte';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({

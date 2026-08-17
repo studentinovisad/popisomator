@@ -1,7 +1,7 @@
 <script lang="ts">
-	import BackendStatus from '$lib/components/BackendStatus.svelte';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-	import { pagination } from '$lib/pagination.svelte';
+	import BackendStatus from '$lib/components/app/BackendStatus.svelte';
+	import ThemeToggle from '$lib/components/app/ThemeToggle.svelte';
+	import { pagination } from '$lib/state/pagination.svelte';
 
 	function setRowsPerPage(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;

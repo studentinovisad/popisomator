@@ -3,7 +3,7 @@
 	import Boxes from '@lucide/svelte/icons/boxes';
 	import Settings from '@lucide/svelte/icons/settings';
 	import UsersRound from '@lucide/svelte/icons/users-round';
-	import type { NavigationIconName } from '$lib/navigation';
+	import type { NavigationIconName } from '$lib/domain/navigation';
 
 	let { name }: { name: NavigationIconName } = $props();
 </script>

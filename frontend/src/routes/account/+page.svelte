@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import { userRoleLabel } from '$lib/users';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import { userRoleLabel } from '$lib/domain/users';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Nalog trenutno nije dostupan.' });
 

@@ -2,11 +2,11 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type ItemType } from '$lib/api';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
-	import ItemTypesList from '$lib/components/ItemTypesList.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import { createServerPagination } from '$lib/server-pagination.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
+	import ItemTypesList from '$lib/components/catalog/ItemTypesList.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({

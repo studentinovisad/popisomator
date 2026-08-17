@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { api, ApiError, type User, type UserRole } from '$lib/api';
-	import UsersMobileList from '$lib/components/UsersMobileList.svelte';
-	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
-	import UsersTable from '$lib/components/UsersTable.svelte';
-	import UsersToolbar from '$lib/components/UsersToolbar.svelte';
-	import { pagination } from '$lib/pagination.svelte';
-	import type { UserRoleFilter } from '$lib/users';
+	import UsersMobileList from '$lib/components/users/UsersMobileList.svelte';
+	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
+	import UsersTable from '$lib/components/users/UsersTable.svelte';
+	import UsersToolbar from '$lib/components/users/UsersToolbar.svelte';
+	import { pagination } from '$lib/state/pagination.svelte';
+	import type { UserRoleFilter } from '$lib/domain/users';
 
 	let { refreshKey, currentUserID }: { refreshKey: number; currentUserID: number } = $props();
 

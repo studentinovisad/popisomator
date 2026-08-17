@@ -21,6 +21,14 @@ type UsersPage struct {
 	Total  int64  `json:"total"`
 }
 
+type ListUsersRequest struct {
+	Limit  int32
+	Offset int32
+	Search string
+	Role   string
+	Status string
+}
+
 func ToUserDTO(user repository.User) User {
 	return User{
 		ID:       user.ID,

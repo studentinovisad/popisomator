@@ -3,7 +3,12 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Select } from 'bits-ui';
 	import type { ConsumptionStatus, Item, ItemType, Property, User } from '$lib/api';
-	import { consumptionClass, consumptionLabel, consumptionOptions, displayJson } from '$lib/items';
+	import {
+		consumptionClass,
+		consumptionLabel,
+		consumptionOptions,
+		displayJson
+	} from '$lib/domain/items';
 
 	let {
 		items,

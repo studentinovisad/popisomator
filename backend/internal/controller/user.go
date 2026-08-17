@@ -11,12 +11,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/pagination"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-const defaultUserPageSize int32 = 25
-const maxUserPageSize int32 = 100
 const maxUserSearchLength = 100
 
 func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
@@ -36,13 +35,13 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, err := paginationValue(r, "limit", defaultUserPageSize, 1, maxUserPageSize)
+	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid limit")
 		return
 	}
 
-	offset, err := paginationValue(r, "offset", 0, 0, 0)
+	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid offset")
 		return
@@ -66,7 +65,13 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := service.ListUsers(r.Context(), limit, offset, search, role, status)
+	users, err := service.ListUsers(r.Context(), dto.ListUsersRequest{
+		Limit:  limit,
+		Offset: offset,
+		Search: search,
+		Role:   role,
+		Status: status,
+	})
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "error fetching users")
 		log.Printf("error fetching users: %v", err)
@@ -140,23 +145,4 @@ func ApproveRegistration(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, user)
-}
-
-func paginationValue(r *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
-	value := r.URL.Query().Get(key)
-	if value == "" {
-		return fallback, nil
-	}
-
-	parsed, err := strconv.ParseInt(value, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-
-	parsedValue := int32(parsed)
-	if parsedValue < minimum || (maximum > 0 && parsedValue > maximum) {
-		return 0, strconv.ErrSyntax
-	}
-
-	return parsedValue, nil
 }
