@@ -66,7 +66,7 @@ type ItemTypeProperty struct {
 	ID           int64   `json:"id" validate:"required"`
 	DefaultValue *string `json:"default_value"`
 	Name         string  `json:"name,omitempty"`
-	Visibility   string  `json:"visibility"`
+	Visibility   string  `json:"visibility" validate:"omitempty,oneof=overview details"`
 }
 
 func ToItemTypePropertyDTO(itemTypeProp repository.ItemTypeProperty) ItemTypeProperty {
@@ -203,5 +203,5 @@ type AddUpdateItemTypePropertyRequest struct {
 	TypeID       int64                          `json:"type_id" validate:"required"`
 	PropertyID   int64                          `json:"property_id" validate:"required"`
 	DefaultValue *string                        `json:"default_value"`
-	Visibility   *repository.PropertyVisibility `json:"visibility" validate:"oneof=overview details"`
+	Visibility   *repository.PropertyVisibility `json:"visibility" validate:"omitempty,oneof=overview details"`
 }
