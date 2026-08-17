@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/pagination"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
@@ -34,13 +35,13 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, err := paginationValue(r, "limit", defaultPageSize, minimumPageSize, maximumPageSize)
+	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid limit")
 		return
 	}
 
-	offset, err := paginationValue(r, "offset", 0, 0, 0)
+	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid offset")
 		return

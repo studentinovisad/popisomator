@@ -1,4 +1,4 @@
-package controller
+package pagination
 
 import (
 	"net/http"
@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	defaultPageSize int32 = 20
-	minimumPageSize int32 = 5
-	maximumPageSize int32 = 50
+	DefaultPageSize int32 = 20
+	MinimumPageSize int32 = 5
+	MaximumPageSize int32 = 50
 )
 
-func paginationValue(r *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
-	value := r.URL.Query().Get(key)
+func QueryValue(request *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
+	value := request.URL.Query().Get(key)
 	if value == "" {
 		return fallback, nil
 	}
