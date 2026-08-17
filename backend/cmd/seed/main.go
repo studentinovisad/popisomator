@@ -146,6 +146,7 @@ func seedUsers(ctx context.Context) error {
 			Password: testUser.Password,
 			FullName: testUser.FullName,
 			Role:     testUser.Role,
+			Status:   "active",
 		})
 		if err != nil {
 			return fmt.Errorf("creating user %s: %w", testUser.Email, err)
