@@ -84,8 +84,8 @@ WHERE item_id = $1;
 -- name: GetItemPropertiesForItems :many
 SELECT ip.*, itp.visibility FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
-JOIN item_type_properties itp ON i.type_id = itp.type_id
-WHERE item_id = ANY(sqlc.arg('item_ids')::bigint[]);
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+WHERE ip.item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: AddItemProperty :one
 INSERT INTO item_properties (item_id, property_id, property_value) VALUES ($1, $2, $3) RETURNING *;

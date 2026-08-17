@@ -446,8 +446,8 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemID int64) ([]ItemPr
 const getItemPropertiesForItems = `-- name: GetItemPropertiesForItems :many
 SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
-JOIN item_type_properties itp ON i.type_id = itp.type_id
-WHERE item_id = ANY($1::bigint[])
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+WHERE ip.item_id = ANY($1::bigint[])
 `
 
 type GetItemPropertiesForItemsRow struct {
