@@ -107,19 +107,9 @@ DELETE FROM item_properties WHERE item_id = $1 AND property_id = $2;
 
 -------- ITEM TYPES
 
--- name: GetAllItemTypes :many
-SELECT * FROM item_types;
-
--- name: GetAllItemTypesWithProperties :many
-SELECT
-    sqlc.embed(t),
-    tp.property_id,
-    tp.default_value,
-    p.name AS property_name
-FROM item_types t
-LEFT JOIN item_type_properties tp ON tp.type_id = t.id
-LEFT JOIN properties p ON p.id = tp.property_id
-ORDER BY t.id;
+-- name: ListItemTypeOptions :many
+SELECT id, name FROM item_types
+ORDER BY name;
 
 -- name: ListItemTypesWithProperties :many
 SELECT

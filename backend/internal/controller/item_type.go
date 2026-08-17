@@ -11,8 +11,8 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-func GetAllItemTypes(w http.ResponseWriter, r *http.Request) {
-	itemTypes, err := service.GetAllItemTypes(r.Context())
+func ListItemTypeOptions(w http.ResponseWriter, r *http.Request) {
+	itemTypes, err := service.ListItemTypeOptions(r.Context())
 	if err != nil {
 		writeServiceError(w, err, "couldn't get types")
 		return

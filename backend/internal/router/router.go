@@ -115,7 +115,7 @@ func New() *http.ServeMux {
 	))
 	mux.Handle("GET /item/types", middleware.Chain(
 		middleware.RequireAuth,
-		middleware.Handle(controller.GetAllItemTypes),
+		middleware.Handle(controller.ListItemTypeOptions),
 	))
 	mux.Handle("GET /item/types/page", middleware.Chain(
 		middleware.RequireAuth,

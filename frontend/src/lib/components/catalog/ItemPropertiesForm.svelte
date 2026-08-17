@@ -1,8 +1,16 @@
 <script lang="ts">
-	import { api, ApiError, type Item, type ItemType, type Property } from '$lib/api';
+	import {
+		api,
+		ApiError,
+		type Item,
+		type ItemType,
+		type ItemTypeOption,
+		type Property
+	} from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import { defaultJsonValue } from '$lib/domain/items';
 	import { Button, Label, Select, Separator } from 'bits-ui';
+	import { untrack } from 'svelte';
 
 	let {
 		item,
@@ -12,17 +20,19 @@
 		onsaved
 	}: {
 		item: Item;
-		itemTypes: ItemType[];
+		itemTypes: ItemTypeOption[];
 		properties: Property[];
 		onitemtypechange: (typeID: number) => Promise<void>;
 		onsaved: () => void;
 	} = $props();
 
-	let type = $derived(itemTypes.find((itemType) => itemType.id === item.type_id));
+	let itemType = $state<ItemType | null>(null);
+	let loadingItemType = $state(false);
+	let itemTypeLoadVersion = 0;
 	let editablePropertyIDs = $derived([
 		...new Set([
 			...item.properties.map((property) => property.id),
-			...(type?.properties.map((property) => property.id) ?? [])
+			...(itemType?.properties.map((property) => property.id) ?? [])
 		])
 	]);
 	let propertyByID = $derived(new Map(properties.map((property) => [property.id, property])));
@@ -35,6 +45,26 @@
 	let changingType = $state(false);
 	let selectedTypeID = $state('');
 	let error = $state('');
+
+	async function loadItemType(typeID: number) {
+		const version = ++itemTypeLoadVersion;
+		loadingItemType = true;
+		try {
+			const nextItemType = await api.getItemType(typeID);
+			if (version !== itemTypeLoadVersion) return;
+			itemType = nextItemType;
+		} catch (reason) {
+			if (version !== itemTypeLoadVersion) return;
+			error = reason instanceof ApiError ? reason.message : 'Svojstva tipa nisu učitana.';
+		} finally {
+			if (version === itemTypeLoadVersion) loadingItemType = false;
+		}
+	}
+
+	$effect(() => {
+		const typeID = item.type_id;
+		untrack(() => void loadItemType(typeID));
+	});
 
 	$effect(() => {
 		selectedTypeID = String(item.type_id);
@@ -57,6 +87,7 @@
 		error = '';
 		try {
 			await onitemtypechange(typeID);
+			await loadItemType(typeID);
 		} catch (reason) {
 			selectedTypeID = String(item.type_id);
 			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije promenjen.';
@@ -103,7 +134,7 @@
 			<Select.Trigger
 				id="item-type"
 				class="mt-1 flex h-10 w-full items-center justify-between rounded-md border border-line bg-surface px-3 text-left text-sm text-ink hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
-				disabled={changingType || saving}
+				disabled={changingType || saving || loadingItemType}
 			>
 				<Select.Value />
 			</Select.Trigger>
@@ -131,7 +162,9 @@
 		</p>
 	</div>
 
-	{#if editablePropertyIDs.length}
+	{#if loadingItemType}
+		<p class="text-sm text-muted">Učitavanje svojstava tipa…</p>
+	{:else if editablePropertyIDs.length}
 		{#each editablePropertyIDs as propertyID (propertyID)}
 			{@const property = propertyByID.get(propertyID)}
 			{#if property}

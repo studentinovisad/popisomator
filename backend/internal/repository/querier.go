@@ -26,8 +26,6 @@ type Querier interface {
 	DeleteItemType(ctx context.Context, id int64) (int64, error)
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
 	//------ ITEM TYPES
-	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
-	GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllItemTypesWithPropertiesRow, error)
 	GetAllItems(ctx context.Context) ([]Item, error)
 	//------ PROPERTIES
 	GetAllProperties(ctx context.Context) ([]Property, error)
@@ -44,6 +42,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	Healthcheck(ctx context.Context) (int32, error)
 	ListItemTypesWithProperties(ctx context.Context, arg ListItemTypesWithPropertiesParams) ([]ListItemTypesWithPropertiesRow, error)
+	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)

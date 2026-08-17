@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api, ApiError, type ItemType, type Property } from '$lib/api';
+	import { api, ApiError, type ItemType, type ItemTypeOption, type Property } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 	import { defaultJsonValue } from '$lib/domain/items';
@@ -11,7 +11,7 @@
 		oncreated,
 		oncancel
 	}: {
-		itemTypes: ItemType[];
+		itemTypes: ItemTypeOption[];
 		properties: Property[];
 		oncreated: () => void;
 		oncancel?: () => void;
@@ -26,20 +26,42 @@
 	let typeOptions = $derived(
 		itemTypes.map((itemType) => ({ value: String(itemType.id), label: itemType.name }))
 	);
-	let selectedType = $derived(itemTypes.find((itemType) => itemType.id === Number(selectedTypeID)));
+	let selectedType = $state<ItemType | null>(null);
+	let loadingType = $state(false);
+	let typeLoadVersion = 0;
 	let propertiesByID = $derived(new Map(properties.map((property) => [property.id, property])));
 
-	function selectType(value: string) {
+	async function selectType(value: string) {
+		const version = ++typeLoadVersion;
 		selectedTypeID = value;
-		const itemType = itemTypes.find((candidate) => candidate.id === Number(value));
-		propertyValues = Object.fromEntries(
-			(itemType?.properties ?? []).flatMap((itemProperty) => {
-				const property = propertiesByID.get(itemProperty.id);
-				return property
-					? [[itemProperty.id, defaultJsonValue(property.value_type, itemProperty.default_value)]]
-					: [];
-			})
-		);
+		selectedType = null;
+		propertyValues = {};
+		if (!value) {
+			loadingType = false;
+			return;
+		}
+
+		loadingType = true;
+		error = '';
+		try {
+			const itemType = await api.getItemType(Number(value));
+			if (version !== typeLoadVersion) return;
+
+			selectedType = itemType;
+			propertyValues = Object.fromEntries(
+				itemType.properties.flatMap((itemProperty) => {
+					const property = propertiesByID.get(itemProperty.id);
+					return property
+						? [[itemProperty.id, defaultJsonValue(property.value_type, itemProperty.default_value)]]
+						: [];
+				})
+			);
+		} catch (reason) {
+			if (version !== typeLoadVersion) return;
+			error = reason instanceof ApiError ? reason.message : 'Svojstva tipa nisu učitana.';
+		} finally {
+			if (version === typeLoadVersion) loadingType = false;
+		}
 	}
 
 	async function createItem(event: SubmitEvent) {
@@ -123,7 +145,9 @@
 		required
 	/>
 
-	{#if selectedType?.properties.length}
+	{#if loadingType}
+		<p class="text-sm text-muted">Učitavanje svojstava tipa…</p>
+	{:else if selectedType?.properties.length}
 		<fieldset class="grid gap-3 border-t border-line pt-4">
 			<legend class="text-sm font-medium text-ink">Svojstva</legend>
 			{#each selectedType.properties as itemProperty (itemProperty.id)}
@@ -155,7 +179,7 @@
 	<div class="flex items-center gap-3">
 		<Button.Root
 			class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
-			disabled={creating || !selectedTypeID}
+			disabled={creating || loadingType || !selectedType}
 			type="submit"
 		>
 			{creating ? 'Čuvanje…' : 'Dodaj stavku'}

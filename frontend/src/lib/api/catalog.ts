@@ -4,6 +4,7 @@ import type {
 	CreateItemTypeRequest,
 	CreatePropertyRequest,
 	ItemType,
+	ItemTypeOption,
 	ItemTypeProperty,
 	ItemTypesPage,
 	PageRequest,
@@ -14,7 +15,7 @@ import type {
 } from '$lib/api/types';
 
 export const catalogApi = {
-	listItemTypes: () => request<ItemType[]>('/item/types'),
+	listItemTypes: () => request<ItemTypeOption[]>('/item/types'),
 	listItemTypesPage: ({ limit = 20, offset = 0 }: PageRequest = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		return request<ItemTypesPage>(`/item/types/page?${query}`);
@@ -26,11 +27,12 @@ export const catalogApi = {
 		request<ItemType>(`/item/types/${id}`, jsonRequest('PATCH', payload)),
 	deleteItemType: (id: number) => request<void>(`/item/types/${id}`, { method: 'DELETE' }),
 	addItemTypeProperty: (itemTypeID: number, payload: AddUpdateItemTypePropertyRequest) =>
-		request<ItemTypeProperty>(
-			`/item/types/${itemTypeID}/properties`,
-			jsonRequest('POST', payload)
-		),
-	updateItemTypeProperty: (itemTypeID: number, propertyID: number, payload: AddUpdateItemTypePropertyRequest) =>
+		request<ItemTypeProperty>(`/item/types/${itemTypeID}/properties`, jsonRequest('POST', payload)),
+	updateItemTypeProperty: (
+		itemTypeID: number,
+		propertyID: number,
+		payload: AddUpdateItemTypePropertyRequest
+	) =>
 		request<ItemTypeProperty>(
 			`/item/types/${itemTypeID}/properties/${propertyID}`,
 			jsonRequest('PATCH', payload)
