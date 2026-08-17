@@ -489,8 +489,18 @@ func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage,
 		return dto.ItemTypesPage{}, err
 	}
 
+	convertedRows := make([]repository.GetAllItemTypesWithPropertiesRow, len(rows))
+	for i, row := range rows {
+		convertedRows[i] = repository.GetAllItemTypesWithPropertiesRow{
+			ItemType:     row.ItemType,
+			PropertyID:   row.PropertyID,
+			DefaultValue: row.DefaultValue,
+			PropertyName: row.PropertyName,
+		}
+	}
+
 	return dto.ItemTypesPage{
-		Items:  itemTypesFromRows(rows),
+		Items:  itemTypesFromRows(convertedRows),
 		Limit:  limit,
 		Offset: offset,
 		Total:  total,
@@ -578,10 +588,16 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 				}
 			}
 
+			visibility := repository.PropertyVisibilityOverview
+			if propRequest.Visibility != "" {
+				visibility = repository.PropertyVisibility(propRequest.Visibility)
+			}
+
 			prop, err := queriesTx.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 				TypeID:       itemType.ID,
 				PropertyID:   propRequest.ID,
 				DefaultValue: propRequest.DefaultValue,
+				Visibility:   visibility,
 			})
 			if err != nil {
 				return dto.ItemType{}, err
@@ -705,10 +721,16 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 		}
 	}
 
+	visibility := repository.PropertyVisibilityOverview
+	if req.Visibility != nil {
+		visibility = *req.Visibility
+	}
+
 	typeProp, err := db.Queries.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 		TypeID:       req.TypeID,
 		PropertyID:   req.PropertyID,
 		DefaultValue: req.DefaultValue,
+		Visibility:   visibility,
 	})
 	if err != nil {
 		return dto.ItemTypeProperty{}, err
@@ -722,6 +744,10 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyRequest) (dto.ItemTypeProperty, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.ItemTypeProperty{}, err
+	}
+
+	if req.DefaultValue == nil && req.Visibility == nil {
+		return dto.ItemTypeProperty{}, ErrNoUpdateFields
 	}
 
 	var typeProp repository.ItemTypeProperty

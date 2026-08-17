@@ -65,17 +65,23 @@ func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBu
 }
 
 const addItemTypeProperty = `-- name: AddItemTypeProperty :one
-INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($1, $2, $3) RETURNING type_id, property_id, default_value, visibility
+INSERT INTO item_type_properties (type_id, property_id, default_value, visibility) VALUES ($1, $2, $3, $4) RETURNING type_id, property_id, default_value, visibility
 `
 
 type AddItemTypePropertyParams struct {
-	TypeID       int64   `json:"type_id"`
-	PropertyID   int64   `json:"property_id"`
-	DefaultValue *string `json:"default_value"`
+	TypeID       int64              `json:"type_id"`
+	PropertyID   int64              `json:"property_id"`
+	DefaultValue *string            `json:"default_value"`
+	Visibility   PropertyVisibility `json:"visibility"`
 }
 
 func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error) {
-	row := q.db.QueryRow(ctx, addItemTypeProperty, arg.TypeID, arg.PropertyID, arg.DefaultValue)
+	row := q.db.QueryRow(ctx, addItemTypeProperty,
+		arg.TypeID,
+		arg.PropertyID,
+		arg.DefaultValue,
+		arg.Visibility,
+	)
 	var i ItemTypeProperty
 	err := row.Scan(
 		&i.TypeID,
