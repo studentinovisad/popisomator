@@ -1,5 +1,5 @@
 import { ApiError } from '$lib/api';
-import { pagination } from '$lib/pagination.svelte';
+import { pagination } from '$lib/state/pagination.svelte';
 
 type ServerPage<T> = {
 	items: T[];

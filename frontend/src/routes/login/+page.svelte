@@ -2,8 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/api';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
-	import { session } from '$lib/session.svelte';
+	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
+	import { session } from '$lib/state/session.svelte';
 	import { Button, Label } from 'bits-ui';
 
 	let email = $state('');

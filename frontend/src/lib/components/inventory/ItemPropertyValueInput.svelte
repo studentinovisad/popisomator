@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Property } from '$lib/api';
-	import NumberInput from '$lib/components/NumberInput.svelte';
+	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 
 	let {
 		property,

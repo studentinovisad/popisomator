@@ -6,8 +6,8 @@
 		type Property,
 		type PropertyValueType
 	} from '$lib/api';
-	import { propertyValueTypeOptions } from '$lib/items';
-	import NumberInput from '$lib/components/NumberInput.svelte';
+	import { propertyValueTypeOptions } from '$lib/domain/items';
+	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {

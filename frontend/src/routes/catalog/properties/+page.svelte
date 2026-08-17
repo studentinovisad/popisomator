@@ -3,11 +3,11 @@
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type Property } from '$lib/api';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
-	import PropertiesList from '$lib/components/PropertiesList.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import { createServerPagination } from '$lib/server-pagination.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
+	import PropertiesList from '$lib/components/catalog/PropertiesList.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({

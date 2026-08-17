@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
-	import ItemPropertyValueInput from '$lib/components/ItemPropertyValueInput.svelte';
-	import NumberInput from '$lib/components/NumberInput.svelte';
-	import { defaultJsonValue } from '$lib/items';
+	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
+	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import { defaultJsonValue } from '$lib/domain/items';
 	import { Button, Label, Select, Separator } from 'bits-ui';
 
 	let {

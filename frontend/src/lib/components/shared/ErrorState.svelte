@@ -1,5 +1,5 @@
 <script lang="ts">
-	import FallenClipboard from '$lib/components/FallenClipboard.svelte';
+	import FallenClipboard from '$lib/components/shared/FallenClipboard.svelte';
 
 	let {
 		code,

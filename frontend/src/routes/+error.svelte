@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import ErrorState from '$lib/components/ErrorState.svelte';
+	import ErrorState from '$lib/components/shared/ErrorState.svelte';
 
 	let message = $derived(page.status === 404 ? 'Ova stranica ne postoji…' : 'Nastao je problem…');
 </script>

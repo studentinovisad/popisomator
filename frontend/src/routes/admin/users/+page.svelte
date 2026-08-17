@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import CreateUserForm from '$lib/components/CreateUserForm.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import UserList from '$lib/components/UserList.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import CreateUserForm from '$lib/components/auth/CreateUserForm.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import UserList from '$lib/components/users/UserList.svelte';
 	import { Dialog, Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { User } from '$lib/api';
-	import UserAvatar from '$lib/components/UserAvatar.svelte';
+	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
 
 	let {
 		user,

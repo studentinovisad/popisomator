@@ -1,5 +1,5 @@
 <script lang="ts">
-	import PageLoader from '$lib/components/PageLoader.svelte';
+	import PageLoader from '$lib/components/shared/PageLoader.svelte';
 	import type { Snippet } from 'svelte';
 
 	let {

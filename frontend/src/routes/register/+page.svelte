@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api, ApiError } from '$lib/api';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
+	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
 	import { Button, Label } from 'bits-ui';
 
 	let full_name = $state('');

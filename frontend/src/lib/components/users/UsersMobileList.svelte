@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { User, UserRole } from '$lib/api';
-	import RoleSelect from '$lib/components/RoleSelect.svelte';
+	import RoleSelect from '$lib/components/auth/RoleSelect.svelte';
 
 	let {
 		users,

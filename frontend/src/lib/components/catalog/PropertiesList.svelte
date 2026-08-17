@@ -5,7 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { Collapsible } from 'bits-ui';
 	import type { Property } from '$lib/api';
-	import { propertyValueTypeLabel } from '$lib/items';
+	import { propertyValueTypeLabel } from '$lib/domain/items';
 
 	let {
 		properties,

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, ApiError, type User } from '$lib/api';
-	import RegistrationApproval from '$lib/components/RegistrationApproval.svelte';
-	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
-	import { pagination } from '$lib/pagination.svelte';
+	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
+	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
+	import { pagination } from '$lib/state/pagination.svelte';
 
 	let { onempty }: { onempty: () => void } = $props();
 

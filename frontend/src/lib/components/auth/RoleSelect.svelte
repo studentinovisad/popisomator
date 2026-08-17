@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Select } from 'bits-ui';
 	import type { UserRole } from '$lib/api';
-	import { userRoleOptions } from '$lib/users';
+	import { userRoleOptions } from '$lib/domain/users';
 
 	let {
 		id,

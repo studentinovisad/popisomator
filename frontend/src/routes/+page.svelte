@@ -9,12 +9,12 @@
 		type ItemType,
 		type Property
 	} from '$lib/api';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import PaginationFooter from '$lib/components/PaginationFooter.svelte';
-	import ItemPropertiesForm from '$lib/components/ItemPropertiesForm.svelte';
-	import InventoryList from '$lib/components/InventoryList.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
-	import { pagination } from '$lib/pagination.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
+	import ItemPropertiesForm from '$lib/components/catalog/ItemPropertiesForm.svelte';
+	import InventoryList from '$lib/components/inventory/InventoryList.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import { pagination } from '$lib/state/pagination.svelte';
 	import { Dialog, Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Inventar trenutno nije dostupan.' });

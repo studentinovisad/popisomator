@@ -4,9 +4,9 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type Property } from '$lib/api';
-	import { createAuthPage } from '$lib/auth-page.svelte';
-	import PropertyForm from '$lib/components/PropertyForm.svelte';
-	import ProtectedPageState from '$lib/components/ProtectedPageState.svelte';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import PropertyForm from '$lib/components/catalog/PropertyForm.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Izmena svojstva trenutno nije dostupna.',

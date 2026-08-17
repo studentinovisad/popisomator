@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import Search from '@lucide/svelte/icons/search';
 	import { Button, Portal, Select } from 'bits-ui';
-	import { roleFilterOptions, type UserRoleFilter } from '$lib/users';
+	import { roleFilterOptions, type UserRoleFilter } from '$lib/domain/users';
 
 	let {
 		total,

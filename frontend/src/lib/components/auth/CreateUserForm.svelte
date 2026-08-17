@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api, ApiError, type UserRole } from '$lib/api';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
-	import RoleSelect from '$lib/components/RoleSelect.svelte';
+	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
+	import RoleSelect from '$lib/components/auth/RoleSelect.svelte';
 	import { Button, Label } from 'bits-ui';
 
 	let { oncreated }: { oncreated: () => void } = $props();
