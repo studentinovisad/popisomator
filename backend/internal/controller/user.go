@@ -66,7 +66,13 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := service.ListUsers(r.Context(), limit, offset, search, role, status)
+	users, err := service.ListUsers(r.Context(), dto.ListUsersRequest{
+		Limit:  limit,
+		Offset: offset,
+		Search: search,
+		Role:   role,
+		Status: status,
+	})
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "error fetching users")
 		log.Printf("error fetching users: %v", err)

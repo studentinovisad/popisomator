@@ -31,22 +31,22 @@ func GetUserByEmail(ctx context.Context, email string) (dto.User, error) {
 	return userDTO, nil
 }
 
-func ListUsers(ctx context.Context, limit, offset int32, search, role, status string) (dto.UsersPage, error) {
+func ListUsers(ctx context.Context, request dto.ListUsersRequest) (dto.UsersPage, error) {
 	users, err := db.Queries.ListUsers(ctx, repository.ListUsersParams{
-		Search:       search,
-		RoleFilter:   role,
-		StatusFilter: status,
-		PageOffset:   offset,
-		PageLimit:    limit,
+		Search:       request.Search,
+		RoleFilter:   request.Role,
+		StatusFilter: request.Status,
+		PageOffset:   request.Offset,
+		PageLimit:    request.Limit,
 	})
 	if err != nil {
 		return dto.UsersPage{}, err
 	}
 
 	total, err := db.Queries.CountUsers(ctx, repository.CountUsersParams{
-		Search:       search,
-		RoleFilter:   role,
-		StatusFilter: status,
+		Search:       request.Search,
+		RoleFilter:   request.Role,
+		StatusFilter: request.Status,
 	})
 	if err != nil {
 		return dto.UsersPage{}, err
@@ -59,8 +59,8 @@ func ListUsers(ctx context.Context, limit, offset int32, search, role, status st
 
 	return dto.UsersPage{
 		Items:  items,
-		Limit:  limit,
-		Offset: offset,
+		Limit:  request.Limit,
+		Offset: request.Offset,
 		Total:  total,
 	}, nil
 }
