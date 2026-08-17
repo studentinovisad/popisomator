@@ -43,9 +43,13 @@ export type CreateUserRequest = RegistrationRequest & {
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 
+export type PropertyVisibility =
+	'overview' | 'details';
+
 export type ItemProperty = {
 	id: number;
 	value: string;
+	visibility?: PropertyVisibility;
 };
 
 export type Item = {
@@ -72,6 +76,7 @@ export type ItemTypeProperty = {
 	id: number;
 	default_value: string | null;
 	name?: string;
+	visibility: PropertyVisibility;
 };
 
 export type ItemType = {
