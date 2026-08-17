@@ -55,6 +55,48 @@ func (ns NullConsumptionStatus) Value() (driver.Value, error) {
 	return string(ns.ConsumptionStatus), nil
 }
 
+type PropertyVisibility string
+
+const (
+	PropertyVisibilityOverview PropertyVisibility = "overview"
+	PropertyVisibilityDetails  PropertyVisibility = "details"
+)
+
+func (e *PropertyVisibility) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PropertyVisibility(s)
+	case string:
+		*e = PropertyVisibility(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PropertyVisibility: %T", src)
+	}
+	return nil
+}
+
+type NullPropertyVisibility struct {
+	PropertyVisibility PropertyVisibility `json:"property_visibility"`
+	Valid              bool               `json:"valid"` // Valid is true if PropertyVisibility is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPropertyVisibility) Scan(value interface{}) error {
+	if value == nil {
+		ns.PropertyVisibility, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PropertyVisibility.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPropertyVisibility) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PropertyVisibility), nil
+}
+
 type UserRole string
 
 const (
@@ -154,15 +196,17 @@ type ItemProperty struct {
 }
 
 type ItemType struct {
-	ID          int64       `json:"id"`
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
+	ID                int64       `json:"id"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
 }
 
 type ItemTypeProperty struct {
-	TypeID       int64   `json:"type_id"`
-	PropertyID   int64   `json:"property_id"`
-	DefaultValue *string `json:"default_value"`
+	TypeID       int64              `json:"type_id"`
+	PropertyID   int64              `json:"property_id"`
+	DefaultValue *string            `json:"default_value"`
+	Visibility   PropertyVisibility `json:"visibility"`
 }
 
 type Property struct {

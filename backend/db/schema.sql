@@ -23,13 +23,16 @@ CREATE TABLE properties (
 CREATE TABLE item_types (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    derived_name_format TEXT
 );
 
+CREATE TYPE property_visibility AS ENUM ('overview', 'details');
 CREATE TABLE item_type_properties (
     type_id BIGINT REFERENCES item_types(id) ON DELETE CASCADE,
     property_id BIGINT REFERENCES properties(id) ON DELETE CASCADE,
     default_value JSONB,
+    visibility property_visibility NOT NULL DEFAULT 'overview',
     PRIMARY KEY (type_id, property_id)
 );
 

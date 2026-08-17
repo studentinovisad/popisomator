@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/studentinovisad/popisomator/backend/internal/config"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
@@ -21,7 +22,7 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 	switch {
 	case errors.Is(err, service.ErrNotFound), errors.Is(err, pgx.ErrNoRows):
 		response.WriteError(w, http.StatusNotFound, "not found")
-	case errors.Is(err, service.ErrInvalidReference):
+	case errors.Is(err, service.ErrInvalidReference), errors.Is(err, service.ErrNoUpdateFields):
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, service.ErrInvalidRegistrationStatus):
 		response.WriteError(w, http.StatusConflict, err.Error())
@@ -34,5 +35,9 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 	default:
 		response.WriteError(w, http.StatusInternalServerError, fallback)
 		log.Printf("service error: %v", err)
+	}
+
+	if config.CurrentConfig.DebugMode {
+		log.Printf("[DEBUG] Service error occurred. Fallback %v, Error %v", fallback, err)
 	}
 }

@@ -13,6 +13,7 @@ type Config struct {
 	BackendPort uint16 `env:"BACKEND_PORT" envDefault:"8080"`
 	JWTSecret   string `env:"POPISOMATOR_JWT_SECRET"`
 	PostgresDSN string `env:"POPISOMATOR_POSTGRES_DSN,required"`
+	DebugMode   bool   `env:"POPISOMATOR_DEBUG" envdefault:"false"`
 }
 
 var CurrentConfig Config

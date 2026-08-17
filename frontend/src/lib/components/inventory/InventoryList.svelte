@@ -60,11 +60,13 @@
 					<td class="px-4 py-3 align-middle">
 						<div class="flex flex-wrap gap-1.5">
 							{#each item.properties as property (property.id)}
-								<span class="rounded bg-soft px-2 py-1 text-xs text-muted">
-									{propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: {displayJson(
-										property.value
-									)}
-								</span>
+								{#if property.visibility === 'overview'}
+									<span class="rounded bg-soft px-2 py-1 text-xs text-muted">
+										{propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: {displayJson(
+											property.value
+										)}
+									</span>
+								{/if}
 							{/each}
 							{#if item.properties.length === 0}<span class="text-muted">—</span>{/if}
 						</div>

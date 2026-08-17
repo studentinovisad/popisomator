@@ -43,9 +43,13 @@ export type CreateUserRequest = RegistrationRequest & {
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 
+export type PropertyVisibility =
+	'overview' | 'details';
+
 export type ItemProperty = {
 	id: number;
 	value: string;
+	visibility?: PropertyVisibility;
 };
 
 export type Item = {
@@ -72,6 +76,7 @@ export type ItemTypeProperty = {
 	id: number;
 	default_value: string | null;
 	name?: string;
+	visibility: PropertyVisibility;
 };
 
 export type ItemType = {
@@ -95,6 +100,12 @@ export type CreateItemTypeRequest = {
 };
 
 export type UpdateItemTypeRequest = Partial<Pick<ItemType, 'name' | 'description'>>;
+
+export type AddUpdateItemTypePropertyRequest = {
+	property_id?: number;
+	default_value?: string;
+	visibility?: string;
+}
 
 export type PropertyValueType = 'string' | 'number' | 'boolean';
 

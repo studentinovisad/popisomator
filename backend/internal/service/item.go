@@ -50,7 +50,7 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
-	total, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
+	totalItems, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
 		TypeID:      typeID,
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
@@ -60,7 +60,7 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		return dto.ItemsPage{}, err
 	}
 
-	rows, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
+	items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
 		TypeID:      typeID,
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
@@ -73,31 +73,31 @@ func GetAllItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, 
 		return dto.ItemsPage{}, err
 	}
 
-	items := make([]dto.Item, len(rows))
-	index := make(map[int64]int, len(rows))
-	ids := make([]int64, len(rows))
-	for i, row := range rows {
-		items[i] = dto.ToItemDTO(row)
-		index[row.ID] = i
-		ids[i] = row.ID
+	itemsDTO := make([]dto.Item, len(items))
+	index := make(map[int64]int, len(items))
+	itemIDs := make([]int64, len(items))
+	for i, item := range items {
+		itemsDTO[i] = dto.ToItemDTO(item)
+		index[item.ID] = i
+		itemIDs[i] = item.ID
 	}
 
-	if len(ids) > 0 {
-		propRows, err := db.Queries.GetItemPropertiesForItems(ctx, ids)
+	if len(itemIDs) > 0 {
+		propRows, err := db.Queries.GetItemPropertiesForItems(ctx, itemIDs)
 		if err != nil {
 			return dto.ItemsPage{}, err
 		}
-		for _, p := range propRows {
-			idx := index[p.ItemID]
-			items[idx].Properties = append(items[idx].Properties, dto.ToItemPropertyDTO(p))
+		for _, propRow := range propRows {
+			idx := index[propRow.ItemID]
+			itemsDTO[idx].Properties = append(itemsDTO[idx].Properties, dto.RowToItemPropertyDTO(propRow))
 		}
 	}
 
 	return dto.ItemsPage{
-		Items:  items,
+		Items:  itemsDTO,
 		Limit:  req.Limit,
 		Offset: req.Offset,
-		Total:  total,
+		Total:  totalItems,
 	}, nil
 }
 
@@ -489,8 +489,18 @@ func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage,
 		return dto.ItemTypesPage{}, err
 	}
 
+	convertedRows := make([]repository.GetAllItemTypesWithPropertiesRow, len(rows))
+	for i, row := range rows {
+		convertedRows[i] = repository.GetAllItemTypesWithPropertiesRow{
+			ItemType:     row.ItemType,
+			PropertyID:   row.PropertyID,
+			DefaultValue: row.DefaultValue,
+			PropertyName: row.PropertyName,
+		}
+	}
+
 	return dto.ItemTypesPage{
-		Items:  itemTypesFromRows(rows),
+		Items:  itemTypesFromRows(convertedRows),
 		Limit:  limit,
 		Offset: offset,
 		Total:  total,
@@ -554,9 +564,15 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 		description = pgtype.Text{String: req.Description, Valid: true}
 	}
 
+	derived_name_format := pgtype.Text{String: "", Valid: false}
+	if len(req.DerivedNameFormat) > 0 {
+		derived_name_format = pgtype.Text{String: req.DerivedNameFormat, Valid: true}
+	}
+
 	itemType, err := queriesTx.CreateItemType(ctx, repository.CreateItemTypeParams{
-		Name:        req.Name,
-		Description: description,
+		Name:              req.Name,
+		Description:       description,
+		DerivedNameFormat: derived_name_format,
 	})
 	if err != nil {
 		return dto.ItemType{}, err
@@ -572,10 +588,16 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 				}
 			}
 
+			visibility := repository.PropertyVisibilityOverview
+			if propRequest.Visibility != "" {
+				visibility = repository.PropertyVisibility(propRequest.Visibility)
+			}
+
 			prop, err := queriesTx.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 				TypeID:       itemType.ID,
 				PropertyID:   propRequest.ID,
 				DefaultValue: propRequest.DefaultValue,
+				Visibility:   visibility,
 			})
 			if err != nil {
 				return dto.ItemType{}, err
@@ -621,6 +643,17 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 			if _, err := queriesTx.UpdateItemTypeDescription(ctx, repository.UpdateItemTypeDescriptionParams{
 				ID:          req.ID,
 				Description: description,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if req.DerivedNameFormat != nil {
+			derived_name_format := pgtype.Text{String: *req.DerivedNameFormat, Valid: true}
+
+			if _, err := queriesTx.UpdateItemTypeDerivedNameFormat(ctx, repository.UpdateItemTypeDerivedNameFormatParams{
+				ID:                req.ID,
+				DerivedNameFormat: derived_name_format,
 			}); err != nil {
 				return dto.ItemType{}, err
 			}
@@ -688,10 +721,16 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 		}
 	}
 
+	visibility := repository.PropertyVisibilityOverview
+	if req.Visibility != nil {
+		visibility = *req.Visibility
+	}
+
 	typeProp, err := db.Queries.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 		TypeID:       req.TypeID,
 		PropertyID:   req.PropertyID,
 		DefaultValue: req.DefaultValue,
+		Visibility:   visibility,
 	})
 	if err != nil {
 		return dto.ItemTypeProperty{}, err
@@ -707,19 +746,42 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 		return dto.ItemTypeProperty{}, err
 	}
 
+	if req.DefaultValue == nil && req.Visibility == nil {
+		return dto.ItemTypeProperty{}, ErrNoUpdateFields
+	}
+
+	var typeProp repository.ItemTypeProperty
+
 	if req.DefaultValue != nil {
 		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, *req.DefaultValue); err != nil {
 			return dto.ItemTypeProperty{}, err
 		}
+
+		var err error
+		typeProp, err = db.Queries.UpdateItemTypePropertyDefaultValue(ctx, repository.UpdateItemTypePropertyDefaultValueParams{
+			TypeID:       req.TypeID,
+			PropertyID:   req.PropertyID,
+			DefaultValue: req.DefaultValue,
+		})
+		if err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
 	}
 
-	typeProp, err := db.Queries.UpdateItemTypeProperty(ctx, repository.UpdateItemTypePropertyParams{
-		TypeID:       req.TypeID,
-		PropertyID:   req.PropertyID,
-		DefaultValue: req.DefaultValue,
-	})
-	if err != nil {
-		return dto.ItemTypeProperty{}, err
+	if req.Visibility != nil {
+		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, string(*req.Visibility)); err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
+
+		var err error
+		typeProp, err = db.Queries.UpdateItemTypePropertyVisibility(ctx, repository.UpdateItemTypePropertyVisibilityParams{
+			TypeID:     req.TypeID,
+			PropertyID: req.PropertyID,
+			Visibility: *req.Visibility,
+		})
+		if err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
 	}
 
 	typePropDTO := dto.ToItemTypePropertyDTO(typeProp)

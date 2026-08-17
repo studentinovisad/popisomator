@@ -65,20 +65,42 @@ func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBu
 }
 
 const addItemTypeProperty = `-- name: AddItemTypeProperty :one
-INSERT INTO item_type_properties (type_id, property_id, default_value) VALUES ($1, $2, $3) RETURNING type_id, property_id, default_value
+INSERT INTO item_type_properties (type_id, property_id, default_value, visibility) VALUES ($1, $2, $3, $4) RETURNING type_id, property_id, default_value, visibility
 `
 
 type AddItemTypePropertyParams struct {
-	TypeID       int64   `json:"type_id"`
-	PropertyID   int64   `json:"property_id"`
-	DefaultValue *string `json:"default_value"`
+	TypeID       int64              `json:"type_id"`
+	PropertyID   int64              `json:"property_id"`
+	DefaultValue *string            `json:"default_value"`
+	Visibility   PropertyVisibility `json:"visibility"`
 }
 
 func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error) {
-	row := q.db.QueryRow(ctx, addItemTypeProperty, arg.TypeID, arg.PropertyID, arg.DefaultValue)
+	row := q.db.QueryRow(ctx, addItemTypeProperty,
+		arg.TypeID,
+		arg.PropertyID,
+		arg.DefaultValue,
+		arg.Visibility,
+	)
 	var i ItemTypeProperty
-	err := row.Scan(&i.TypeID, &i.PropertyID, &i.DefaultValue)
+	err := row.Scan(
+		&i.TypeID,
+		&i.PropertyID,
+		&i.DefaultValue,
+		&i.Visibility,
+	)
 	return i, err
+}
+
+const countItemTypes = `-- name: CountItemTypes :one
+SELECT count(*) FROM item_types
+`
+
+func (q *Queries) CountItemTypes(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countItemTypes)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countItems = `-- name: CountItems :one
@@ -96,12 +118,13 @@ type CountItemsParams struct {
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
 }
 
-const countItemTypes = `-- name: CountItemTypes :one
-SELECT count(*) FROM item_types
-`
-
-func (q *Queries) CountItemTypes(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countItemTypes)
+func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countItems,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -113,18 +136,6 @@ SELECT count(*) FROM properties
 
 func (q *Queries) CountProperties(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countProperties)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countItems,
-		arg.TypeID,
-		arg.Consumption,
-		arg.CreatedFrom,
-		arg.CreatedTo,
-	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -168,18 +179,24 @@ func (q *Queries) CreateItemBulk(ctx context.Context, arg CreateItemBulkParams) 
 }
 
 const createItemType = `-- name: CreateItemType :one
-INSERT INTO item_types (name, description) VALUES ($1, $2) RETURNING id, name, description
+INSERT INTO item_types (name, description, derived_name_format) VALUES ($1, $2, $3) RETURNING id, name, description, derived_name_format
 `
 
 type CreateItemTypeParams struct {
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
 }
 
 func (q *Queries) CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error) {
-	row := q.db.QueryRow(ctx, createItemType, arg.Name, arg.Description)
+	row := q.db.QueryRow(ctx, createItemType, arg.Name, arg.Description, arg.DerivedNameFormat)
 	var i ItemType
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+	)
 	return i, err
 }
 
@@ -250,7 +267,7 @@ func (q *Queries) DeleteProperty(ctx context.Context, id int64) (int64, error) {
 
 const getAllItemTypes = `-- name: GetAllItemTypes :many
 
-SELECT id, name, description FROM item_types
+SELECT id, name, description, derived_name_format FROM item_types
 `
 
 // ------ ITEM TYPES
@@ -263,7 +280,12 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 	var items []ItemType
 	for rows.Next() {
 		var i ItemType
-		if err := rows.Scan(&i.ID, &i.Name, &i.Description); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.DerivedNameFormat,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -276,7 +298,7 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 
 const getAllItemTypesWithProperties = `-- name: GetAllItemTypesWithProperties :many
 SELECT
-    t.id, t.name, t.description,
+    t.id, t.name, t.description, t.derived_name_format,
     tp.property_id,
     tp.default_value,
     p.name AS property_name
@@ -306,55 +328,7 @@ func (q *Queries) GetAllItemTypesWithProperties(ctx context.Context) ([]GetAllIt
 			&i.ItemType.ID,
 			&i.ItemType.Name,
 			&i.ItemType.Description,
-			&i.PropertyID,
-			&i.DefaultValue,
-			&i.PropertyName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listItemTypesWithProperties = `-- name: ListItemTypesWithProperties :many
-SELECT
-    t.id, t.name, t.description,
-    tp.property_id,
-    tp.default_value,
-    p.name AS property_name
-FROM item_types t
-LEFT JOIN item_type_properties tp ON tp.type_id = t.id
-LEFT JOIN properties p ON p.id = tp.property_id
-WHERE t.id IN (
-    SELECT id FROM item_types
-    ORDER BY id
-    LIMIT $1 OFFSET $2
-)
-ORDER BY t.id
-`
-
-type ListItemTypesWithPropertiesParams struct {
-	PageLimit  int32 `json:"page_limit"`
-	PageOffset int32 `json:"page_offset"`
-}
-
-func (q *Queries) ListItemTypesWithProperties(ctx context.Context, arg ListItemTypesWithPropertiesParams) ([]GetAllItemTypesWithPropertiesRow, error) {
-	rows, err := q.db.Query(ctx, listItemTypesWithProperties, arg.PageLimit, arg.PageOffset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetAllItemTypesWithPropertiesRow
-	for rows.Next() {
-		var i GetAllItemTypesWithPropertiesRow
-		if err := rows.Scan(
-			&i.ItemType.ID,
-			&i.ItemType.Name,
-			&i.ItemType.Description,
+			&i.ItemType.DerivedNameFormat,
 			&i.PropertyID,
 			&i.DefaultValue,
 			&i.PropertyName,
@@ -430,43 +404,6 @@ func (q *Queries) GetAllProperties(ctx context.Context) ([]Property, error) {
 	return items, nil
 }
 
-const listProperties = `-- name: ListProperties :many
-SELECT id, name, description, value_type, default_value FROM properties
-ORDER BY id
-LIMIT $1 OFFSET $2
-`
-
-type ListPropertiesParams struct {
-	PageLimit  int32 `json:"page_limit"`
-	PageOffset int32 `json:"page_offset"`
-}
-
-func (q *Queries) ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error) {
-	rows, err := q.db.Query(ctx, listProperties, arg.PageLimit, arg.PageOffset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Property
-	for rows.Next() {
-		var i Property
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.ValueType,
-			&i.DefaultValue,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getItemByID = `-- name: GetItemByID :one
 
 SELECT id, created_at, consumption, type_id FROM items
@@ -514,20 +451,34 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemID int64) ([]ItemPr
 }
 
 const getItemPropertiesForItems = `-- name: GetItemPropertiesForItems :many
-SELECT item_id, property_id, property_value FROM item_properties
-WHERE item_id = ANY($1::bigint[])
+SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility FROM item_properties ip
+JOIN items i ON ip.item_id = i.id
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+WHERE ip.item_id = ANY($1::bigint[])
 `
 
-func (q *Queries) GetItemPropertiesForItems(ctx context.Context, itemIds []int64) ([]ItemProperty, error) {
+type GetItemPropertiesForItemsRow struct {
+	ItemID        int64              `json:"item_id"`
+	PropertyID    int64              `json:"property_id"`
+	PropertyValue string             `json:"property_value"`
+	Visibility    PropertyVisibility `json:"visibility"`
+}
+
+func (q *Queries) GetItemPropertiesForItems(ctx context.Context, itemIds []int64) ([]GetItemPropertiesForItemsRow, error) {
 	rows, err := q.db.Query(ctx, getItemPropertiesForItems, itemIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ItemProperty
+	var items []GetItemPropertiesForItemsRow
 	for rows.Next() {
-		var i ItemProperty
-		if err := rows.Scan(&i.ItemID, &i.PropertyID, &i.PropertyValue); err != nil {
+		var i GetItemPropertiesForItemsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.PropertyID,
+			&i.PropertyValue,
+			&i.Visibility,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -539,20 +490,25 @@ func (q *Queries) GetItemPropertiesForItems(ctx context.Context, itemIds []int64
 }
 
 const getItemTypeByID = `-- name: GetItemTypeByID :one
-SELECT id, name, description FROM item_types
+SELECT id, name, description, derived_name_format FROM item_types
 WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetItemTypeByID(ctx context.Context, id int64) (ItemType, error) {
 	row := q.db.QueryRow(ctx, getItemTypeByID, id)
 	var i ItemType
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+	)
 	return i, err
 }
 
 const getItemTypeProperties = `-- name: GetItemTypeProperties :many
 
-SELECT type_id, property_id, default_value FROM item_type_properties
+SELECT type_id, property_id, default_value, visibility FROM item_type_properties
 WHERE type_id = $1
 `
 
@@ -566,7 +522,12 @@ func (q *Queries) GetItemTypeProperties(ctx context.Context, typeID int64) ([]It
 	var items []ItemTypeProperty
 	for rows.Next() {
 		var i ItemTypeProperty
-		if err := rows.Scan(&i.TypeID, &i.PropertyID, &i.DefaultValue); err != nil {
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.PropertyID,
+			&i.DefaultValue,
+			&i.Visibility,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -593,6 +554,63 @@ func (q *Queries) GetPropertyByID(ctx context.Context, id int64) (Property, erro
 		&i.DefaultValue,
 	)
 	return i, err
+}
+
+const listItemTypesWithProperties = `-- name: ListItemTypesWithProperties :many
+SELECT
+    t.id, t.name, t.description, t.derived_name_format,
+    tp.property_id,
+    tp.default_value,
+    p.name AS property_name
+FROM item_types t
+LEFT JOIN item_type_properties tp ON tp.type_id = t.id
+LEFT JOIN properties p ON p.id = tp.property_id
+WHERE t.id IN (
+    SELECT id FROM item_types
+    ORDER BY id
+    LIMIT $2 OFFSET $1
+)
+ORDER BY t.id
+`
+
+type ListItemTypesWithPropertiesParams struct {
+	PageOffset int32 `json:"page_offset"`
+	PageLimit  int32 `json:"page_limit"`
+}
+
+type ListItemTypesWithPropertiesRow struct {
+	ItemType     ItemType    `json:"item_type"`
+	PropertyID   pgtype.Int8 `json:"property_id"`
+	DefaultValue *string     `json:"default_value"`
+	PropertyName pgtype.Text `json:"property_name"`
+}
+
+func (q *Queries) ListItemTypesWithProperties(ctx context.Context, arg ListItemTypesWithPropertiesParams) ([]ListItemTypesWithPropertiesRow, error) {
+	rows, err := q.db.Query(ctx, listItemTypesWithProperties, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemTypesWithPropertiesRow
+	for rows.Next() {
+		var i ListItemTypesWithPropertiesRow
+		if err := rows.Scan(
+			&i.ItemType.ID,
+			&i.ItemType.Name,
+			&i.ItemType.Description,
+			&i.ItemType.DerivedNameFormat,
+			&i.PropertyID,
+			&i.DefaultValue,
+			&i.PropertyName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listItems = `-- name: ListItems :many
@@ -641,6 +659,43 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 			&i.CreatedAt,
 			&i.Consumption,
 			&i.TypeID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProperties = `-- name: ListProperties :many
+SELECT id, name, description, value_type, default_value FROM properties
+ORDER BY id
+LIMIT $2 OFFSET $1
+`
+
+type ListPropertiesParams struct {
+	PageOffset int32 `json:"page_offset"`
+	PageLimit  int32 `json:"page_limit"`
+}
+
+func (q *Queries) ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error) {
+	rows, err := q.db.Query(ctx, listProperties, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Property
+	for rows.Next() {
+		var i Property
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.ValueType,
+			&i.DefaultValue,
 		); err != nil {
 			return nil, err
 		}
@@ -741,8 +796,29 @@ func (q *Queries) UpdateItemType(ctx context.Context, arg UpdateItemTypeParams) 
 	return i, err
 }
 
+const updateItemTypeDerivedNameFormat = `-- name: UpdateItemTypeDerivedNameFormat :one
+UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format
+`
+
+type UpdateItemTypeDerivedNameFormatParams struct {
+	ID                int64       `json:"id"`
+	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
+}
+
+func (q *Queries) UpdateItemTypeDerivedNameFormat(ctx context.Context, arg UpdateItemTypeDerivedNameFormatParams) (ItemType, error) {
+	row := q.db.QueryRow(ctx, updateItemTypeDerivedNameFormat, arg.ID, arg.DerivedNameFormat)
+	var i ItemType
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+	)
+	return i, err
+}
+
 const updateItemTypeDescription = `-- name: UpdateItemTypeDescription :one
-UPDATE item_types SET description = $2 WHERE id = $1 RETURNING id, name, description
+UPDATE item_types SET description = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format
 `
 
 type UpdateItemTypeDescriptionParams struct {
@@ -753,12 +829,17 @@ type UpdateItemTypeDescriptionParams struct {
 func (q *Queries) UpdateItemTypeDescription(ctx context.Context, arg UpdateItemTypeDescriptionParams) (ItemType, error) {
 	row := q.db.QueryRow(ctx, updateItemTypeDescription, arg.ID, arg.Description)
 	var i ItemType
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+	)
 	return i, err
 }
 
 const updateItemTypeName = `-- name: UpdateItemTypeName :one
-UPDATE item_types SET name = $2 WHERE id = $1 RETURNING id, name, description
+UPDATE item_types SET name = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format
 `
 
 type UpdateItemTypeNameParams struct {
@@ -769,24 +850,56 @@ type UpdateItemTypeNameParams struct {
 func (q *Queries) UpdateItemTypeName(ctx context.Context, arg UpdateItemTypeNameParams) (ItemType, error) {
 	row := q.db.QueryRow(ctx, updateItemTypeName, arg.ID, arg.Name)
 	var i ItemType
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+	)
 	return i, err
 }
 
-const updateItemTypeProperty = `-- name: UpdateItemTypeProperty :one
-UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value
+const updateItemTypePropertyDefaultValue = `-- name: UpdateItemTypePropertyDefaultValue :one
+UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value, visibility
 `
 
-type UpdateItemTypePropertyParams struct {
+type UpdateItemTypePropertyDefaultValueParams struct {
 	TypeID       int64   `json:"type_id"`
 	PropertyID   int64   `json:"property_id"`
 	DefaultValue *string `json:"default_value"`
 }
 
-func (q *Queries) UpdateItemTypeProperty(ctx context.Context, arg UpdateItemTypePropertyParams) (ItemTypeProperty, error) {
-	row := q.db.QueryRow(ctx, updateItemTypeProperty, arg.TypeID, arg.PropertyID, arg.DefaultValue)
+func (q *Queries) UpdateItemTypePropertyDefaultValue(ctx context.Context, arg UpdateItemTypePropertyDefaultValueParams) (ItemTypeProperty, error) {
+	row := q.db.QueryRow(ctx, updateItemTypePropertyDefaultValue, arg.TypeID, arg.PropertyID, arg.DefaultValue)
 	var i ItemTypeProperty
-	err := row.Scan(&i.TypeID, &i.PropertyID, &i.DefaultValue)
+	err := row.Scan(
+		&i.TypeID,
+		&i.PropertyID,
+		&i.DefaultValue,
+		&i.Visibility,
+	)
+	return i, err
+}
+
+const updateItemTypePropertyVisibility = `-- name: UpdateItemTypePropertyVisibility :one
+UPDATE item_type_properties SET visibility = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value, visibility
+`
+
+type UpdateItemTypePropertyVisibilityParams struct {
+	TypeID     int64              `json:"type_id"`
+	PropertyID int64              `json:"property_id"`
+	Visibility PropertyVisibility `json:"visibility"`
+}
+
+func (q *Queries) UpdateItemTypePropertyVisibility(ctx context.Context, arg UpdateItemTypePropertyVisibilityParams) (ItemTypeProperty, error) {
+	row := q.db.QueryRow(ctx, updateItemTypePropertyVisibility, arg.TypeID, arg.PropertyID, arg.Visibility)
+	var i ItemTypeProperty
+	err := row.Scan(
+		&i.TypeID,
+		&i.PropertyID,
+		&i.DefaultValue,
+		&i.Visibility,
+	)
 	return i, err
 }
 
