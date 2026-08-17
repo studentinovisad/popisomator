@@ -66,12 +66,14 @@ type ItemTypeProperty struct {
 	ID           int64   `json:"id" validate:"required"`
 	DefaultValue *string `json:"default_value"`
 	Name         string  `json:"name,omitempty"`
+	Visibility   string  `json:"visibility"`
 }
 
 func ToItemTypePropertyDTO(itemTypeProp repository.ItemTypeProperty) ItemTypeProperty {
 	return ItemTypeProperty{
 		ID:           itemTypeProp.PropertyID,
 		DefaultValue: itemTypeProp.DefaultValue,
+		Visibility:   string(itemTypeProp.Visibility),
 	}
 }
 
