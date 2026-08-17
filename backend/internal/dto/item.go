@@ -43,7 +43,7 @@ func ToItemDTO(item repository.Item) Item {
 type ItemProperty struct {
 	ID         int64  `json:"id" validate:"required"`
 	Value      string `json:"value" validate:"required"`
-	Visibility string `json:"visibility"`
+	Visibility string `json:"visibility,omitempty"`
 }
 
 func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
