@@ -333,10 +333,6 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 	}
 
 	if req.Visibility != nil {
-		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, string(*req.Visibility)); err != nil {
-			return dto.ItemTypeProperty{}, err
-		}
-
 		var err error
 		typeProp, err = db.Queries.UpdateItemTypeProperty_Visibility(ctx, repository.UpdateItemTypeProperty_VisibilityParams{
 			TypeID:     req.TypeID,
