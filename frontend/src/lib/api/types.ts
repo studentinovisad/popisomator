@@ -61,6 +61,7 @@ export type Item = {
 	consumption: ConsumptionStatus;
 	properties: ItemProperty[];
 	type_id: number;
+	derived_name?: string;
 };
 
 export type ItemsPage = {
@@ -109,10 +110,13 @@ export type ItemTypesPage = {
 export type CreateItemTypeRequest = {
 	name: string;
 	description: string;
+	derived_name_format: string;
 	properties: ItemTypeProperty[];
 };
 
-export type UpdateItemTypeRequest = Partial<Pick<ItemType, 'name' | 'description'>>;
+export type UpdateItemTypeRequest = Partial<
+	Pick<ItemType, 'name' | 'description' | 'derived_name_format'>
+>;
 
 export type AddUpdateItemTypePropertyRequest = {
 	property_id?: number;

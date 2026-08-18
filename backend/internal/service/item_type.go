@@ -109,6 +109,10 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
+	if err := validateDerivedNameFormat(ctx, queriesTx, req.DerivedNameFormat, req.Properties); err != nil {
+		return dto.ItemType{}, err
+	}
+
 	description := pgtype.Text{String: "", Valid: false}
 	if len(req.Description) > 0 {
 		description = pgtype.Text{String: req.Description, Valid: true}
@@ -168,6 +172,15 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.ItemType, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.ItemType{}, err
+	}
+	if req.DerivedNameFormat != nil {
+		typeProperties, err := GetItemTypeProperties(ctx, req.ID)
+		if err != nil {
+			return dto.ItemType{}, err
+		}
+		if err := validateDerivedNameFormat(ctx, db.Queries, *req.DerivedNameFormat, typeProperties); err != nil {
+			return dto.ItemType{}, err
+		}
 	}
 
 	var itemType repository.ItemType
@@ -341,6 +354,18 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 }
 
 func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) error {
+	itemType, err := db.Queries.GetItemTypeByID(ctx, typeId)
+	if err != nil {
+		return err
+	}
+	property, err := db.Queries.GetPropertyByID(ctx, propId)
+	if err != nil {
+		return err
+	}
+	if derivedNameUsesProperty(itemType.DerivedNameFormat.String, property.Name) {
+		return ErrInvalidDerivedNameFormat
+	}
+
 	rowsAffected, err := db.Queries.RemoveItemTypeProperty(ctx, repository.RemoveItemTypePropertyParams{
 		TypeID:     typeId,
 		PropertyID: propId,

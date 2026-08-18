@@ -20,7 +20,10 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-const location = "Laboratorija A"
+const (
+	location                  = "Laboratorija A"
+	chemicalDerivedNameFormat = "{Naziv hemikalije} · {Proizvođač}"
+)
 
 type chemicalRow struct {
 	Name           string
@@ -211,8 +214,21 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 	for _, existingType := range existing {
 		if existingType.Name == name {
 			fmt.Printf("item type %s already exists (%d), ensuring properties are attached\n", name, existingType.ID)
+			existingType, err := service.GetItemType(ctx, existingType.ID)
+			if err != nil {
+				return 0, fmt.Errorf("loading item type properties: %w", err)
+			}
 			if err := attachMissingItemTypeProperties(ctx, existingType, propIDs); err != nil {
 				return 0, err
+			}
+			if existingType.DerivedNameFormat != chemicalDerivedNameFormat {
+				format := chemicalDerivedNameFormat
+				if _, err := service.UpdateItemType(ctx, dto.UpdateItemTypeRequest{
+					ID:                existingType.ID,
+					DerivedNameFormat: &format,
+				}); err != nil {
+					return 0, fmt.Errorf("setting derived name format: %w", err)
+				}
 			}
 			return existingType.ID, nil
 		}
@@ -224,8 +240,9 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 	}
 
 	created, err := service.CreateItemType(ctx, dto.CreateItemTypeRequest{
-		Name:       name,
-		Properties: properties,
+		Name:              name,
+		DerivedNameFormat: chemicalDerivedNameFormat,
+		Properties:        properties,
 	})
 	if err != nil {
 		return 0, err

@@ -22,7 +22,7 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 	switch {
 	case errors.Is(err, service.ErrNotFound), errors.Is(err, pgx.ErrNoRows):
 		response.WriteError(w, http.StatusNotFound, "not found")
-	case errors.Is(err, service.ErrInvalidReference), errors.Is(err, service.ErrNoUpdateFields):
+	case errors.Is(err, service.ErrInvalidReference), errors.Is(err, service.ErrNoUpdateFields), errors.Is(err, service.ErrInvalidDerivedNameFormat), errors.Is(err, service.ErrDerivedNamePropertyInUse):
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 	case errors.As(err, &valErr):
 		response.WriteError(w, http.StatusBadRequest, "invalid request")

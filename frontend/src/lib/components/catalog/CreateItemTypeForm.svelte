@@ -19,6 +19,7 @@
 
 	let name = $state('');
 	let description = $state('');
+	let derivedNameFormat = $state('');
 	let selectedPropertyValues = $state<string[]>([]);
 	let selectedPropertyIDs = $derived(selectedPropertyValues.map(Number));
 	let defaultValues = $state<Record<number, string>>({});
@@ -40,6 +41,7 @@
 		initializedItemTypeID = itemType?.id;
 		name = itemType?.name ?? '';
 		description = itemType?.description ?? '';
+		derivedNameFormat = itemType?.derived_name_format ?? '';
 		selectedPropertyValues = itemType?.properties.map((property) => String(property.id)) ?? [];
 		defaultValues = Object.fromEntries(
 			(itemType?.properties ?? []).flatMap((itemTypeProperty) => {
@@ -89,6 +91,7 @@
 				await api.createItemType({
 					name,
 					description,
+					derived_name_format: derivedNameFormat,
 					properties: selectedPropertyIDs.map((id) => ({
 						id,
 						default_value: defaultValues[id],
@@ -98,29 +101,30 @@
 			} else {
 				await api.updateItemType(itemType.id, { name, description });
 
-				const changes: Promise<unknown>[] = [];
-				for (const property of itemType.properties) {
-					if (!selectedPropertyIDs.includes(property.id)) {
-						changes.push(api.removeItemTypeProperty(itemType.id, property.id));
-					}
-				}
+				const additionsAndDefaults: Promise<unknown>[] = [];
 				for (const propertyID of selectedPropertyIDs) {
 					if (!originalProperties.has(propertyID)) {
-						changes.push(
+						additionsAndDefaults.push(
 							api.addItemTypeProperty(itemType.id, {
 								property_id: propertyID,
 								default_value: defaultValues[propertyID]
 							})
 						);
 					} else if (editedDefaultPropertyIDs.has(propertyID)) {
-						changes.push(
+						additionsAndDefaults.push(
 							api.updateItemTypeProperty(itemType.id, propertyID, {
 								default_value: defaultValues[propertyID]
 							})
 						);
 					}
 				}
-				await Promise.all(changes);
+				await Promise.all(additionsAndDefaults);
+				await api.updateItemType(itemType.id, { derived_name_format: derivedNameFormat });
+
+				const removals = itemType.properties
+					.filter((property) => !selectedPropertyIDs.includes(property.id))
+					.map((property) => api.removeItemTypeProperty(itemType.id, property.id));
+				await Promise.all(removals);
 			}
 
 			onsaved();
@@ -154,6 +158,21 @@
 			emptyMessage="Nema odgovarajućih svojstava."
 			onvaluechange={updateSelectedProperties}
 		/>
+		<div class="mt-4">
+			<Label.Root class="text-sm font-medium text-ink" for="item-type-derived-name">
+				Prikazani naziv stavke
+			</Label.Root>
+			<textarea
+				id="item-type-derived-name"
+				class="mt-1 block min-h-20 w-full font-mono text-sm"
+				bind:value={derivedNameFormat}
+				placeholder={'{Naziv stavke} · {Proizvođač}'}
+				required></textarea>
+			<p class="mt-1 text-xs text-muted">
+				Unesite nazive svojstava u vitičastim zagradama, npr. {'{Naziv stavke}'}. Možete dodati i
+				običan tekst.
+			</p>
+		</div>
 		{#if selectedProperties.length}
 			<ScrollArea.Root class="mt-3 h-64 overflow-hidden rounded-md border border-line" type="auto">
 				<ScrollArea.Viewport class="h-full w-full">

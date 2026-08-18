@@ -55,12 +55,14 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 				return nil, errors.New("No item properties returned")
 			}
 
-			propDTO := dto.ToItemPropertyDTO(props[0])
-			for _, itemDTO := range itemsDTO {
-				itemDTO.Properties = append(itemDTO.Properties, propDTO)
-			}
 		}
 	}
+
+	propertyRows, err := queriesTx.GetItemProperties(ctx, itemIDs)
+	if err != nil {
+		return nil, err
+	}
+	populateItemDetails(itemsDTO, propertyRows)
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -113,11 +115,9 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 	}
 
 	itemsDTO := make([]dto.Item, len(items))
-	index := make(map[int64]int, len(items))
 	itemIDs := make([]int64, len(items))
 	for i, item := range items {
 		itemsDTO[i] = dto.ToItemDTO(item)
-		index[item.ID] = i
 		itemIDs[i] = item.ID
 	}
 
@@ -126,12 +126,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		if err != nil {
 			return dto.ItemsPage{}, err
 		}
-		for _, propRow := range propRows {
-			idx := index[propRow.ItemProperty.ItemID]
-			propDTO := dto.ToItemPropertyDTO(propRow.ItemProperty)
-			propDTO.Visibility = string(propRow.Visibility)
-			itemsDTO[idx].Properties = append(itemsDTO[idx].Properties, propDTO)
-		}
+		populateItemDetails(itemsDTO, propRows)
 	}
 
 	return dto.ItemsPage{
@@ -148,15 +143,15 @@ func GetItem(ctx context.Context, id int64) (dto.Item, error) {
 		return dto.Item{}, err
 	}
 
-	itemProps, err := GetItemProperties(ctx, id)
+	propertyRows, err := db.Queries.GetItemProperties(ctx, []int64{id})
 	if err != nil {
 		return dto.Item{}, err
 	}
 
-	itemDTO := dto.ToItemDTO(item)
-	itemDTO.Properties = itemProps
+	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
+	populateItemDetails(itemsDTO, propertyRows)
 
-	return itemDTO, nil
+	return itemsDTO[0], nil
 }
 
 func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error) {
@@ -200,15 +195,15 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 		return dto.Item{}, ErrNoUpdateFields
 	}
 
-	itemProps, err := GetItemProperties(ctx, item.ID)
+	propertyRows, err := db.Queries.GetItemProperties(ctx, []int64{item.ID})
 	if err != nil {
 		return dto.Item{}, err
 	}
 
-	itemDTO := dto.ToItemDTO(item)
-	itemDTO.Properties = itemProps
+	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
+	populateItemDetails(itemsDTO, propertyRows)
 
-	return itemDTO, nil
+	return itemsDTO[0], nil
 }
 
 func DeleteItem(ctx context.Context, id int64) error {

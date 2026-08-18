@@ -7,7 +7,7 @@ type ItemType struct {
 	Name              string             `json:"name"`
 	Description       string             `json:"description"`
 	Properties        []ItemTypeProperty `json:"properties"`
-	DerivedNameFormat string             `json:"derived_name_format"`
+	DerivedNameFormat string             `json:"derived_name_format" validate:"required,max=255"`
 }
 
 func ToItemTypeDTO(itemType repository.ItemType) ItemType {
@@ -53,14 +53,14 @@ type CreateItemTypeRequest struct {
 	Name              string             `json:"name" validate:"required"`
 	Description       string             `json:"description"`
 	Properties        []ItemTypeProperty `json:"properties" validate:"dive"`
-	DerivedNameFormat string             `json:"derived_name_format"`
+	DerivedNameFormat string             `json:"derived_name_format" validate:"required,max=255"`
 }
 
 type UpdateItemTypeRequest struct {
 	ID                int64   `json:"id" validate:"required"`
 	Name              *string `json:"name"`
 	Description       *string `json:"description"`
-	DerivedNameFormat *string `json:"derived_name_format"`
+	DerivedNameFormat *string `json:"derived_name_format" validate:"omitempty,max=255"`
 }
 
 type AddUpdateItemTypePropertyRequest struct {

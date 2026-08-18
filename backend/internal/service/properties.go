@@ -128,6 +128,22 @@ func UpdateProperty(ctx context.Context, req dto.UpdatePropertyRequest) (dto.Pro
 	}
 
 	if req.Name != nil {
+		existing, err := db.Queries.GetPropertyByID(ctx, req.ID)
+		if err != nil {
+			return dto.Property{}, err
+		}
+		if existing.Name != *req.Name {
+			itemTypes, err := db.Queries.GetAllItemTypes(ctx)
+			if err != nil {
+				return dto.Property{}, err
+			}
+			for _, itemType := range itemTypes {
+				if derivedNameUsesProperty(itemType.DerivedNameFormat.String, existing.Name) {
+					return dto.Property{}, ErrDerivedNamePropertyInUse
+				}
+			}
+		}
+
 		if err := db.Queries.UpdateProperty_Name(ctx, repository.UpdateProperty_NameParams{
 			ID:   req.ID,
 			Name: *req.Name,
