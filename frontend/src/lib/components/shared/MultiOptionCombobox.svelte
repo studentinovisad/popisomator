@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import X from '@lucide/svelte/icons/x';
 	import { Combobox } from 'bits-ui';
 
@@ -68,10 +69,19 @@
 			</span>
 		{/each}
 		<Combobox.Input
-			class="min-w-32 grow bg-transparent px-1 py-0.5 text-sm text-ink outline-none placeholder:text-muted"
+			class="min-w-24 grow bg-transparent px-1 py-0.5 text-sm text-ink outline-none placeholder:text-muted"
 			{placeholder}
 			oninput={handleInput}
 		/>
+		<Combobox.Trigger
+			class="group grid size-7 shrink-0 cursor-pointer place-items-center rounded text-muted outline-none hover:bg-soft hover:text-ink focus-visible:ring-1 focus-visible:ring-brand disabled:cursor-not-allowed"
+			aria-label="Prikaži opcije"
+		>
+			<ChevronDown
+				class="size-4 transition-transform duration-150 group-data-[state=open]:rotate-180"
+				aria-hidden="true"
+			/>
+		</Combobox.Trigger>
 	</div>
 	<Combobox.Portal>
 		<Combobox.Content

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { Combobox } from 'bits-ui';
 
 	type Option = {
@@ -48,12 +49,23 @@
 	allowDeselect={false}
 	onValueChange={handleValueChange}
 >
-	<Combobox.Input
-		{id}
-		class="block h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand"
-		{placeholder}
-		oninput={handleInput}
-	/>
+	<div class="relative">
+		<Combobox.Input
+			{id}
+			class="block h-10 w-full rounded-md border border-line bg-surface py-0 pr-10 pl-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand"
+			{placeholder}
+			oninput={handleInput}
+		/>
+		<Combobox.Trigger
+			class="group absolute inset-y-0 right-0 grid w-10 cursor-pointer place-items-center rounded-r-md text-muted outline-none hover:text-ink focus-visible:ring-1 focus-visible:ring-brand disabled:cursor-not-allowed"
+			aria-label="Prikaži opcije"
+		>
+			<ChevronDown
+				class="size-4 transition-transform duration-150 group-data-[state=open]:rotate-180"
+				aria-hidden="true"
+			/>
+		</Combobox.Trigger>
+	</div>
 	<Combobox.Portal>
 		<Combobox.Content
 			class="z-40 max-h-64 w-(--bits-combobox-anchor-width) overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
