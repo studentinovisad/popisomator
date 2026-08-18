@@ -24,14 +24,14 @@ func GetAllItemTypes(ctx context.Context) ([]dto.ItemType, error) {
 }
 
 func GetItemTypeOptions(ctx context.Context) ([]dto.ItemTypeOption, error) {
-	itemTypes, err := db.Queries.GetAllItemTypes(ctx)
+	itemTypes, err := db.Queries.ListItemTypeOptions(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	typeOptionsDTO := make([]dto.ItemTypeOption, len(itemTypes))
 	for i, itemType := range itemTypes {
-		typeOptionsDTO[i] = dto.ToItemTypeOptionDTO(itemType)
+		typeOptionsDTO[i] = dto.ItemTypeOption{ID: itemType.ID, Name: itemType.Name}
 	}
 
 	return typeOptionsDTO, nil

@@ -2,7 +2,7 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Select } from 'bits-ui';
-	import type { ConsumptionStatus, Item, ItemType, Property, User } from '$lib/api';
+	import type { ConsumptionStatus, Item, ItemTypeOption, PropertyOption, User } from '$lib/api';
 	import {
 		consumptionClass,
 		consumptionLabel,
@@ -20,8 +20,8 @@
 		deleteitem
 	}: {
 		items: Item[];
-		itemTypes: ItemType[];
-		properties: Property[];
+		itemTypes: ItemTypeOption[];
+		properties: PropertyOption[];
 		user: User;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
 		onedititem: (item: Item) => void;

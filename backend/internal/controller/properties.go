@@ -30,7 +30,7 @@ func CreateProperty(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPropertyOptions(w http.ResponseWriter, r *http.Request) {
-	props, err := service.GetAllProperties(r.Context())
+	props, err := service.GetPropertyOptions(r.Context())
 	if err != nil {
 		writeServiceError(w, err, "couldn't get property options")
 		return

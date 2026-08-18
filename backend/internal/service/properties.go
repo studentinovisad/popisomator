@@ -41,14 +41,19 @@ func GetAllProperties(ctx context.Context) ([]dto.Property, error) {
 }
 
 func GetPropertyOptions(ctx context.Context) ([]dto.PropertyOption, error) {
-	props, err := db.Queries.GetAllProperties(ctx)
+	props, err := db.Queries.ListPropertyOptions(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	propOptionsDTO := make([]dto.PropertyOption, len(props))
 	for i, prop := range props {
-		propOptionsDTO[i] = dto.ToPropertyOptionDTO(prop)
+		propOptionsDTO[i] = dto.PropertyOption{
+			ID:           prop.ID,
+			Name:         prop.Name,
+			ValueType:    prop.ValueType,
+			DefaultValue: prop.DefaultValue,
+		}
 	}
 
 	return propOptionsDTO, nil

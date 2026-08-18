@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Property } from '$lib/api';
+	import type { PropertyOption } from '$lib/api';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 
 	let {
@@ -9,7 +9,7 @@
 		required = false,
 		onvaluechange
 	}: {
-		property: Property;
+		property: PropertyOption;
 		id: string;
 		value: string;
 		required?: boolean;

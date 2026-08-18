@@ -148,6 +148,38 @@ func (q *Queries) ListProperties(ctx context.Context, arg ListPropertiesParams) 
 	return items, nil
 }
 
+const listPropertyOptions = `-- name: ListPropertyOptions :many
+SELECT id, name, value_type, default_value FROM properties
+ORDER BY name
+`
+
+type ListPropertyOptionsRow struct {
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	ValueType    string  `json:"value_type"`
+	DefaultValue *string `json:"default_value"`
+}
+
+func (q *Queries) ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listPropertyOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPropertyOptionsRow
+	for rows.Next() {
+		var i ListPropertyOptionsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.ValueType, &i.DefaultValue); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateProperty_DefaultValue = `-- name: UpdateProperty_DefaultValue :exec
 UPDATE properties SET default_value = $2 WHERE id = $1
 `

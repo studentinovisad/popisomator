@@ -7,6 +7,7 @@
 	};
 
 	let {
+		id,
 		options,
 		value = $bindable(''),
 		placeholder = 'Pretražite opcije',
@@ -14,6 +15,7 @@
 		disabled = false,
 		onvaluechange
 	}: {
+		id?: string;
 		options: Option[];
 		value?: string;
 		placeholder?: string;
@@ -47,6 +49,7 @@
 	onValueChange={handleValueChange}
 >
 	<Combobox.Input
+		{id}
 		class="block h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand"
 		{placeholder}
 		oninput={handleInput}

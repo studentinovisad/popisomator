@@ -25,17 +25,10 @@ func ToPropertyDTO(prop repository.Property) Property {
 }
 
 type PropertyOption struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	ValueType string `json:"value_type"`
-}
-
-func ToPropertyOptionDTO(prop repository.Property) PropertyOption {
-	return PropertyOption{
-		ID:        prop.ID,
-		Name:      prop.Name,
-		ValueType: prop.ValueType,
-	}
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	ValueType    string  `json:"value_type"`
+	DefaultValue *string `json:"default_value"`
 }
 
 type PropertiesPage struct {

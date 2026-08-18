@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api, ApiError, type ItemType, type Property } from '$lib/api';
+	import { api, ApiError, type ItemType, type PropertyOption } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import MultiOptionCombobox from '$lib/components/shared/MultiOptionCombobox.svelte';
 	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/domain/items';
@@ -12,7 +12,7 @@
 		oncancel
 	}: {
 		itemType?: ItemType;
-		properties: Property[];
+		properties: PropertyOption[];
 		onsaved: () => void;
 		oncancel?: () => void;
 	} = $props();

@@ -1,6 +1,10 @@
 -- name: GetAllProperties :many
 SELECT * FROM properties;
 
+-- name: ListPropertyOptions :many
+SELECT id, name, value_type, default_value FROM properties
+ORDER BY name;
+
 -- name: ListProperties :many
 SELECT * FROM properties
 ORDER BY id

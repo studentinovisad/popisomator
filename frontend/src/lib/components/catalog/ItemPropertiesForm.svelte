@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { api, ApiError, type Item, type ItemType, type Property } from '$lib/api';
+	import { untrack } from 'svelte';
+	import {
+		api,
+		ApiError,
+		type Item,
+		type ItemType,
+		type ItemTypeOption,
+		type PropertyOption
+	} from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import OptionCombobox from '$lib/components/shared/OptionCombobox.svelte';
 	import { defaultJsonValue } from '$lib/domain/items';
@@ -13,13 +21,16 @@
 		onsaved
 	}: {
 		item: Item;
-		itemTypes: ItemType[];
-		properties: Property[];
+		itemTypes: ItemTypeOption[];
+		properties: PropertyOption[];
 		onitemtypechange: (typeID: number) => Promise<void>;
 		onsaved: () => void;
 	} = $props();
 
-	let type = $derived(itemTypes.find((itemType) => itemType.id === item.type_id));
+	let type = $state<ItemType | null>(null);
+	let typeLoadVersion = 0;
+	let loadedTypeID = $state<number | null>(null);
+	let loadingType = $state(false);
 	let editablePropertyIDs = $derived([
 		...new Set([
 			...item.properties.map((property) => property.id),
@@ -38,6 +49,13 @@
 	let error = $state('');
 
 	$effect(() => {
+		const typeID = item.type_id;
+		untrack(() => {
+			if (loadedTypeID !== typeID) void loadItemType(typeID);
+		});
+	});
+
+	$effect(() => {
 		selectedTypeID = String(item.type_id);
 		selectedPropertyIDs = item.properties.map((property) => property.id);
 		values = Object.fromEntries(
@@ -50,6 +68,24 @@
 		);
 	});
 
+	async function loadItemType(typeID: number) {
+		const version = ++typeLoadVersion;
+		loadingType = true;
+		type = null;
+
+		try {
+			const nextType = await api.getItemType(typeID);
+			if (version !== typeLoadVersion) return;
+			type = nextType;
+			loadedTypeID = typeID;
+		} catch (reason) {
+			if (version !== typeLoadVersion) return;
+			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije učitan.';
+		} finally {
+			if (version === typeLoadVersion) loadingType = false;
+		}
+	}
+
 	async function changeItemType(value: string) {
 		const typeID = Number(value);
 		if (!Number.isSafeInteger(typeID) || typeID === item.type_id) return;
@@ -58,6 +94,7 @@
 		error = '';
 		try {
 			await onitemtypechange(typeID);
+			await loadItemType(typeID);
 		} catch (reason) {
 			selectedTypeID = String(item.type_id);
 			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije promenjen.';
@@ -97,10 +134,11 @@
 		<Label.Root class="text-sm font-medium text-ink" for="item-type">Tip stavke</Label.Root>
 		<div class="mt-1">
 			<OptionCombobox
+				id="item-type"
 				options={itemTypes}
 				bind:value={selectedTypeID}
 				placeholder="Odaberite tip"
-				disabled={changingType || saving}
+				disabled={changingType || loadingType || saving}
 				onvaluechange={changeItemType}
 			/>
 		</div>
@@ -109,7 +147,9 @@
 		</p>
 	</div>
 
-	{#if editablePropertyIDs.length}
+	{#if loadingType}
+		<p class="text-sm text-muted">Učitavanje svojstava tipa…</p>
+	{:else if editablePropertyIDs.length}
 		{#each editablePropertyIDs as propertyID (propertyID)}
 			{@const property = propertyByID.get(propertyID)}
 			{#if property}
@@ -129,9 +169,6 @@
 							required
 						/>
 					{/if}
-					{#if property.description}<p class="mt-1 text-xs text-muted">
-							{property.description}
-						</p>{/if}
 				</div>
 			{/if}
 		{/each}

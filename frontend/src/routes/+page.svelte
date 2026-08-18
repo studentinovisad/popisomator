@@ -6,8 +6,8 @@
 		ApiError,
 		type ConsumptionStatus,
 		type Item,
-		type ItemType,
-		type Property
+		type ItemTypeOption,
+		type PropertyOption
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -20,8 +20,8 @@
 	const authPage = createAuthPage({ unavailableMessage: 'Inventar trenutno nije dostupan.' });
 
 	let items = $state<Item[]>([]);
-	let itemTypes = $state<ItemType[]>([]);
-	let properties = $state<Property[]>([]);
+	let itemTypes = $state<ItemTypeOption[]>([]);
+	let properties = $state<PropertyOption[]>([]);
 	let loadingInventory = $state(false);
 	let inventoryError = $state('');
 	let editItemDialogOpen = $state(false);

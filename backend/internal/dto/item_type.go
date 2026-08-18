@@ -20,17 +20,10 @@ func ToItemTypeDTO(itemType repository.ItemType) ItemType {
 	}
 }
 
-// Minified ItemType object for things such as dropdown lists
+// ItemTypeOption is a minified item type for selector controls.
 type ItemTypeOption struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
-}
-
-func ToItemTypeOptionDTO(itemType repository.ItemType) ItemTypeOption {
-	return ItemTypeOption{
-		ID:   itemType.ID,
-		Name: itemType.Name,
-	}
 }
 
 // Property added to an item type

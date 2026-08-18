@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api, ApiError, type Property } from '$lib/api';
+	import { api, ApiError, type PropertyOption } from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import CreateItemTypeForm from '$lib/components/catalog/CreateItemTypeForm.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
@@ -12,7 +12,7 @@
 		requiredRoles: ['admin']
 	});
 
-	let properties = $state<Property[]>([]);
+	let properties = $state<PropertyOption[]>([]);
 	let loading = $state(false);
 	let error = $state('');
 

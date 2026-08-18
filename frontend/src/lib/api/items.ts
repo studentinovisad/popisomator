@@ -14,7 +14,8 @@ export const itemsApi = {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		return request<ItemsPage>(`/items?${query}`);
 	},
-	createItem: (payload: CreateItemRequest) => request<Item>('/items', jsonRequest('POST', payload)),
+	createItem: (payload: CreateItemRequest) =>
+		request<Item[]>('/items', jsonRequest('POST', payload)),
 	updateItem: (id: number, payload: UpdateItemRequest) =>
 		request<Item>(`/items/${id}`, jsonRequest('PATCH', payload)),
 	consumeItem: (id: number, status: ConsumptionStatus) =>

@@ -1,6 +1,10 @@
 -- name: GetAllItemTypes :many
 SELECT * FROM item_types;
 
+-- name: ListItemTypeOptions :many
+SELECT id, name FROM item_types
+ORDER BY name;
+
 -- name: ListItemTypes :many
 SELECT * FROM item_types
 ORDER BY id
