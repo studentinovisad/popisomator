@@ -51,8 +51,8 @@
 		try {
 			const [nextItems, nextItemTypes, nextProperties] = await Promise.all([
 				api.listItems({ limit: itemsPerPage, offset }),
-				api.listItemTypes(),
-				api.listProperties()
+				api.getItemTypeOptions(),
+				api.getPropertyOptions()
 			]);
 			if (version !== loadVersion) return;
 
@@ -109,7 +109,7 @@
 	}
 
 	async function changeItemType(item: Item, typeID: number) {
-		const updatedItem = await api.setItemType(item.id, typeID);
+		const updatedItem = await api.updateItem(item.id, {type_id: typeID});
 		items = items.map((listedItem) => (listedItem.id === item.id ? updatedItem : listedItem));
 		editingItem = updatedItem;
 	}

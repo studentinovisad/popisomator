@@ -36,7 +36,7 @@
 		try {
 			const [nextItemType, nextProperties] = await Promise.all([
 				api.getItemType(id),
-				api.listProperties()
+				api.getPropertyOptions()
 			]);
 			itemType = nextItemType;
 			properties = nextProperties;

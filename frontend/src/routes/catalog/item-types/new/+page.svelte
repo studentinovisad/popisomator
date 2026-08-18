@@ -27,7 +27,7 @@
 		error = '';
 
 		try {
-			properties = await api.listProperties();
+			properties = await api.getPropertyOptions();
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Svojstva nisu učitana.';
 		} finally {

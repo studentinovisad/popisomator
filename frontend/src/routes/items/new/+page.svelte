@@ -28,7 +28,7 @@
 		error = '';
 
 		try {
-			[itemTypes, properties] = await Promise.all([api.listItemTypes(), api.listProperties()]);
+			[itemTypes, properties] = await Promise.all([api.getItemTypeOptions(), api.getPropertyOptions()]);
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Podaci za stavku nisu učitani.';
 		} finally {

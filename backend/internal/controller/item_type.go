@@ -12,7 +12,7 @@ import (
 )
 
 func GetItemTypeOptions(w http.ResponseWriter, r *http.Request) {
-	typeOptions, err := service.GetItemTypeOptions(r.Context())
+	typeOptions, err := service.GetAllItemTypes(r.Context())
 	if err != nil {
 		writeServiceError(w, err, "couldn't get item type options")
 		return

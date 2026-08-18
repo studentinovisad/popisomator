@@ -92,12 +92,11 @@ export type ItemTypeProperty = {
 export type ItemTypeOption = {
 	id: number;
 	name: string;
-};
-
-export type ItemType = ItemTypeOption & {
 	description: string;
 	properties: ItemTypeProperty[];
 };
+
+export type ItemType = ItemTypeOption;
 
 export type ItemTypesPage = {
 	items: ItemType[];
@@ -126,12 +125,11 @@ export type PropertyOption = {
 	id: number;
 	name: string;
 	value_type: PropertyValueType;
-};
-
-export type Property = PropertyOption & {
 	description: string;
 	default_value: string | null;
 };
+
+export type Property = PropertyOption;
 
 export type PropertiesPage = {
 	items: Property[];
