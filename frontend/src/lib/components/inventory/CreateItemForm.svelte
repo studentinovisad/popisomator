@@ -2,8 +2,9 @@
 	import { api, ApiError, type ItemType, type Property } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import OptionCombobox from '$lib/components/shared/OptionCombobox.svelte';
 	import { defaultJsonValue } from '$lib/domain/items';
-	import { Button, Label, Select, Separator } from 'bits-ui';
+	import { Button, Label, Separator } from 'bits-ui';
 
 	let {
 		itemTypes,
@@ -23,9 +24,6 @@
 	let error = $state('');
 	let creating = $state(false);
 
-	let typeOptions = $derived(
-		itemTypes.map((itemType) => ({ value: String(itemType.id), label: itemType.name }))
-	);
 	let selectedType = $derived(itemTypes.find((itemType) => itemType.id === Number(selectedTypeID)));
 	let propertiesByID = $derived(new Map(properties.map((property) => [property.id, property])));
 
@@ -74,38 +72,14 @@
 <form class="grid gap-4" onsubmit={createItem}>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="new-item-type">Tip stavke</Label.Root>
-		<Select.Root
-			type="single"
-			value={selectedTypeID}
-			items={typeOptions}
-			onValueChange={selectType}
-		>
-			<Select.Trigger
-				id="new-item-type"
-				class="mt-1 flex h-10 w-full items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink"
-				aria-required="true"
-			>
-				<Select.Value placeholder="Odaberite tip" />
-			</Select.Trigger>
-			<Select.Portal>
-				<Select.Content
-					class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-					sideOffset={4}
-				>
-					<Select.Viewport>
-						{#each typeOptions as option (option.value)}
-							<Select.Item
-								value={option.value}
-								label={option.label}
-								class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-							>
-								{option.label}
-							</Select.Item>
-						{/each}
-					</Select.Viewport>
-				</Select.Content>
-			</Select.Portal>
-		</Select.Root>
+		<div class="mt-1">
+			<OptionCombobox
+				options={itemTypes}
+				bind:value={selectedTypeID}
+				placeholder="Odaberite tip"
+				onvaluechange={selectType}
+			/>
+		</div>
 		<p class="mt-1 text-xs text-muted">Tip određuje skup dostupnih svojstava.</p>
 		{#if itemTypes.length === 0}
 			<p class="mt-2 text-sm text-danger" role="alert">Prvo dodajte tip stavke u katalogu.</p>

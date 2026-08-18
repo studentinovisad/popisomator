@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { api, ApiError, type Item, type ItemType, type Property } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
+	import OptionCombobox from '$lib/components/shared/OptionCombobox.svelte';
 	import { defaultJsonValue } from '$lib/domain/items';
-	import { Button, Label, Select, Separator } from 'bits-ui';
+	import { Button, Label, Separator } from 'bits-ui';
 
 	let {
 		item,
@@ -94,38 +95,15 @@
 <form class="grid gap-4" onsubmit={save}>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="item-type">Tip stavke</Label.Root>
-		<Select.Root
-			type="single"
-			value={selectedTypeID}
-			items={itemTypes.map((itemType) => ({ value: String(itemType.id), label: itemType.name }))}
-			onValueChange={changeItemType}
-		>
-			<Select.Trigger
-				id="item-type"
-				class="mt-1 flex h-10 w-full items-center justify-between rounded-md border border-line bg-surface px-3 text-left text-sm text-ink hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+		<div class="mt-1">
+			<OptionCombobox
+				options={itemTypes}
+				bind:value={selectedTypeID}
+				placeholder="Odaberite tip"
 				disabled={changingType || saving}
-			>
-				<Select.Value />
-			</Select.Trigger>
-			<Select.Portal>
-				<Select.Content
-					class="z-40 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-					sideOffset={4}
-				>
-					<Select.Viewport>
-						{#each itemTypes as itemType (itemType.id)}
-							<Select.Item
-								value={String(itemType.id)}
-								label={itemType.name}
-								class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-							>
-								{itemType.name}
-							</Select.Item>
-						{/each}
-					</Select.Viewport>
-				</Select.Content>
-			</Select.Portal>
-		</Select.Root>
+				onvaluechange={changeItemType}
+			/>
+		</div>
 		<p class="mt-1 text-xs text-muted">
 			Promenom tipa dostupna svojstva se prilagođavaju novom tipu.
 		</p>
