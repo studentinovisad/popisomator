@@ -14,6 +14,22 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
+// ListItems godoc
+// @Summary List items
+// @Tags Items
+// @Produce json
+// @Security CookieAuth
+// @Param limit query int false "Page size (default 20, max 50)"
+// @Param offset query int false "Page offset (default 0)"
+// @Param type_id query int false "Filter by item type ID"
+// @Param consumption query []string false "Filter by consumption status (comma-separated)" collectionFormat(csv) Enums(not_consumed, partially_consumed, fully_consumed, damaged)
+// @Param created_from query string false "Filter by creation time, RFC3339"
+// @Param created_to query string false "Filter by creation time, RFC3339"
+// @Param order query string false "Sort order" Enums(asc, desc) default(desc)
+// @Success 200 {object} dto.ItemsPage
+// @Failure 400 {object} response.Error "invalid query parameters"
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /items [get]
 func ListItems(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
@@ -80,6 +96,17 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, result)
 }
 
+// GetItem godoc
+// @Summary Get an item by ID
+// @Tags Items
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Success 200 {object} dto.Item
+// @Failure 400 {object} response.Error "invalid item id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id} [get]
 func GetItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -96,6 +123,19 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, item)
 }
 
+// ConsumeItem godoc
+// @Summary Update an item's consumption status
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param body body dto.UpdateItemRequest true "Consumption status"
+// @Success 200 {object} dto.Item
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id}/consume [post]
 func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -124,6 +164,20 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, item)
 }
 
+// UpdateItem godoc
+// @Summary Update an item's type (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param body body dto.UpdateItemRequest true "Fields to update"
+// @Success 200 {object} dto.Item
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id} [patch]
 func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -153,6 +207,18 @@ func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, item)
 }
 
+// CreateItem godoc
+// @Summary Create one or more items of a type (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param body body dto.CreateItemRequest true "Item(s) to create"
+// @Success 200 {array} dto.Item
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items [post]
 func CreateItem(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024*64)
 
@@ -171,6 +237,17 @@ func CreateItem(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, items)
 }
 
+// DeleteItem godoc
+// @Summary Delete an item (manager/admin only)
+// @Tags Items
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid item id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id} [delete]
 func DeleteItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -186,6 +263,19 @@ func DeleteItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// AddItemProperty godoc
+// @Summary Add a property value to an item (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param body body dto.AddUpdateItemPropertyRequest true "Property to add"
+// @Success 200 {object} dto.ItemProperty
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items/{id}/properties [post]
 func AddItemProperty(w http.ResponseWriter, r *http.Request) {
 	itemId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -211,6 +301,20 @@ func AddItemProperty(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemProp)
 }
 
+// UpdateItemProperty godoc
+// @Summary Update a property value on an item (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param prop_id path int true "Property ID"
+// @Param body body dto.AddUpdateItemPropertyRequest true "Property value"
+// @Success 200 {object} dto.ItemProperty
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items/{id}/properties/{prop_id} [put]
 func UpdateItemProperty(w http.ResponseWriter, r *http.Request) {
 	itemId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -243,6 +347,17 @@ func UpdateItemProperty(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemProp)
 }
 
+// RemoveItemProperty godoc
+// @Summary Remove a property value from an item (manager/admin only)
+// @Tags Items
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param prop_id path int true "Property ID"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid item/property id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items/{id}/properties/{prop_id} [delete]
 func RemoveItemProperty(w http.ResponseWriter, r *http.Request) {
 	itemId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

@@ -3,7 +3,11 @@ package router
 import (
 	"net/http"
 
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
+	"github.com/studentinovisad/popisomator/backend/internal/config"
 	"github.com/studentinovisad/popisomator/backend/internal/controller"
+	_ "github.com/studentinovisad/popisomator/backend/internal/docs"
 	"github.com/studentinovisad/popisomator/backend/internal/middleware"
 )
 
@@ -13,6 +17,11 @@ func New() *http.ServeMux {
 	// Operational
 	mux.HandleFunc("/ping", controller.Ping)
 	mux.HandleFunc("/health", controller.Healthcheck)
+
+	// Swagger UI, dev-only
+	if config.CurrentConfig.DebugMode {
+		mux.HandleFunc("GET /swagger/", httpSwagger.WrapHandler)
+	}
 
 	// Auth & registration
 	mux.HandleFunc("POST /auth/login", controller.Login)
