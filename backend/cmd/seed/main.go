@@ -17,6 +17,7 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/config"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/repository"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
@@ -100,21 +101,22 @@ var testUsers = []testUser{
 
 // propertyDef describes one of the "Hemikalija" item type's properties.
 type propertyDef struct {
-	key       string // matches a key in propertyValues() below
-	name      string
-	valueType string
+	key        string // matches a key in propertyValues() below
+	name       string
+	valueType  string
+	visibility repository.PropertyVisibility
 }
 
 var propertyDefs = []propertyDef{
-	{"name", "Naziv hemikalije", "string"},
-	{"manufacturer", "Proizvođač", "string"},
-	{"purity", "Čistoća", "string"},
-	{"total_amount", "Zapremina", "number"},
-	{"total_unit", "Jedinica mere", "string"},
-	{"person_in_charge", "Zadužena osoba", "string"},
-	{"note_date", "Napomena/datum", "string"},
-	{"box", "Mesto/kutija", "string"},
-	{"location", "Lokacija", "string"},
+	{"name", "Naziv hemikalije", "string", repository.PropertyVisibilityDetails},
+	{"manufacturer", "Proizvođač", "string", repository.PropertyVisibilityDetails},
+	{"purity", "Čistoća", "string", repository.PropertyVisibilityOverview},
+	{"total_amount", "Zapremina", "number", repository.PropertyVisibilityOverview},
+	{"total_unit", "Jedinica mere", "string", repository.PropertyVisibilityOverview},
+	{"person_in_charge", "Zadužena osoba", "string", repository.PropertyVisibilityDetails},
+	{"note_date", "Napomena/datum", "string", repository.PropertyVisibilityDetails},
+	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
+	{"location", "Lokacija", "string", repository.PropertyVisibilityOverview},
 }
 
 func main() {
@@ -218,7 +220,7 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 			if err != nil {
 				return 0, fmt.Errorf("loading item type properties: %w", err)
 			}
-			if err := attachMissingItemTypeProperties(ctx, existingType, propIDs); err != nil {
+			if err := ensureItemTypeProperties(ctx, existingType, propIDs); err != nil {
 				return 0, err
 			}
 			if existingType.DerivedNameFormat != chemicalDerivedNameFormat {
@@ -236,7 +238,10 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 
 	properties := make([]dto.ItemTypeProperty, 0, len(propertyDefs))
 	for _, def := range propertyDefs {
-		properties = append(properties, dto.ItemTypeProperty{ID: propIDs[def.key]})
+		properties = append(properties, dto.ItemTypeProperty{
+			ID:         propIDs[def.key],
+			Visibility: string(def.visibility),
+		})
 	}
 
 	created, err := service.CreateItemType(ctx, dto.CreateItemTypeRequest{
@@ -252,22 +257,35 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 	return created.ID, nil
 }
 
-func attachMissingItemTypeProperties(ctx context.Context, itemType dto.ItemType, propIDs map[string]int64) error {
-	attached := make(map[int64]bool, len(itemType.Properties))
+func ensureItemTypeProperties(ctx context.Context, itemType dto.ItemType, propIDs map[string]int64) error {
+	attached := make(map[int64]dto.ItemTypeProperty, len(itemType.Properties))
 	for _, property := range itemType.Properties {
-		attached[property.ID] = true
+		attached[property.ID] = property
 	}
 
 	for _, def := range propertyDefs {
 		propertyID := propIDs[def.key]
-		if attached[propertyID] {
+		visibility := def.visibility
+		property, exists := attached[propertyID]
+		if !exists {
+			if _, err := service.AddItemTypeProperty(ctx, dto.AddUpdateItemTypePropertyRequest{
+				TypeID:     itemType.ID,
+				PropertyID: propertyID,
+				Visibility: &visibility,
+			}); err != nil {
+				return fmt.Errorf("attaching property %s to item type: %w", def.name, err)
+			}
 			continue
 		}
-		if _, err := service.AddItemTypeProperty(ctx, dto.AddUpdateItemTypePropertyRequest{
-			TypeID:     itemType.ID,
-			PropertyID: propertyID,
-		}); err != nil {
-			return fmt.Errorf("attaching property %s to item type: %w", def.name, err)
+
+		if property.Visibility != string(visibility) {
+			if _, err := service.UpdateItemTypeProperty(ctx, dto.AddUpdateItemTypePropertyRequest{
+				TypeID:     itemType.ID,
+				PropertyID: propertyID,
+				Visibility: &visibility,
+			}); err != nil {
+				return fmt.Errorf("setting visibility for property %s: %w", def.name, err)
+			}
 		}
 	}
 
