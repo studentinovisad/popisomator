@@ -11,7 +11,7 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, setHeaders }) => 
 	if (session) {
 		try {
 			const response = await fetch(
-				`${env.POPISOMATOR_BACKEND_URL ?? 'http://localhost:8080'}/user/details`,
+				`${env.POPISOMATOR_BACKEND_URL ?? 'http://localhost:8080'}/users/me`,
 				{
 					headers: { Cookie: `session=${session}` }
 				}
