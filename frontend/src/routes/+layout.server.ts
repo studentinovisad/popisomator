@@ -1,8 +1,9 @@
 import { env } from '$env/dynamic/private';
+import { redirect } from '@sveltejs/kit';
 import type { User } from '$lib/api';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ cookies, fetch, setHeaders }) => {
+export const load: LayoutServerLoad = async ({ cookies, fetch, setHeaders, url }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
 
 	const session = cookies.get('session');
@@ -11,7 +12,7 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, setHeaders }) => 
 	if (session) {
 		try {
 			const response = await fetch(
-				`${env.POPISOMATOR_BACKEND_URL ?? 'http://localhost:8080'}/user/details`,
+				`${env.POPISOMATOR_BACKEND_URL ?? 'http://localhost:8080'}/users/me`,
 				{
 					headers: { Cookie: `session=${session}` }
 				}
@@ -23,6 +24,10 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, setHeaders }) => 
 		} catch {
 			currentUser = null;
 		}
+	}
+
+	if (currentUser && (url.pathname === '/login' || url.pathname === '/register')) {
+		redirect(303, '/');
 	}
 
 	return {

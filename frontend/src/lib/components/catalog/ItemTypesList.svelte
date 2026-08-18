@@ -2,20 +2,26 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { resolve } from '$app/paths';
-	import type { ItemType } from '$lib/api';
+	import type { ItemType, PropertyOption } from '$lib/api';
 
 	let {
 		itemTypes,
+		propertyOptions,
 		deleteitemtype
 	}: {
 		itemTypes: ItemType[];
+		propertyOptions: PropertyOption[];
 		deleteitemtype: (itemType: ItemType) => void;
 	} = $props();
 
 	function assignedProperties(itemType: ItemType) {
 		return itemType.properties.length
 			? itemType.properties
-					.map((itemProperty) => itemProperty.name ?? 'Nepoznato svojstvo')
+					.map(
+						(itemProperty) =>
+							propertyOptions.find((property) => property.id === itemProperty.id)?.name ??
+							'Nepoznato svojstvo'
+					)
 					.join(' · ')
 			: 'Bez svojstava';
 	}

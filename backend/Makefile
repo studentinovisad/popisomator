@@ -1,7 +1,7 @@
 include ../.env
 export
 
-.PHONY: run dev build migrate-diff migrate-apply migrate-status sqlc generate
+.PHONY: run dev build migrate-diff migrate-apply migrate-status sqlc generate swagger
 
 ## Run the server locally
 run:
@@ -9,7 +9,7 @@ run:
 
 ## Run the server with live reload
 dev:
-	go tool air -c .air.toml
+	POPISOMATOR_DEBUG=true go tool air -c .air.toml
 
 ## Build a binary
 build:
@@ -34,3 +34,8 @@ sqlc:
 ## Regenerate everything code-gen related (go:generate directives, incl. sqlc)
 generate:
 	go generate ./...
+
+## Regenerate Swagger/OpenAPI docs from handler annotations. Run this after adding/changing
+## an endpoint's @... comment block (see internal/controller for examples) and commit the result.
+swagger:
+	go tool swag init -g cmd/server/main.go -o internal/docs --parseDependency --parseInternal

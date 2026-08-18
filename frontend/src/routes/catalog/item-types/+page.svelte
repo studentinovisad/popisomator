@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api, ApiError, type ItemType } from '$lib/api';
+	import { api, ApiError, type ItemType, type PropertyOption } from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import ItemTypesList from '$lib/components/catalog/ItemTypesList.svelte';
@@ -16,15 +16,32 @@
 
 	let error = $state('');
 	const itemTypesPage = createServerPagination<ItemType>({
-		loadPage: api.listItemTypesPage,
+		loadPage: api.listItemTypes,
 		unavailableMessage: 'Tipovi stavki nisu učitani.'
 	});
+	let propertyOptions = $state<PropertyOption[]>([]);
+	let propertyOptionsLoading = $state(true);
 
 	onMount(() => {
 		void authPage.load().then(() => {
-			if (authPage.state.authorized) void itemTypesPage.load();
+			if (authPage.state.authorized) {
+				void Promise.all([itemTypesPage.load(), loadPropertyOptions()]);
+			}
 		});
 	});
+
+	async function loadPropertyOptions() {
+		propertyOptionsLoading = true;
+		error = '';
+
+		try {
+			propertyOptions = await api.getPropertyOptions();
+		} catch (reason) {
+			error = reason instanceof ApiError ? reason.message : 'Svojstva nisu učitana.';
+		} finally {
+			propertyOptionsLoading = false;
+		}
+	}
 
 	async function deleteItemType(itemType: ItemType) {
 		if (!confirm(`Obrisati tip ${itemType.name}?`)) return;
@@ -45,7 +62,8 @@
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
-		loading={authPage.state.loading || (authPage.state.authorized && itemTypesPage.loading)}
+		loading={authPage.state.loading ||
+			(authPage.state.authorized && itemTypesPage.loading && propertyOptionsLoading)}
 		error={authPage.state.error || itemTypesPage.error}
 		authorized={authPage.state.authorized}
 	>
@@ -69,7 +87,11 @@
 		</Portal>
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
-		<ItemTypesList itemTypes={itemTypesPage.items} deleteitemtype={deleteItemType} />
+		<ItemTypesList
+			itemTypes={itemTypesPage.items}
+			deleteitemtype={deleteItemType}
+			{propertyOptions}
+		/>
 		<PaginationFooter
 			total={itemTypesPage.total}
 			perPage={itemTypesPage.perPage}

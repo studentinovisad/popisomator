@@ -90,6 +90,13 @@ export const secondaryNavigation: NavigationItem[] = [
 ];
 
 export function getPageMetadata(pathname: string): PageMetadata {
+	if (pathname.startsWith('/items/') && pathname !== '/items/new') {
+		return {
+			title: 'Stavka',
+			description: 'Pregledajte podatke, svojstva i stanje odabrane stavke.'
+		};
+	}
+
 	if (pathname.startsWith('/catalog/item-types/')) {
 		return pageMetadata['/catalog/item-types'];
 	}

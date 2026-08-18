@@ -40,11 +40,15 @@ export type CreateUserRequest = RegistrationRequest & {
 	role: UserRole;
 };
 
+export type UpdateUserRequest = {
+	role?: UserRole;
+	status?: UserStatus;
+};
+
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 
-export type PropertyVisibility =
-	'overview' | 'details';
+export type PropertyVisibility = 'overview' | 'details';
 
 export type ItemProperty = {
 	id: number;
@@ -57,6 +61,7 @@ export type Item = {
 	consumption: ConsumptionStatus;
 	properties: ItemProperty[];
 	type_id: number;
+	derived_name?: string;
 };
 
 export type ItemsPage = {
@@ -64,6 +69,11 @@ export type ItemsPage = {
 	limit: number;
 	offset: number;
 	total: number;
+};
+
+export type UpdateItemRequest = {
+	type_id?: number;
+	consumption?: ConsumptionStatus;
 };
 
 export type CreateItemRequest = {
@@ -79,11 +89,15 @@ export type ItemTypeProperty = {
 	visibility: PropertyVisibility;
 };
 
-export type ItemType = {
+export type ItemTypeOption = {
 	id: number;
 	name: string;
+};
+
+export type ItemType = ItemTypeOption & {
 	description: string;
 	properties: ItemTypeProperty[];
+	derived_name_format: string;
 };
 
 export type ItemTypesPage = {
@@ -96,25 +110,31 @@ export type ItemTypesPage = {
 export type CreateItemTypeRequest = {
 	name: string;
 	description: string;
+	derived_name_format: string;
 	properties: ItemTypeProperty[];
 };
 
-export type UpdateItemTypeRequest = Partial<Pick<ItemType, 'name' | 'description'>>;
+export type UpdateItemTypeRequest = Partial<
+	Pick<ItemType, 'name' | 'description' | 'derived_name_format'>
+>;
 
 export type AddUpdateItemTypePropertyRequest = {
 	property_id?: number;
 	default_value?: string;
 	visibility?: string;
-}
+};
 
 export type PropertyValueType = 'string' | 'number' | 'boolean';
 
-export type Property = {
+export type PropertyOption = {
 	id: number;
 	name: string;
-	description: string;
 	value_type: PropertyValueType;
 	default_value: string | null;
+};
+
+export type Property = PropertyOption & {
+	description: string;
 };
 
 export type PropertiesPage = {

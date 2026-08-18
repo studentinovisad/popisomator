@@ -1,18 +1,18 @@
 import { jsonRequest, request } from '$lib/api/client';
 import type {
 	CreateUserRequest,
+	UpdateUserRequest,
 	ListUsersParams,
 	LoginRequest,
 	RegistrationRequest,
 	User,
-	UserRole,
 	UsersPage
 } from '$lib/api/types';
 
 export const usersApi = {
 	login: (payload: LoginRequest) => request<void>('/auth/login', jsonRequest('POST', payload)),
 	logout: () => request<void>('/auth/logout', { method: 'POST' }),
-	currentUser: () => request<User>('/user/details'),
+	currentUser: () => request<User>('/users/me'),
 	listUsers: ({ limit = 25, offset = 0, search = '', role, status }: ListUsersParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		if (search) query.set('search', search);
@@ -21,12 +21,10 @@ export const usersApi = {
 
 		return request<UsersPage>(`/users?${query}`);
 	},
-	createUser: (payload: CreateUserRequest) =>
-		request<User>('/auth/create', jsonRequest('POST', payload)),
+	createUser: (payload: CreateUserRequest) => request<User>('/users', jsonRequest('POST', payload)),
 	register: (payload: RegistrationRequest) =>
 		request<User>('/auth/register', jsonRequest('POST', payload)),
-	updateUserRole: (id: number, role: UserRole) =>
-		request<User>(`/user/${id}/role`, jsonRequest('PATCH', { role })),
-	approveRegistration: (id: number) => request<User>(`/user/${id}/approve`, { method: 'POST' }),
-	declineRegistration: (id: number) => request<void>(`/user/${id}/decline`, { method: 'POST' })
+	updateUser: (id: number, payload: UpdateUserRequest) =>
+		request<User>(`/users/${id}`, jsonRequest('PATCH', payload)),
+	deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' })
 };

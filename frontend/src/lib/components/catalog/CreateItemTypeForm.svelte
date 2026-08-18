@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { api, ApiError, type ItemType, type Property } from '$lib/api';
+	import { api, ApiError, type ItemType, type PropertyOption } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
+	import MultiOptionCombobox from '$lib/components/shared/MultiOptionCombobox.svelte';
 	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/domain/items';
 	import { Button, Label, ScrollArea, Separator } from 'bits-ui';
 
@@ -11,20 +12,25 @@
 		oncancel
 	}: {
 		itemType?: ItemType;
-		properties: Property[];
+		properties: PropertyOption[];
 		onsaved: () => void;
 		oncancel?: () => void;
 	} = $props();
 
 	let name = $state('');
 	let description = $state('');
-	let selectedPropertyIDs = $state<number[]>([]);
+	let derivedNameFormat = $state('');
+	let selectedPropertyValues = $state<string[]>([]);
+	let selectedPropertyIDs = $derived(selectedPropertyValues.map(Number));
 	let defaultValues = $state<Record<number, string>>({});
 	let editedDefaultPropertyIDs = $state<Set<number>>(new Set());
 	let creating = $state(false);
 	let error = $state('');
 	let initializedItemTypeID = $state<number | undefined>(undefined);
 	let propertiesByID = $derived(new Map(properties.map((property) => [property.id, property])));
+	let selectedProperties = $derived(
+		properties.filter((property) => selectedPropertyIDs.includes(property.id))
+	);
 	let originalProperties = $derived(
 		new Map(itemType?.properties.map((property) => [property.id, property]))
 	);
@@ -35,7 +41,8 @@
 		initializedItemTypeID = itemType?.id;
 		name = itemType?.name ?? '';
 		description = itemType?.description ?? '';
-		selectedPropertyIDs = itemType?.properties.map((property) => property.id) ?? [];
+		derivedNameFormat = itemType?.derived_name_format ?? '';
+		selectedPropertyValues = itemType?.properties.map((property) => String(property.id)) ?? [];
 		defaultValues = Object.fromEntries(
 			(itemType?.properties ?? []).flatMap((itemTypeProperty) => {
 				const property = propertiesByID.get(itemTypeProperty.id);
@@ -55,17 +62,16 @@
 		editedDefaultPropertyIDs = new Set();
 	});
 
-	function selectProperty(id: number, checked: boolean) {
-		selectedPropertyIDs = checked
-			? [...selectedPropertyIDs, id]
-			: selectedPropertyIDs.filter((propertyID) => propertyID !== id);
+	function updateSelectedProperties(values: string[]) {
+		selectedPropertyValues = values;
+		for (const propertyID of values.map(Number)) {
+			if (defaultValues[propertyID] !== undefined) continue;
 
-		if (checked && defaultValues[id] === undefined) {
-			const property = propertiesByID.get(id);
+			const property = propertiesByID.get(propertyID);
 			if (property) {
 				defaultValues = {
 					...defaultValues,
-					[id]: defaultJsonValue(property.value_type, property.default_value)
+					[propertyID]: defaultJsonValue(property.value_type, property.default_value)
 				};
 			}
 		}
@@ -85,33 +91,40 @@
 				await api.createItemType({
 					name,
 					description,
+					derived_name_format: derivedNameFormat,
 					properties: selectedPropertyIDs.map((id) => ({
 						id,
 						default_value: defaultValues[id],
-						visibility: "overview"
+						visibility: 'overview'
 					}))
 				});
 			} else {
 				await api.updateItemType(itemType.id, { name, description });
 
-				const changes: Promise<unknown>[] = [];
-				for (const property of itemType.properties) {
-					if (!selectedPropertyIDs.includes(property.id)) {
-						changes.push(api.removeItemTypeProperty(itemType.id, property.id));
-					}
-				}
+				const additionsAndDefaults: Promise<unknown>[] = [];
 				for (const propertyID of selectedPropertyIDs) {
 					if (!originalProperties.has(propertyID)) {
-						changes.push(
-							api.addItemTypeProperty(itemType.id, {property_id: propertyID, default_value: defaultValues[propertyID]})
+						additionsAndDefaults.push(
+							api.addItemTypeProperty(itemType.id, {
+								property_id: propertyID,
+								default_value: defaultValues[propertyID]
+							})
 						);
 					} else if (editedDefaultPropertyIDs.has(propertyID)) {
-						changes.push(
-							api.updateItemTypeProperty(itemType.id, propertyID, {default_value: defaultValues[propertyID]})
+						additionsAndDefaults.push(
+							api.updateItemTypeProperty(itemType.id, propertyID, {
+								default_value: defaultValues[propertyID]
+							})
 						);
 					}
 				}
-				await Promise.all(changes);
+				await Promise.all(additionsAndDefaults);
+				await api.updateItemType(itemType.id, { derived_name_format: derivedNameFormat });
+
+				const removals = itemType.properties
+					.filter((property) => !selectedPropertyIDs.includes(property.id))
+					.map((property) => api.removeItemTypeProperty(itemType.id, property.id));
+				await Promise.all(removals);
 			}
 
 			onsaved();
@@ -138,25 +151,36 @@
 		<p class="mt-1 text-xs text-muted">
 			Podesite svojstva i njihove podrazumevane vrednosti za tip.
 		</p>
-		<ScrollArea.Root class="mt-3 h-64 overflow-hidden rounded-md border border-line" type="auto">
-			<ScrollArea.Viewport class="h-full w-full">
-				<div class="divide-y divide-line">
-					{#each properties as property (property.id)}
-						<div class="px-3 py-2">
-							<label class="flex cursor-pointer items-center justify-between gap-4">
-								<span>
-									<span class="block text-sm font-medium text-ink">{property.name}</span>
-									<span class="block text-xs text-muted"
-										>{propertyValueTypeLabel(property.value_type)}</span
-									>
-								</span>
-								<input
-									type="checkbox"
-									checked={selectedPropertyIDs.includes(property.id)}
-									onchange={(event) => selectProperty(property.id, event.currentTarget.checked)}
-								/>
-							</label>
-							{#if selectedPropertyIDs.includes(property.id)}
+		<MultiOptionCombobox
+			options={properties}
+			bind:values={selectedPropertyValues}
+			placeholder="Pretražite svojstva"
+			emptyMessage="Nema odgovarajućih svojstava."
+			onvaluechange={updateSelectedProperties}
+		/>
+		<div class="mt-4">
+			<Label.Root class="text-sm font-medium text-ink" for="item-type-derived-name">
+				Prikazani naziv stavke
+			</Label.Root>
+			<textarea
+				id="item-type-derived-name"
+				class="mt-1 block min-h-20 w-full font-mono text-sm"
+				bind:value={derivedNameFormat}
+				placeholder={'{Naziv stavke} · {Proizvođač}'}
+				required></textarea>
+			<p class="mt-1 text-xs text-muted">
+				Unesite nazive svojstava u vitičastim zagradama, npr. {'{Naziv stavke}'}. Možete dodati i
+				običan tekst.
+			</p>
+		</div>
+		{#if selectedProperties.length}
+			<ScrollArea.Root class="mt-3 h-64 overflow-hidden rounded-md border border-line" type="auto">
+				<ScrollArea.Viewport class="h-full w-full">
+					<div class="divide-y divide-line">
+						{#each selectedProperties as property (property.id)}
+							<div class="px-3 py-2">
+								<p class="text-sm font-medium text-ink">{property.name}</p>
+								<p class="text-xs text-muted">{propertyValueTypeLabel(property.value_type)}</p>
 								<Label.Root
 									class="mt-3 block text-xs font-medium text-muted"
 									for={`item-type-property-${property.id}`}
@@ -169,18 +193,17 @@
 									{property}
 									onvaluechange={() => markDefaultEdited(property.id)}
 								/>
-							{/if}
-						</div>
-					{/each}
-					{#if properties.length === 0}<p class="px-3 py-3 text-sm text-muted">
-							Najpre dodajte svojstvo.
-						</p>{/if}
-				</div>
-			</ScrollArea.Viewport>
-			<ScrollArea.Scrollbar class="flex w-2.5 touch-none bg-soft p-0.5" orientation="vertical">
-				<ScrollArea.Thumb class="flex-1 rounded-full bg-line" />
-			</ScrollArea.Scrollbar>
-		</ScrollArea.Root>
+							</div>
+						{/each}
+					</div>
+				</ScrollArea.Viewport>
+				<ScrollArea.Scrollbar class="flex w-2.5 touch-none bg-soft p-0.5" orientation="vertical">
+					<ScrollArea.Thumb class="flex-1 rounded-full bg-line" />
+				</ScrollArea.Scrollbar>
+			</ScrollArea.Root>
+		{:else if properties.length === 0}
+			<p class="mt-3 text-sm text-muted">Najpre dodajte svojstvo.</p>
+		{/if}
 	</fieldset>
 	<Separator.Root class="h-px bg-line" decorative />
 	<div>

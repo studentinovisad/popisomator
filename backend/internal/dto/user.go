@@ -10,8 +10,9 @@ type User struct {
 	Status   repository.UserStatus `json:"status"`
 }
 
-type UpdateRoleRequest struct {
-	Role string `json:"role" validate:"required,oneof=admin manager user"`
+type UpdateUserRequest struct {
+	Role   *string `json:"role" validate:"omitempty,oneof=admin manager user"`
+	Status *string `json:"status" validate:"omitempty,oneof=active requested"`
 }
 
 type UsersPage struct {

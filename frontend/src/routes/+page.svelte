@@ -6,26 +6,23 @@
 		ApiError,
 		type ConsumptionStatus,
 		type Item,
-		type ItemType,
-		type Property
+		type ItemTypeOption,
+		type PropertyOption
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
-	import ItemPropertiesForm from '$lib/components/catalog/ItemPropertiesForm.svelte';
 	import InventoryList from '$lib/components/inventory/InventoryList.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { pagination } from '$lib/state/pagination.svelte';
-	import { Dialog, Portal } from 'bits-ui';
+	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Inventar trenutno nije dostupan.' });
 
 	let items = $state<Item[]>([]);
-	let itemTypes = $state<ItemType[]>([]);
-	let properties = $state<Property[]>([]);
+	let itemTypes = $state<ItemTypeOption[]>([]);
+	let properties = $state<PropertyOption[]>([]);
 	let loadingInventory = $state(false);
 	let inventoryError = $state('');
-	let editItemDialogOpen = $state(false);
-	let editingItem = $state<Item | null>(null);
 	let loadVersion = 0;
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
@@ -51,8 +48,8 @@
 		try {
 			const [nextItems, nextItemTypes, nextProperties] = await Promise.all([
 				api.listItems({ limit: itemsPerPage, offset }),
-				api.listItemTypes(),
-				api.listProperties()
+				api.getItemTypeOptions(),
+				api.getPropertyOptions()
 			]);
 			if (version !== loadVersion) return;
 
@@ -84,36 +81,6 @@
 		}
 	}
 
-	async function deleteItem(item: Item) {
-		if (!confirm(`Obrisati stavku #${item.id}?`)) return;
-		inventoryError = '';
-
-		try {
-			await api.deleteItem(item.id);
-			const nextOffset =
-				items.length === 1 && itemOffset > 0 ? itemOffset - itemsPerPage : itemOffset;
-			void loadInventory(nextOffset);
-		} catch (reason) {
-			inventoryError = reason instanceof ApiError ? reason.message : 'Stavka nije obrisana.';
-		}
-	}
-
-	function editItem(item: Item) {
-		editingItem = item;
-		editItemDialogOpen = true;
-	}
-
-	function itemPropertiesSaved() {
-		editItemDialogOpen = false;
-		void loadInventory(itemOffset);
-	}
-
-	async function changeItemType(item: Item, typeID: number) {
-		const updatedItem = await api.setItemType(item.id, typeID);
-		items = items.map((listedItem) => (listedItem.id === item.id ? updatedItem : listedItem));
-		editingItem = updatedItem;
-	}
-
 	function goToPage(page: number) {
 		void loadInventory((page - 1) * itemsPerPage);
 	}
@@ -123,7 +90,7 @@
 	<title>Stavke | Popisomator</title>
 </svelte:head>
 
-<main class="px-4 pt-4 pb-8 sm:px-6">
+<main class="px-4 pt-4 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading || (authPage.state.authorized && loadingInventory)}
 		error={authPage.state.error}
@@ -144,39 +111,6 @@
 			</Portal>
 		{/if}
 
-		<Dialog.Root bind:open={editItemDialogOpen}>
-			<Dialog.Portal>
-				<Dialog.Overlay class="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm" />
-				<Dialog.Content
-					class="fixed top-1/2 left-1/2 z-30 max-h-[calc(100svh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface p-6 shadow-xl shadow-black/20"
-				>
-					<div class="flex items-start justify-between gap-4">
-						<div>
-							<Dialog.Title class="text-xl font-semibold text-ink">Svojstva stavke</Dialog.Title>
-							<Dialog.Description class="mt-1 text-sm text-muted"
-								>Izmenite vrednosti za stavku #{editingItem?.id}.</Dialog.Description
-							>
-						</div>
-						<Dialog.Close
-							class="rounded-md px-2 py-1 text-sm text-muted hover:bg-soft hover:text-ink"
-							>Zatvori</Dialog.Close
-						>
-					</div>
-					{#if editingItem}
-						<div class="mt-6">
-							<ItemPropertiesForm
-								item={editingItem}
-								{itemTypes}
-								{properties}
-								onitemtypechange={(typeID) => changeItemType(editingItem!, typeID)}
-								onsaved={itemPropertiesSaved}
-							/>
-						</div>
-					{/if}
-				</Dialog.Content>
-			</Dialog.Portal>
-		</Dialog.Root>
-
 		{#if inventoryError}<p class="mt-3 text-sm text-danger" role="alert">{inventoryError}</p>{/if}
 		<InventoryList
 			{items}
@@ -184,8 +118,6 @@
 			{properties}
 			user={authPage.state.user!}
 			onconsumptionchange={changeConsumption}
-			onedititem={editItem}
-			deleteitem={deleteItem}
 		/>
 		<PaginationFooter
 			total={itemsTotal}

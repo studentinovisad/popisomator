@@ -1,0 +1,1529 @@
+basePath: /
+definitions:
+  github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemPropertyRequest:
+    properties:
+      item_id:
+        type: integer
+      property_id:
+        type: integer
+      value:
+        type: string
+    required:
+    - item_id
+    - property_id
+    - value
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemTypePropertyRequest:
+    properties:
+      default_value:
+        type: string
+      property_id:
+        type: integer
+      type_id:
+        type: integer
+      visibility:
+        allOf:
+        - $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.PropertyVisibility'
+        enum:
+        - overview
+        - details
+    required:
+    - property_id
+    - type_id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemRequest:
+    properties:
+      amount:
+        maximum: 100
+        type: integer
+      properties:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
+        type: array
+      type_id:
+        type: integer
+    required:
+    - amount
+    - type_id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemTypeRequest:
+    properties:
+      derived_name_format:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      properties:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty'
+        type: array
+    required:
+    - name
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.CreatePropertyRequest:
+    properties:
+      default_value:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      value_type:
+        enum:
+        - string
+        - number
+        - boolean
+        type: string
+    required:
+    - name
+    - value_type
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      role:
+        enum:
+        - admin
+        - manager
+        - user
+        type: string
+      status:
+        enum:
+        - requested
+        - active
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    - role
+    - status
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.Item:
+    properties:
+      consumption:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.ConsumptionStatus'
+      derived_name:
+        type: string
+      id:
+        type: integer
+      properties:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
+        type: array
+      type_id:
+        type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty:
+    properties:
+      id:
+        type: integer
+      value:
+        type: string
+      visibility:
+        type: string
+    required:
+    - id
+    - value
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemType:
+    properties:
+      derived_name_format:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      properties:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty'
+        type: array
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeOption:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty:
+    properties:
+      default_value:
+        type: string
+      id:
+        type: integer
+      visibility:
+        enum:
+        - overview
+        - details
+        type: string
+    required:
+    - id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypesPage:
+    properties:
+      items:
+        description: ItemType page items
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemType'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemsPage:
+    properties:
+      items:
+        description: Item page items
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.PropertiesPage:
+    properties:
+      items:
+        description: Property page items
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Property'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.Property:
+    properties:
+      default_value:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      value_type:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.PropertyOption:
+    properties:
+      default_value:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      value_type:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.RegistrationRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest:
+    properties:
+      consumption:
+        enum:
+        - not_consumed
+        - partially_consumed
+        - fully_consumed
+        - damaged
+        type: string
+      id:
+        type: integer
+      type_id:
+        type: integer
+    required:
+    - id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemTypeRequest:
+    properties:
+      derived_name_format:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.UpdatePropertyRequest:
+    properties:
+      default_value:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.UpdateUserRequest:
+    properties:
+      role:
+        enum:
+        - admin
+        - manager
+        - user
+        type: string
+      status:
+        enum:
+        - active
+        - requested
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.User:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+      role:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.UserRole'
+      status:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.UserStatus'
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.UsersPage:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.User'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_repository.ConsumptionStatus:
+    enum:
+    - not_consumed
+    - partially_consumed
+    - fully_consumed
+    - damaged
+    type: string
+    x-enum-varnames:
+    - ConsumptionStatusNotConsumed
+    - ConsumptionStatusPartiallyConsumed
+    - ConsumptionStatusFullyConsumed
+    - ConsumptionStatusDamaged
+  github_com_studentinovisad_popisomator_backend_internal_repository.PropertyVisibility:
+    enum:
+    - overview
+    - details
+    type: string
+    x-enum-varnames:
+    - PropertyVisibilityOverview
+    - PropertyVisibilityDetails
+  github_com_studentinovisad_popisomator_backend_internal_repository.UserRole:
+    enum:
+    - admin
+    - manager
+    - user
+    type: string
+    x-enum-varnames:
+    - UserRoleAdmin
+    - UserRoleManager
+    - UserRoleUser
+  github_com_studentinovisad_popisomator_backend_internal_repository.UserStatus:
+    enum:
+    - requested
+    - active
+    type: string
+    x-enum-varnames:
+    - UserStatusRequested
+    - UserStatusActive
+  github_com_studentinovisad_popisomator_backend_internal_response.Error:
+    properties:
+      error:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Inventory management API for Popisomator.
+  title: Popisomator API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Session cookie set
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: invalid credentials
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      summary: Log in and receive a session cookie
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      responses:
+        "200":
+          description: Session cookie cleared
+      summary: Log out and clear the session cookie
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.RegistrationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.User'
+        "400":
+          description: invalid request / validation failed
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "409":
+          description: user with this email already exists
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      summary: Self-register a new user account (created with role "user", status
+        "requested")
+      tags:
+      - Auth
+  /health:
+    get:
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "503":
+          description: database unavailable
+          schema:
+            type: string
+      summary: Readiness probe, verifies database connectivity
+      tags:
+      - Operational
+  /item-types:
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypesPage'
+        "400":
+          description: invalid limit/offset
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List item types
+      tags:
+      - ItemTypes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item type to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemType'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Create an item type (manager/admin only)
+      tags:
+      - ItemTypes
+  /item-types/{id}:
+    delete:
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid type id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete an item type (manager/admin only)
+      tags:
+      - ItemTypes
+    get:
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemType'
+        "400":
+          description: invalid type id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get an item type by ID
+      tags:
+      - ItemTypes
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemType'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update an item type (manager/admin only)
+      tags:
+      - ItemTypes
+  /item-types/{id}/properties:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property to add
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemTypePropertyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Add a property to an item type (manager/admin only)
+      tags:
+      - ItemTypes
+  /item-types/{id}/properties/{prop_id}:
+    delete:
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: prop_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid type/property id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Remove a property from an item type (manager/admin only)
+      tags:
+      - ItemTypes
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: prop_id
+        required: true
+        type: integer
+      - description: Property fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemTypePropertyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update a property on an item type (manager/admin only)
+      tags:
+      - ItemTypes
+  /item-types/options:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeOption'
+            type: array
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List all item types in a minified form, for dropdowns
+      tags:
+      - ItemTypes
+  /items:
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by item type ID
+        in: query
+        name: type_id
+        type: integer
+      - collectionFormat: csv
+        description: Filter by consumption status (comma-separated)
+        in: query
+        items:
+          enum:
+          - not_consumed
+          - partially_consumed
+          - fully_consumed
+          - damaged
+          type: string
+        name: consumption
+        type: array
+      - description: Filter by creation time, RFC3339
+        in: query
+        name: created_from
+        type: string
+      - description: Filter by creation time, RFC3339
+        in: query
+        name: created_to
+        type: string
+      - default: desc
+        description: Sort order
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemsPage'
+        "400":
+          description: invalid query parameters
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List items
+      tags:
+      - Items
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item(s) to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item'
+            type: array
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Create one or more items of a type (manager/admin only)
+      tags:
+      - Items
+  /items/{id}:
+    delete:
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid item id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete an item (manager/admin only)
+      tags:
+      - Items
+    get:
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item'
+        "400":
+          description: invalid item id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get an item by ID
+      tags:
+      - Items
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update an item's type (manager/admin only)
+      tags:
+      - Items
+  /items/{id}/consume:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Consumption status
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update an item's consumption status
+      tags:
+      - Items
+  /items/{id}/properties:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property to add
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemPropertyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Add a property value to an item (manager/admin only)
+      tags:
+      - Items
+  /items/{id}/properties/{prop_id}:
+    delete:
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: prop_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid item/property id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Remove a property value from an item (manager/admin only)
+      tags:
+      - Items
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: prop_id
+        required: true
+        type: integer
+      - description: Property value
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemPropertyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update a property value on an item (manager/admin only)
+      tags:
+      - Items
+  /ping:
+    get:
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Pong!
+          schema:
+            type: string
+      summary: Liveness probe
+      tags:
+      - Operational
+  /properties:
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.PropertiesPage'
+        "400":
+          description: invalid limit/offset
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List property definitions
+      tags:
+      - Properties
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Property to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.CreatePropertyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Property'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Create a property definition (manager/admin only)
+      tags:
+      - Properties
+  /properties/{id}:
+    delete:
+      parameters:
+      - description: Property ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid property id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete a property definition (manager/admin only)
+      tags:
+      - Properties
+    get:
+      parameters:
+      - description: Property ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Property'
+        "400":
+          description: invalid property id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get a property definition by ID
+      tags:
+      - Properties
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Property ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.UpdatePropertyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Property'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update a property definition (manager/admin only)
+      tags:
+      - Properties
+  /properties/options:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.PropertyOption'
+            type: array
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List all properties in a minified form, for dropdowns
+      tags:
+      - Properties
+  /users:
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by name/email substring (max 100 chars)
+        in: query
+        name: search
+        type: string
+      - description: Filter by role
+        enum:
+        - admin
+        - manager
+        - user
+        in: query
+        name: role
+        type: string
+      - description: Filter by status
+        enum:
+        - requested
+        - active
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.UsersPage'
+        "400":
+          description: invalid limit/offset/search/role/status
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List users (admin only)
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.User'
+        "400":
+          description: invalid request / validation failed
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "409":
+          description: user with this email already exists
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Create a new user (admin only, created active)
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid user id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete a user (admin only)
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.User'
+        "400":
+          description: invalid request / validation failed
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Update a user's role/status (admin only)
+      tags:
+      - Users
+  /users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.User'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get the currently authenticated user's own details
+      tags:
+      - Users
+securityDefinitions:
+  CookieAuth:
+    in: cookie
+    name: session
+    type: apiKey
+swagger: "2.0"

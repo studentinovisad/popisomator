@@ -7,11 +7,11 @@ import (
 
 const (
 	DefaultPageSize int32 = 20
-	MinimumPageSize int32 = 5
+	MinimumPageSize int32 = 1
 	MaximumPageSize int32 = 50
 )
 
-func QueryValue(request *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
+func queryValue(request *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
 	value := request.URL.Query().Get(key)
 	if value == "" {
 		return fallback, nil
@@ -28,4 +28,18 @@ func QueryValue(request *http.Request, key string, fallback, minimum, maximum in
 	}
 
 	return parsedValue, nil
+}
+
+func GetLimitOffset(request *http.Request) (int32, int32, error) {
+	limit, err := queryValue(request, "limit", DefaultPageSize, MinimumPageSize, MaximumPageSize)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	offset, err := queryValue(request, "offset", 0, 0, 0)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return limit, offset, nil
 }

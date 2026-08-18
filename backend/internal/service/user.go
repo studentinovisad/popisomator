@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -65,41 +63,57 @@ func ListUsers(ctx context.Context, request dto.ListUsersRequest) (dto.UsersPage
 	}, nil
 }
 
-func UpdateUserRole(ctx context.Context, id int64, req dto.UpdateRoleRequest) (dto.User, error) {
+func UpdateUser(ctx context.Context, id int64, req dto.UpdateUserRequest) (dto.User, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.User{}, err
 	}
 
-	user, err := db.Queries.UpdateRole(ctx, repository.UpdateRoleParams{
-		ID:   id,
-		Role: repository.UserRole(req.Role),
-	})
-	if err != nil {
-		return dto.User{}, err
-	}
-
-	return dto.ToUserDTO(user), nil
-}
-
-func ApproveRegistration(ctx context.Context, id int64) (dto.User, error) {
-	user, err := db.Queries.ApproveRegistration(ctx, id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return dto.User{}, ErrInvalidRegistrationStatus
+	var user repository.User
+	if req.Role != nil || req.Status != nil {
+		tx, err := db.BeginTransaction(ctx)
+		if err != nil {
+			return dto.User{}, err
 		}
-		return dto.User{}, err
+		defer tx.Rollback(ctx)
+		queriesTx := db.Queries.WithTx(tx)
+
+		if req.Role != nil {
+			var err error
+			if user, err = queriesTx.UpdateUserRole(ctx, repository.UpdateUserRoleParams{
+				ID:   id,
+				Role: repository.UserRole(*req.Role),
+			}); err != nil {
+				return dto.User{}, err
+			}
+		}
+
+		if req.Status != nil {
+			var err error
+			if user, err = queriesTx.UpdateUserStatus(ctx, repository.UpdateUserStatusParams{
+				ID:     id,
+				Status: repository.UserStatus(*req.Status),
+			}); err != nil {
+				return dto.User{}, err
+			}
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return dto.User{}, err
+		}
+	} else {
+		return dto.User{}, ErrNoUpdateFields
 	}
 
 	return dto.ToUserDTO(user), nil
 }
 
-func DeclineRegistration(ctx context.Context, id int64) error {
-	rowsAffected, err := db.Queries.DeclineRegistration(ctx, id)
+func DeleteUser(ctx context.Context, id int64) error {
+	rowsAffected, err := db.Queries.DeleteUser(ctx, id)
 	if err != nil {
 		return err
 	}
 	if rowsAffected == 0 {
-		return ErrInvalidRegistrationStatus
+		return ErrNotFound
 	}
 
 	return nil

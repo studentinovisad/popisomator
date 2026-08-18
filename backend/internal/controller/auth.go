@@ -13,6 +13,16 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
+// Login godoc
+// @Summary Log in and receive a session cookie
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body dto.LoginRequest true "Credentials"
+// @Success 200 "Session cookie set"
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "invalid credentials"
+// @Router /auth/login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024)
 
@@ -41,6 +51,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// Logout godoc
+// @Summary Log out and clear the session cookie
+// @Tags Auth
+// @Success 200 "Session cookie cleared"
+// @Router /auth/logout [post]
 func Logout(w http.ResponseWriter, r *http.Request) {
 	cookie := http.Cookie{
 		Name:     "session",
@@ -80,6 +95,16 @@ func doCreateUser(w http.ResponseWriter, r *http.Request, req dto.CreateUserRequ
 	response.WriteJSON(w, http.StatusCreated, user)
 }
 
+// Register godoc
+// @Summary Self-register a new user account (created with role "user", status "requested")
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body dto.RegistrationRequest true "Registration details"
+// @Success 201 {object} dto.User
+// @Failure 400 {object} response.Error "invalid request / validation failed"
+// @Failure 409 {object} response.Error "user with this email already exists"
+// @Router /auth/register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024)
 
@@ -100,6 +125,19 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	doCreateUser(w, r, createReq)
 }
 
+// CreateUser godoc
+// @Summary Create a new user (admin only, created active)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param body body dto.CreateUserRequest true "User to create"
+// @Success 201 {object} dto.User
+// @Failure 400 {object} response.Error "invalid request / validation failed"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 409 {object} response.Error "user with this email already exists"
+// @Router /users [post]
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024)
 

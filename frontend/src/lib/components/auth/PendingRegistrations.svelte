@@ -51,9 +51,9 @@
 
 		try {
 			if (approve) {
-				await api.approveRegistration(user.id);
+				await api.updateUser(user.id, { status: 'active' });
 			} else {
-				await api.declineRegistration(user.id);
+				await api.deleteUser(user.id);
 			}
 
 			const nextOffset =

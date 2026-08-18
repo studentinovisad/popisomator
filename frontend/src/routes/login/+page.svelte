@@ -19,7 +19,7 @@
 		try {
 			await api.login({ email, password });
 			await session.refresh();
-			await goto(resolve('/account'));
+			await goto(resolve('/'));
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Prijava trenutno nije dostupna.';
 		} finally {

@@ -18,6 +18,14 @@ import (
 
 const maxUserSearchLength = 100
 
+// UserDetailsPersonal godoc
+// @Summary Get the currently authenticated user's own details
+// @Tags Users
+// @Produce json
+// @Security CookieAuth
+// @Success 200 {object} dto.User
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /users/me [get]
 func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 	id, ok := r.Context().Value("userID").(int64)
 	if !ok {
@@ -34,16 +42,25 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, user)
 }
 
+// ListUsers godoc
+// @Summary List users (admin only)
+// @Tags Users
+// @Produce json
+// @Security CookieAuth
+// @Param limit query int false "Page size (default 20, max 50)"
+// @Param offset query int false "Page offset (default 0)"
+// @Param search query string false "Filter by name/email substring (max 100 chars)"
+// @Param role query string false "Filter by role" Enums(admin, manager, user)
+// @Param status query string false "Filter by status" Enums(requested, active)
+// @Success 200 {object} dto.UsersPage
+// @Failure 400 {object} response.Error "invalid limit/offset/search/role/status"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /users [get]
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
+	limit, offset, err := pagination.GetLimitOffset(r)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid limit")
-		return
-	}
-
-	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid offset")
+		response.WriteError(w, http.StatusBadRequest, "invalid limit/offset")
 		return
 	}
 
@@ -81,7 +98,21 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, users)
 }
 
-func UpdateRole(w http.ResponseWriter, r *http.Request) {
+// UpdateUser godoc
+// @Summary Update a user's role/status (admin only)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "User ID"
+// @Param body body dto.UpdateUserRequest true "Fields to update"
+// @Success 200 {object} dto.User
+// @Failure 400 {object} response.Error "invalid request / validation failed"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "user not found"
+// @Router /users/{id} [patch]
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
@@ -90,13 +121,13 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	body := http.MaxBytesReader(w, r.Body, 1024)
 
-	var req dto.UpdateRoleRequest
+	var req dto.UpdateUserRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
-	user, err := service.UpdateUserRole(r.Context(), id, req)
+	user, err := service.UpdateUser(r.Context(), id, req)
 	if err != nil {
 		var validationErrs validator.ValidationErrors
 		if errors.As(err, &validationErrs) {
@@ -108,41 +139,36 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.WriteError(w, http.StatusInternalServerError, "error updating role")
-		log.Printf("error updating role: %v", err)
+		response.WriteError(w, http.StatusInternalServerError, "error updating user")
+		log.Printf("error updating user: %v", err)
 		return
 	}
 
 	response.WriteJSON(w, http.StatusOK, user)
 }
 
-func DeclineRegistration(w http.ResponseWriter, r *http.Request) {
+// DeleteUser godoc
+// @Summary Delete a user (admin only)
+// @Tags Users
+// @Security CookieAuth
+// @Param id path int true "User ID"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid user id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /users/{id} [delete]
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
 
-	if err := service.DeclineRegistration(r.Context(), id); err != nil {
-		writeServiceError(w, err, "couldn't decline user registration")
+	if err := service.DeleteUser(r.Context(), id); err != nil {
+		writeServiceError(w, err, "couldn't delete user")
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func ApproveRegistration(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid user id")
-		return
-	}
-
-	user, err := service.ApproveRegistration(r.Context(), id)
-	if err != nil {
-		writeServiceError(w, err, "couldn't approve user registration")
-		return
-	}
-
-	response.WriteJSON(w, http.StatusOK, user)
 }

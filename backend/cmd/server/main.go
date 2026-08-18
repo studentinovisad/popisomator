@@ -12,6 +12,13 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
+// @title Popisomator API
+// @version 1.0
+// @description Inventory management API for Popisomator.
+// @BasePath /
+// @securitydefinitions.apikey CookieAuth
+// @in cookie
+// @name session
 func main() {
 	// Initialise config
 	if err := config.Init(); err != nil {

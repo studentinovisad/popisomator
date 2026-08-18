@@ -9,24 +9,6 @@ import (
 	"context"
 )
 
-const approveRegistration = `-- name: ApproveRegistration :one
-UPDATE users SET status = 'active' WHERE id = $1 AND status = 'requested' RETURNING id, email, password_hash, full_name, role, status
-`
-
-func (q *Queries) ApproveRegistration(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, approveRegistration, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.PasswordHash,
-		&i.FullName,
-		&i.Role,
-		&i.Status,
-	)
-	return i, err
-}
-
 const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM users
 WHERE full_name ILIKE '%' || $1::text || '%'
@@ -79,12 +61,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const declineRegistration = `-- name: DeclineRegistration :execrows
-DELETE FROM users WHERE id = $1 AND status = 'requested'
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = $1
 `
 
-func (q *Queries) DeclineRegistration(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, declineRegistration, id)
+func (q *Queries) DeleteUser(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
 	if err != nil {
 		return 0, err
 	}
@@ -179,17 +161,40 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 	return items, nil
 }
 
-const updateRole = `-- name: UpdateRole :one
+const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
 `
 
-type UpdateRoleParams struct {
+type UpdateUserRoleParams struct {
 	ID   int64    `json:"id"`
 	Role UserRole `json:"role"`
 }
 
-func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateRole, arg.ID, arg.Role)
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FullName,
+		&i.Role,
+		&i.Status,
+	)
+	return i, err
+}
+
+const updateUserStatus = `-- name: UpdateUserStatus :one
+UPDATE users SET status = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
+`
+
+type UpdateUserStatusParams struct {
+	ID     int64      `json:"id"`
+	Status UserStatus `json:"status"`
+}
+
+func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserStatus, arg.ID, arg.Status)
 	var i User
 	err := row.Scan(
 		&i.ID,

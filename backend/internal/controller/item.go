@@ -14,18 +14,28 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-func GetAllItems(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
+// ListItems godoc
+// @Summary List items
+// @Tags Items
+// @Produce json
+// @Security CookieAuth
+// @Param limit query int false "Page size (default 20, max 50)"
+// @Param offset query int false "Page offset (default 0)"
+// @Param type_id query int false "Filter by item type ID"
+// @Param consumption query []string false "Filter by consumption status (comma-separated)" collectionFormat(csv) Enums(not_consumed, partially_consumed, fully_consumed, damaged)
+// @Param created_from query string false "Filter by creation time, RFC3339"
+// @Param created_to query string false "Filter by creation time, RFC3339"
+// @Param order query string false "Sort order" Enums(asc, desc) default(desc)
+// @Success 200 {object} dto.ItemsPage
+// @Failure 400 {object} response.Error "invalid query parameters"
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /items [get]
+func ListItems(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
 
-	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
+	limit, offset, err := pagination.GetLimitOffset(r)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid limit")
-		return
-	}
-
-	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid offset")
+		response.WriteError(w, http.StatusBadRequest, "invalid limit/offset")
 		return
 	}
 
@@ -35,8 +45,8 @@ func GetAllItems(w http.ResponseWriter, r *http.Request) {
 		Order:  "desc",
 	}
 
-	if v := q.Get("type_id"); v != "" {
-		typeID, err := strconv.ParseInt(v, 10, 64)
+	if val := query.Get("type_id"); val != "" {
+		typeID, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			response.WriteError(w, http.StatusBadRequest, "invalid type_id")
 			return
@@ -44,7 +54,7 @@ func GetAllItems(w http.ResponseWriter, r *http.Request) {
 		req.TypeID = &typeID
 	}
 
-	if vals, ok := q["consumption"]; ok {
+	if vals, ok := query["consumption"]; ok {
 		for _, v := range vals {
 			for _, part := range strings.Split(v, ",") {
 				if part == "" {
@@ -55,37 +65,48 @@ func GetAllItems(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if v := q.Get("created_from"); v != "" {
-		t, err := time.Parse(time.RFC3339, v)
+	if val := query.Get("created_from"); val != "" {
+		parsed_time, err := time.Parse(time.RFC3339, val)
 		if err != nil {
 			response.WriteError(w, http.StatusBadRequest, "invalid created_from")
 			return
 		}
-		req.CreatedFrom = &t
+		req.CreatedFrom = &parsed_time
 	}
 
-	if v := q.Get("created_to"); v != "" {
-		t, err := time.Parse(time.RFC3339, v)
+	if val := query.Get("created_to"); val != "" {
+		parsed_time, err := time.Parse(time.RFC3339, val)
 		if err != nil {
 			response.WriteError(w, http.StatusBadRequest, "invalid created_to")
 			return
 		}
-		req.CreatedTo = &t
+		req.CreatedTo = &parsed_time
 	}
 
-	if v := q.Get("order"); v != "" {
-		req.Order = v
+	if val := query.Get("order"); val != "" {
+		req.Order = val
 	}
 
-	result, err := service.GetAllItems(r.Context(), req)
+	result, err := service.ListItems(r.Context(), req)
 	if err != nil {
-		writeServiceError(w, err, "couldn't get items")
+		writeServiceError(w, err, "couldn't list items")
 		return
 	}
 
 	response.WriteJSON(w, http.StatusOK, result)
 }
 
+// GetItem godoc
+// @Summary Get an item by ID
+// @Tags Items
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Success 200 {object} dto.Item
+// @Failure 400 {object} response.Error "invalid item id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id} [get]
 func GetItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -102,6 +123,19 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, item)
 }
 
+// ConsumeItem godoc
+// @Summary Update an item's consumption status
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param body body dto.UpdateItemRequest true "Consumption status"
+// @Success 200 {object} dto.Item
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id}/consume [post]
 func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -111,22 +145,40 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 
 	body := http.MaxBytesReader(w, r.Body, 1024)
 
-	var req dto.ConsumeItemRequest
-	if err := json.NewDecoder(body).Decode(&req); err != nil {
+	var rawReq dto.UpdateItemRequest
+	if err := json.NewDecoder(body).Decode(&rawReq); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-	req.ID = id
+	cleanReq := dto.UpdateItemRequest{
+		ID:          id,
+		Consumption: rawReq.Consumption,
+	}
 
-	if err := service.ConsumeItem(r.Context(), req); err != nil {
+	item, err := service.UpdateItem(r.Context(), cleanReq)
+	if err != nil {
 		writeServiceError(w, err, "couldn't consume item")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	response.WriteJSON(w, http.StatusOK, item)
 }
 
-func SetItemType(w http.ResponseWriter, r *http.Request) {
+// UpdateItem godoc
+// @Summary Update an item's type (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param body body dto.UpdateItemRequest true "Fields to update"
+// @Success 200 {object} dto.Item
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id} [patch]
+func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid item id")
@@ -138,22 +190,35 @@ func SetItemType(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(body)
 	decoder.DisallowUnknownFields()
 
-	var req dto.SetItemTypeRequest
+	var req dto.UpdateItemRequest
 	if err := decoder.Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	req.ID = id
+	req.Consumption = nil
 
-	item, err := service.SetItemType(r.Context(), req)
+	item, err := service.UpdateItem(r.Context(), req)
 	if err != nil {
-		writeServiceError(w, err, "couldn't set item type")
+		writeServiceError(w, err, "couldn't update item")
 		return
 	}
 
 	response.WriteJSON(w, http.StatusOK, item)
 }
 
+// CreateItem godoc
+// @Summary Create one or more items of a type (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param body body dto.CreateItemRequest true "Item(s) to create"
+// @Success 200 {array} dto.Item
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items [post]
 func CreateItem(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024*64)
 
@@ -172,6 +237,17 @@ func CreateItem(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, items)
 }
 
+// DeleteItem godoc
+// @Summary Delete an item (manager/admin only)
+// @Tags Items
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid item id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /items/{id} [delete]
 func DeleteItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -187,6 +263,19 @@ func DeleteItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// AddItemProperty godoc
+// @Summary Add a property value to an item (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param body body dto.AddUpdateItemPropertyRequest true "Property to add"
+// @Success 200 {object} dto.ItemProperty
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items/{id}/properties [post]
 func AddItemProperty(w http.ResponseWriter, r *http.Request) {
 	itemId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -212,6 +301,20 @@ func AddItemProperty(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemProp)
 }
 
+// UpdateItemProperty godoc
+// @Summary Update a property value on an item (manager/admin only)
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param prop_id path int true "Property ID"
+// @Param body body dto.AddUpdateItemPropertyRequest true "Property value"
+// @Success 200 {object} dto.ItemProperty
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items/{id}/properties/{prop_id} [put]
 func UpdateItemProperty(w http.ResponseWriter, r *http.Request) {
 	itemId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -244,6 +347,17 @@ func UpdateItemProperty(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemProp)
 }
 
+// RemoveItemProperty godoc
+// @Summary Remove a property value from an item (manager/admin only)
+// @Tags Items
+// @Security CookieAuth
+// @Param id path int true "Item ID"
+// @Param prop_id path int true "Property ID"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid item/property id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /items/{id}/properties/{prop_id} [delete]
 func RemoveItemProperty(w http.ResponseWriter, r *http.Request) {
 	itemId, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

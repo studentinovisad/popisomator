@@ -17,7 +17,7 @@
 
 	let error = $state('');
 	const propertiesPage = createServerPagination<Property>({
-		loadPage: api.listPropertiesPage,
+		loadPage: api.listProperties,
 		unavailableMessage: 'Svojstva nisu učitana.'
 	});
 

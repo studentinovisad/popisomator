@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Pencil from '@lucide/svelte/icons/pencil';
-	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Eye from '@lucide/svelte/icons/eye';
 	import { Select } from 'bits-ui';
-	import type { ConsumptionStatus, Item, ItemType, Property, User } from '$lib/api';
+	import { resolve } from '$app/paths';
+	import type { ConsumptionStatus, Item, ItemTypeOption, PropertyOption, User } from '$lib/api';
 	import {
 		consumptionClass,
 		consumptionLabel,
@@ -15,17 +15,13 @@
 		itemTypes,
 		properties,
 		user,
-		onconsumptionchange,
-		onedititem,
-		deleteitem
+		onconsumptionchange
 	}: {
 		items: Item[];
-		itemTypes: ItemType[];
-		properties: Property[];
+		itemTypes: ItemTypeOption[];
+		properties: PropertyOption[];
 		user: User;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
-		onedititem: (item: Item) => void;
-		deleteitem: (item: Item) => void;
 	} = $props();
 
 	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
@@ -40,14 +36,14 @@
 <div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 	<table class="hidden min-w-full table-fixed text-left text-sm md:table">
 		<colgroup>
-			<col class="w-40" />
+			<col class="w-64" />
 			<col />
 			<col class="w-48" />
 			{#if canManage}<col class="w-24" />{/if}
 		</colgroup>
 		<thead class="border-b border-line bg-soft text-muted">
 			<tr class="h-12">
-				<th class="px-4 py-3 font-medium">Tip</th>
+				<th class="px-4 py-3 font-medium">Stavka</th>
 				<th class="px-4 py-3 font-medium">Svojstva</th>
 				<th class="px-4 py-3 font-medium">Stanje</th>
 				{#if canManage}<th class="px-4 py-3 text-right font-medium">Radnje</th>{/if}
@@ -56,7 +52,12 @@
 		<tbody class="divide-y divide-line text-ink">
 			{#each items as item (item.id)}
 				<tr class="h-16">
-					<td class="px-4 py-3 align-middle font-medium">{typeName(item)}</td>
+					<td class="px-4 py-3 align-middle">
+						<div class="block min-w-0">
+							<p class="truncate text-xs text-muted">{typeName(item)}</p>
+							<p class="mt-0.5 truncate font-medium">{item.derived_name}</p>
+						</div>
+					</td>
 					<td class="px-4 py-3 align-middle">
 						<div class="flex flex-wrap gap-1.5">
 							{#each item.properties as property (property.id)}
@@ -107,24 +108,14 @@
 					{#if canManage}
 						<td class="px-4 py-3 text-right align-middle">
 							<div class="flex justify-end gap-1">
-								<button
+								<a
 									class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
-									type="button"
-									onclick={() => onedititem(item)}
-									aria-label={`Izmeni stavku ${item.id}`}
-									title="Izmeni"
+									href={resolve(`/items/${item.id}`)}
+									aria-label={`Detalji stavke ${item.id}`}
+									title="Detalji"
 								>
-									<Pencil class="size-4" aria-hidden="true" />
-								</button>
-								<button
-									class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
-									type="button"
-									onclick={() => deleteitem(item)}
-									aria-label={`Obriši stavku ${item.id}`}
-									title="Obriši"
-								>
-									<Trash2 class="size-4" aria-hidden="true" />
-								</button>
+									<Eye class="size-4" aria-hidden="true" />
+								</a>
 							</div>
 						</td>
 					{/if}
@@ -142,13 +133,23 @@
 
 	<ul class="divide-y divide-line md:hidden" aria-label="Stavke">
 		{#each items as item (item.id)}
+			{@const overviewProperties = item.properties.filter(
+				(property) => property.visibility === 'overview'
+			)}
 			<li class="px-4 py-3">
 				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0">
-						<p class="text-sm font-medium text-ink">{typeName(item)}</p>
-						{#if item.properties.length}
+					<a class="min-w-0 flex-1" href={resolve(`/items/${item.id}`)}>
+						{#if item.derived_name}
+							<p class="truncate text-xs text-muted">{typeName(item)}</p>
+							<p class="mt-0.5 truncate text-sm font-medium text-ink hover:text-brand">
+								{item.derived_name}
+							</p>
+						{:else}
+							<p class="truncate text-sm font-medium text-ink hover:text-brand">{typeName(item)}</p>
+						{/if}
+						{#if overviewProperties.length}
 							<p class="mt-2 text-xs leading-relaxed text-muted">
-								{item.properties
+								{overviewProperties
 									.map(
 										(property) =>
 											`${propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: ${displayJson(property.value)}`
@@ -156,27 +157,17 @@
 									.join(' · ')}
 							</p>
 						{/if}
-					</div>
+					</a>
 					{#if canManage}
 						<div class="flex shrink-0 gap-1">
-							<button
+							<a
 								class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
-								type="button"
-								onclick={() => onedititem(item)}
-								aria-label={`Izmeni stavku ${item.id}`}
-								title="Izmeni"
+								href={resolve(`/items/${item.id}`)}
+								aria-label={`Detalji stavke ${item.id}`}
+								title="Detalji"
 							>
-								<Pencil class="size-4" aria-hidden="true" />
-							</button>
-							<button
-								class="inline-grid size-8 place-items-center rounded text-danger hover:bg-danger-soft"
-								type="button"
-								onclick={() => deleteitem(item)}
-								aria-label={`Obriši stavku ${item.id}`}
-								title="Obriši"
-							>
-								<Trash2 class="size-4" aria-hidden="true" />
-							</button>
+								<Eye class="size-4" aria-hidden="true" />
+							</a>
 						</div>
 					{/if}
 				</div>

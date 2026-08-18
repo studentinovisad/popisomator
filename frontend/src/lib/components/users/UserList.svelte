@@ -76,7 +76,7 @@
 		error = '';
 
 		try {
-			const updatedUser = await api.updateUserRole(user.id, nextRole);
+			const updatedUser = await api.updateUser(user.id, { role: nextRole });
 			users = users.map((listedUser) => (listedUser.id === user.id ? updatedUser : listedUser));
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Uloga nije promenjena.';
