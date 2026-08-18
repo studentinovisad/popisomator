@@ -37,7 +37,6 @@ func ToItemTypeOptionDTO(itemType repository.ItemType) ItemTypeOption {
 type ItemTypeProperty struct {
 	ID           int64   `json:"id" validate:"required"`
 	DefaultValue *string `json:"default_value"`
-	Name         string  `json:"name,omitempty"`
 	Visibility   string  `json:"visibility" validate:"omitempty,oneof=overview details"`
 }
 

@@ -63,8 +63,8 @@ type CreateItemRequest struct {
 
 type UpdateItemRequest struct {
 	ID          int64   `json:"id" validate:"required"`
-	TypeID      *int64  `json:"type_id" validate:"gt=0"`
-	Consumption *string `json:"status" validate:"oneof=not_consumed partially_consumed fully_consumed damaged"`
+	TypeID      *int64  `json:"type_id" validate:"omitempty,gt=0"`
+	Consumption *string `json:"consumption" validate:"omitempty,oneof=not_consumed partially_consumed fully_consumed damaged"`
 }
 
 type AddUpdateItemPropertyRequest struct {
