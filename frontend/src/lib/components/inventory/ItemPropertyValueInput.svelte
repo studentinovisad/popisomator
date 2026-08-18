@@ -6,12 +6,18 @@
 		property,
 		id,
 		value = $bindable(),
+		className = 'mt-2',
+		inputClassName = '',
+		compact = false,
 		required = false,
 		onvaluechange
 	}: {
 		property: PropertyOption;
 		id: string;
 		value: string;
+		className?: string;
+		inputClassName?: string;
+		compact?: boolean;
 		required?: boolean;
 		onvaluechange?: () => void;
 	} = $props();
@@ -53,7 +59,7 @@
 {#if property.value_type === 'string'}
 	<input
 		{id}
-		class="mt-2 block w-full"
+		class={`${className} block w-full ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
 		bind:value={scalarValue}
 		oninput={commitScalar}
 		placeholder="Unesite tekst"
@@ -64,14 +70,16 @@
 		{id}
 		bind:value={scalarValue}
 		ariaLabel={`Vrednost za ${property.name}`}
-		className="mt-2"
+		{className}
+		{inputClassName}
+		{compact}
 		placeholder="Unesite broj"
 		{required}
 		onvaluechange={commitScalar}
 	/>
 {:else if property.value_type === 'boolean'}
 	<label
-		class="mt-2 flex h-10 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink"
+		class={`${className} flex items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
 	>
 		<input type="checkbox" bind:checked={booleanValue} onchange={commitBoolean} />
 		{booleanValue ? 'Da' : 'Ne'}

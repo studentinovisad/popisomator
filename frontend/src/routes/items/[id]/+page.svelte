@@ -1,0 +1,270 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import { onMount } from 'svelte';
+	import { Button, Portal, Select } from 'bits-ui';
+	import {
+		api,
+		ApiError,
+		type ConsumptionStatus,
+		type Item,
+		type ItemType,
+		type ItemTypeOption,
+		type PropertyOption
+	} from '$lib/api';
+	import ItemPropertiesForm from '$lib/components/catalog/ItemPropertiesForm.svelte';
+	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import {
+		consumptionClass,
+		consumptionLabel,
+		consumptionOptions,
+		displayJson
+	} from '$lib/domain/items';
+	import { createAuthPage } from '$lib/state/auth-page.svelte';
+
+	const authPage = createAuthPage({ unavailableMessage: 'Stavka trenutno nije dostupna.' });
+
+	let item = $state<Item | null>(null);
+	let itemType = $state<ItemType | null>(null);
+	let itemTypes = $state<ItemTypeOption[]>([]);
+	let properties = $state<PropertyOption[]>([]);
+	let loading = $state(false);
+	let loadError = $state('');
+	let actionError = $state('');
+	let editing = $state(false);
+	let changingConsumption = $state(false);
+	let deleting = $state(false);
+	let canManage = $derived(
+		authPage.state.user?.role === 'admin' || authPage.state.user?.role === 'manager'
+	);
+	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
+	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
+
+	onMount(() => {
+		void authPage.load().then(() => {
+			if (authPage.state.authorized) void loadItem();
+		});
+	});
+
+	function itemID() {
+		const id = Number(page.params.id);
+		return Number.isSafeInteger(id) && id > 0 ? id : null;
+	}
+
+	async function loadItem() {
+		const id = itemID();
+		if (id === null) {
+			loadError = 'Stavka nije pronađena.';
+			return;
+		}
+
+		loading = true;
+		loadError = '';
+		try {
+			const nextItem = await api.getItem(id);
+			const [nextItemType, nextItemTypes, nextProperties] = await Promise.all([
+				api.getItemType(nextItem.type_id),
+				api.getItemTypeOptions(),
+				api.getPropertyOptions()
+			]);
+			item = nextItem;
+			itemType = nextItemType;
+			itemTypes = nextItemTypes;
+			properties = nextProperties;
+		} catch (reason) {
+			loadError =
+				reason instanceof ApiError && reason.status === 404
+					? 'Stavka nije pronađena.'
+					: 'Stavka nije učitana.';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function refreshItem() {
+		const id = itemID();
+		if (id === null) return;
+		item = await api.getItem(id);
+	}
+
+	async function changeConsumption(status: ConsumptionStatus) {
+		if (!item || item.consumption === status) return;
+
+		changingConsumption = true;
+		actionError = '';
+		try {
+			item = await api.consumeItem(item.id, status);
+		} catch (reason) {
+			actionError = reason instanceof ApiError ? reason.message : 'Stanje stavke nije promenjeno.';
+		} finally {
+			changingConsumption = false;
+		}
+	}
+
+	async function deleteItem() {
+		if (!item) return;
+
+		const name = item.derived_name || typeName(item);
+		if (!confirm(`Obrisati stavku „${name}“?`)) return;
+
+		deleting = true;
+		actionError = '';
+		try {
+			await api.deleteItem(item.id);
+			await goto(resolve('/'));
+		} catch (reason) {
+			actionError = reason instanceof ApiError ? reason.message : 'Stavka nije obrisana.';
+		} finally {
+			deleting = false;
+		}
+	}
+
+	function propertiesSaved() {
+		editing = false;
+		actionError = '';
+		void refreshItem().catch((reason) => {
+			actionError = reason instanceof ApiError ? reason.message : 'Stavka nije osvežena.';
+		});
+	}
+
+	function typeName(currentItem: Item) {
+		return typeNames.get(currentItem.type_id) ?? 'Nepoznat tip';
+	}
+</script>
+
+<svelte:head>
+	<title>Stavka | Popisomator</title>
+</svelte:head>
+
+<main class="px-4 pt-4 pb-8 sm:px-6">
+	<ProtectedPageState
+		loading={authPage.state.loading || (authPage.state.authorized && loading)}
+		error={authPage.state.error || loadError}
+		authorized={authPage.state.authorized}
+	>
+		<Portal to="#page-header-actions">
+			<a
+				class="inline-flex size-10 items-center justify-center rounded-md border border-line bg-surface text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
+				href={resolve('/')}
+				aria-label="Nazad na stavke"
+				title="Nazad na stavke"
+			>
+				<ArrowLeft class="size-4" aria-hidden="true" />
+			</a>
+		</Portal>
+
+		{#if item}
+			<section class="mx-auto max-w-4xl" aria-labelledby="item-heading">
+				<div class="border-b border-line pb-5">
+					<div class="min-w-0">
+						<p class="text-sm text-muted">{typeName(item)}</p>
+						<h2 id="item-heading" class="mt-1 truncate text-xl font-semibold text-ink">
+							{item.derived_name || typeName(item)}
+						</h2>
+					</div>
+					<div class="mt-3 flex min-w-0 items-center gap-2">
+						{#if canManage}
+							<Select.Root
+								type="single"
+								value={item.consumption}
+								items={consumptionOptions}
+								disabled={changingConsumption}
+								onValueChange={(value) => void changeConsumption(value as ConsumptionStatus)}
+							>
+								<Select.Trigger
+									class={`flex h-9 min-w-0 flex-1 items-center justify-between rounded-md px-3 text-sm font-medium sm:w-44 sm:flex-none ${consumptionClass(item.consumption)}`}
+									aria-label="Stanje stavke"
+								>
+									<Select.Value />
+								</Select.Trigger>
+								<Select.Portal>
+									<Select.Content
+										class="z-30 w-48 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
+										sideOffset={4}
+									>
+										<Select.Viewport>
+											{#each consumptionOptions as option (option.value)}
+												<Select.Item
+													value={option.value}
+													label={option.label}
+													class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
+												>
+													{option.label}
+												</Select.Item>
+											{/each}
+										</Select.Viewport>
+									</Select.Content>
+								</Select.Portal>
+							</Select.Root>
+						{:else}
+							<span
+								class={`inline-flex h-9 min-w-0 flex-1 items-center rounded-md px-3 text-sm font-medium sm:w-44 sm:flex-none ${consumptionClass(item.consumption)}`}
+							>
+								{consumptionLabel(item.consumption)}
+							</span>
+						{/if}
+						{#if canManage}
+							<Button.Root
+								class={`inline-grid size-8 place-items-center rounded transition-colors sm:ml-auto ${
+									editing ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-soft hover:text-ink'
+								}`}
+								type="button"
+								onclick={() => (editing = !editing)}
+								aria-label={editing ? 'Zatvori izmenu stavke' : 'Izmeni stavku'}
+								aria-pressed={editing}
+								title={editing ? 'Zatvori izmenu' : 'Izmeni'}
+							>
+								<Pencil class="size-4" aria-hidden="true" />
+							</Button.Root>
+							<Button.Root
+								class="inline-grid size-8 place-items-center rounded text-danger transition-colors hover:bg-danger-soft disabled:opacity-60"
+								disabled={deleting}
+								type="button"
+								onclick={() => void deleteItem()}
+								aria-label="Obriši stavku"
+								title="Obriši"
+							>
+								<Trash2 class="size-4" aria-hidden="true" />
+							</Button.Root>
+						{/if}
+					</div>
+				</div>
+
+				{#if actionError}<p class="mt-4 text-sm text-danger" role="alert">{actionError}</p>{/if}
+
+				<section class="mt-3" aria-labelledby="item-properties-heading">
+					<h3 id="item-properties-heading" class="text-base font-semibold text-ink">Svojstva</h3>
+					<div class="mt-3">
+						{#if editing && canManage && itemType}
+							<ItemPropertiesForm {item} {itemType} {properties} onsaved={propertiesSaved} />
+						{:else if item.properties.length}
+							<dl class="divide-y divide-line border-y border-line">
+								{#each item.properties as property (property.id)}
+									<div
+										class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center py-1.5 sm:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)_auto]"
+									>
+										<dt class="pr-3 text-sm text-muted sm:pr-6">
+											{propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}
+										</dt>
+										<dd
+											class="col-start-2 flex min-h-8 items-center rounded-md border border-transparent pl-3 text-sm break-words text-ink"
+										>
+											{displayJson(property.value)}
+										</dd>
+										<span class="col-start-3 size-8" aria-hidden="true"></span>
+									</div>
+								{/each}
+							</dl>
+						{:else}
+							<p class="text-sm text-muted">Ova stavka nema uneta svojstva.</p>
+						{/if}
+					</div>
+				</section>
+			</section>
+		{/if}
+	</ProtectedPageState>
+</main>

@@ -16,6 +16,8 @@
 		required = false,
 		disabled = false,
 		className = '',
+		inputClassName = '',
+		compact = false,
 		onvaluechange
 	}: {
 		id: string;
@@ -28,6 +30,8 @@
 		required?: boolean;
 		disabled?: boolean;
 		className?: string;
+		inputClassName?: string;
+		compact?: boolean;
 		onvaluechange?: () => void;
 	} = $props();
 
@@ -46,7 +50,7 @@
 <div class={`relative ${className}`}>
 	<input
 		{id}
-		class="number-input-field block h-10 w-full pr-9"
+		class={`number-input-field block w-full pr-9 ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
 		type="number"
 		bind:value
 		aria-label={ariaLabel}
