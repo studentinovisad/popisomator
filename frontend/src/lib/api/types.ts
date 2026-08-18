@@ -48,8 +48,7 @@ export type UpdateUserRequest = {
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 
-export type PropertyVisibility =
-	'overview' | 'details';
+export type PropertyVisibility = 'overview' | 'details';
 
 export type ItemProperty = {
 	id: number;
@@ -117,7 +116,7 @@ export type AddUpdateItemTypePropertyRequest = {
 	property_id?: number;
 	default_value?: string;
 	visibility?: string;
-}
+};
 
 export type PropertyValueType = 'string' | 'number' | 'boolean';
 

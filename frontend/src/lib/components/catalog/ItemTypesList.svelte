@@ -17,7 +17,11 @@
 	function assignedProperties(itemType: ItemType) {
 		return itemType.properties.length
 			? itemType.properties
-					.map((itemProperty) => propertyOptions.find(property => property.id === itemProperty.id)?.name ?? 'Nepoznato svojstvo')
+					.map(
+						(itemProperty) =>
+							propertyOptions.find((property) => property.id === itemProperty.id)?.name ??
+							'Nepoznato svojstvo'
+					)
 					.join(' · ')
 			: 'Bez svojstava';
 	}

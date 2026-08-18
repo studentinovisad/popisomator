@@ -109,7 +109,7 @@
 	}
 
 	async function changeItemType(item: Item, typeID: number) {
-		const updatedItem = await api.updateItem(item.id, {type_id: typeID});
+		const updatedItem = await api.updateItem(item.id, { type_id: typeID });
 		items = items.map((listedItem) => (listedItem.id === item.id ? updatedItem : listedItem));
 		editingItem = updatedItem;
 	}

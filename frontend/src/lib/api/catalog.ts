@@ -28,11 +28,12 @@ export const catalogApi = {
 		request<ItemType>(`/item-types/${id}`, jsonRequest('PATCH', payload)),
 	deleteItemType: (id: number) => request<void>(`/item-types/${id}`, { method: 'DELETE' }),
 	addItemTypeProperty: (itemTypeID: number, payload: AddUpdateItemTypePropertyRequest) =>
-		request<ItemTypeProperty>(
-			`/item-types/${itemTypeID}/properties`,
-			jsonRequest('POST', payload)
-		),
-	updateItemTypeProperty: (itemTypeID: number, propertyID: number, payload: AddUpdateItemTypePropertyRequest) =>
+		request<ItemTypeProperty>(`/item-types/${itemTypeID}/properties`, jsonRequest('POST', payload)),
+	updateItemTypeProperty: (
+		itemTypeID: number,
+		propertyID: number,
+		payload: AddUpdateItemTypePropertyRequest
+	) =>
 		request<ItemTypeProperty>(
 			`/item-types/${itemTypeID}/properties/${propertyID}`,
 			jsonRequest('PATCH', payload)

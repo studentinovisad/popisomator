@@ -25,10 +25,7 @@
 	onMount(() => {
 		void authPage.load().then(() => {
 			if (authPage.state.authorized) {
-				void Promise.all([
-					itemTypesPage.load(),
-					loadPropertyOptions()
-				]);
+				void Promise.all([itemTypesPage.load(), loadPropertyOptions()]);
 			}
 		});
 	});
@@ -65,7 +62,8 @@
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
-		loading={authPage.state.loading || (authPage.state.authorized && itemTypesPage.loading && propertyOptionsLoading)}
+		loading={authPage.state.loading ||
+			(authPage.state.authorized && itemTypesPage.loading && propertyOptionsLoading)}
 		error={authPage.state.error || itemTypesPage.error}
 		authorized={authPage.state.authorized}
 	>
@@ -89,7 +87,11 @@
 		</Portal>
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
-		<ItemTypesList itemTypes={itemTypesPage.items} deleteitemtype={deleteItemType} propertyOptions={propertyOptions} />
+		<ItemTypesList
+			itemTypes={itemTypesPage.items}
+			deleteitemtype={deleteItemType}
+			{propertyOptions}
+		/>
 		<PaginationFooter
 			total={itemTypesPage.total}
 			perPage={itemTypesPage.perPage}

@@ -6,7 +6,6 @@ import type {
 	LoginRequest,
 	RegistrationRequest,
 	User,
-	UserRole,
 	UsersPage
 } from '$lib/api/types';
 
@@ -22,8 +21,7 @@ export const usersApi = {
 
 		return request<UsersPage>(`/users?${query}`);
 	},
-	createUser: (payload: CreateUserRequest) =>
-		request<User>('/users', jsonRequest('POST', payload)),
+	createUser: (payload: CreateUserRequest) => request<User>('/users', jsonRequest('POST', payload)),
 	register: (payload: RegistrationRequest) =>
 		request<User>('/auth/register', jsonRequest('POST', payload)),
 	updateUser: (id: number, payload: UpdateUserRequest) =>

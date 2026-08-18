@@ -88,7 +88,7 @@
 					properties: selectedPropertyIDs.map((id) => ({
 						id,
 						default_value: defaultValues[id],
-						visibility: "overview"
+						visibility: 'overview'
 					}))
 				});
 			} else {
@@ -103,11 +103,16 @@
 				for (const propertyID of selectedPropertyIDs) {
 					if (!originalProperties.has(propertyID)) {
 						changes.push(
-							api.addItemTypeProperty(itemType.id, {property_id: propertyID, default_value: defaultValues[propertyID]})
+							api.addItemTypeProperty(itemType.id, {
+								property_id: propertyID,
+								default_value: defaultValues[propertyID]
+							})
 						);
 					} else if (editedDefaultPropertyIDs.has(propertyID)) {
 						changes.push(
-							api.updateItemTypeProperty(itemType.id, propertyID, {default_value: defaultValues[propertyID]})
+							api.updateItemTypeProperty(itemType.id, propertyID, {
+								default_value: defaultValues[propertyID]
+							})
 						);
 					}
 				}

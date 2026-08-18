@@ -51,7 +51,7 @@
 
 		try {
 			if (approve) {
-				await api.updateUser(user.id, {status: "active"});
+				await api.updateUser(user.id, { status: 'active' });
 			} else {
 				await api.deleteUser(user.id);
 			}
