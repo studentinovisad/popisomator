@@ -40,6 +40,11 @@ export type CreateUserRequest = RegistrationRequest & {
 	role: UserRole;
 };
 
+export type UpdateUserRequest = {
+	role?: UserRole;
+	status?: UserStatus;
+};
+
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 
@@ -66,6 +71,11 @@ export type ItemsPage = {
 	total: number;
 };
 
+export type UpdateItemRequest = {
+	type_id?: number;
+	consumption?: ConsumptionStatus;
+};
+
 export type CreateItemRequest = {
 	type_id: number;
 	properties: ItemProperty[];
@@ -79,9 +89,12 @@ export type ItemTypeProperty = {
 	visibility: PropertyVisibility;
 };
 
-export type ItemType = {
+export type ItemTypeOption = {
 	id: number;
 	name: string;
+};
+
+export type ItemType = ItemTypeOption & {
 	description: string;
 	properties: ItemTypeProperty[];
 };
@@ -109,11 +122,14 @@ export type AddUpdateItemTypePropertyRequest = {
 
 export type PropertyValueType = 'string' | 'number' | 'boolean';
 
-export type Property = {
+export type PropertyOption = {
 	id: number;
 	name: string;
-	description: string;
 	value_type: PropertyValueType;
+};
+
+export type Property = PropertyOption & {
+	description: string;
 	default_value: string | null;
 };
 
