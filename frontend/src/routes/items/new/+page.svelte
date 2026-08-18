@@ -58,8 +58,8 @@
 		error={authPage.state.error || error}
 		authorized={authPage.state.authorized}
 	>
-		<section class="mx-auto max-w-3xl" aria-labelledby="new-item-heading">
-			<div class="border-b border-line pb-4">
+		<section class="mx-auto max-w-4xl" aria-labelledby="new-item-heading">
+			<div class="border-b border-line pb-5">
 				<h2 id="new-item-heading" class="text-lg font-semibold text-ink">Nova stavka</h2>
 				<p class="mt-1 text-sm text-muted">Dodajte stavku i njene početne vrednosti svojstava.</p>
 			</div>
