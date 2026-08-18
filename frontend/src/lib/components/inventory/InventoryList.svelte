@@ -40,14 +40,14 @@
 <div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 	<table class="hidden min-w-full table-fixed text-left text-sm md:table">
 		<colgroup>
-			<col class="w-40" />
+			<col class="w-64" />
 			<col />
 			<col class="w-48" />
 			{#if canManage}<col class="w-24" />{/if}
 		</colgroup>
 		<thead class="border-b border-line bg-soft text-muted">
 			<tr class="h-12">
-				<th class="px-4 py-3 font-medium">Tip</th>
+				<th class="px-4 py-3 font-medium">Stavka</th>
 				<th class="px-4 py-3 font-medium">Svojstva</th>
 				<th class="px-4 py-3 font-medium">Stanje</th>
 				{#if canManage}<th class="px-4 py-3 text-right font-medium">Radnje</th>{/if}
@@ -56,7 +56,14 @@
 		<tbody class="divide-y divide-line text-ink">
 			{#each items as item (item.id)}
 				<tr class="h-16">
-					<td class="px-4 py-3 align-middle font-medium">{typeName(item)}</td>
+					<td class="px-4 py-3 align-middle">
+						{#if item.derived_name}
+							<p class="truncate text-xs text-muted">{typeName(item)}</p>
+							<p class="mt-0.5 truncate font-medium">{item.derived_name}</p>
+						{:else}
+							<p class="truncate font-medium">{typeName(item)}</p>
+						{/if}
+					</td>
 					<td class="px-4 py-3 align-middle">
 						<div class="flex flex-wrap gap-1.5">
 							{#each item.properties as property (property.id)}
@@ -145,7 +152,12 @@
 			<li class="px-4 py-3">
 				<div class="flex items-start justify-between gap-3">
 					<div class="min-w-0">
-						<p class="text-sm font-medium text-ink">{typeName(item)}</p>
+						{#if item.derived_name}
+							<p class="truncate text-xs text-muted">{typeName(item)}</p>
+							<p class="mt-0.5 truncate text-sm font-medium text-ink">{item.derived_name}</p>
+						{:else}
+							<p class="truncate text-sm font-medium text-ink">{typeName(item)}</p>
+						{/if}
 						{#if item.properties.length}
 							<p class="mt-2 text-xs leading-relaxed text-muted">
 								{item.properties
