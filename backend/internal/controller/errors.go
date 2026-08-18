@@ -24,8 +24,6 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 		response.WriteError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, service.ErrInvalidReference), errors.Is(err, service.ErrNoUpdateFields):
 		response.WriteError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, service.ErrInvalidRegistrationStatus):
-		response.WriteError(w, http.StatusConflict, err.Error())
 	case errors.As(err, &valErr):
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 	case errors.As(err, &pgErr) && pgErr.Code == "23505":

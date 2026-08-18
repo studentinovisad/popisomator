@@ -11,32 +11,26 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-func GetAllItemTypes(w http.ResponseWriter, r *http.Request) {
-	itemTypes, err := service.GetAllItemTypes(r.Context())
+func GetItemTypeOptions(w http.ResponseWriter, r *http.Request) {
+	typeOptions, err := service.GetItemTypeOptions(r.Context())
 	if err != nil {
-		writeServiceError(w, err, "couldn't get types")
+		writeServiceError(w, err, "couldn't get item type options")
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, itemTypes)
+	response.WriteJSON(w, http.StatusOK, typeOptions)
 }
 
 func ListItemTypes(w http.ResponseWriter, r *http.Request) {
-	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
+	limit, offset, err := pagination.GetLimitOffset(r)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid limit")
-		return
-	}
-
-	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid offset")
+		response.WriteError(w, http.StatusBadRequest, "invalid limit/offset")
 		return
 	}
 
 	itemTypes, err := service.ListItemTypes(r.Context(), limit, offset)
 	if err != nil {
-		writeServiceError(w, err, "couldn't get types")
+		writeServiceError(w, err, "couldn't list types")
 		return
 	}
 

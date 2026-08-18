@@ -35,15 +35,9 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
+	limit, offset, err := pagination.GetLimitOffset(r)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid limit")
-		return
-	}
-
-	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid offset")
+		response.WriteError(w, http.StatusBadRequest, "invalid limit/offset")
 		return
 	}
 
@@ -81,7 +75,7 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, users)
 }
 
-func UpdateRole(w http.ResponseWriter, r *http.Request) {
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
@@ -90,13 +84,13 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	body := http.MaxBytesReader(w, r.Body, 1024)
 
-	var req dto.UpdateRoleRequest
+	var req dto.UpdateUserRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
-	user, err := service.UpdateUserRole(r.Context(), id, req)
+	user, err := service.UpdateUser(r.Context(), id, req)
 	if err != nil {
 		var validationErrs validator.ValidationErrors
 		if errors.As(err, &validationErrs) {
@@ -108,41 +102,25 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.WriteError(w, http.StatusInternalServerError, "error updating role")
-		log.Printf("error updating role: %v", err)
+		response.WriteError(w, http.StatusInternalServerError, "error updating user")
+		log.Printf("error updating user: %v", err)
 		return
 	}
 
 	response.WriteJSON(w, http.StatusOK, user)
 }
 
-func DeclineRegistration(w http.ResponseWriter, r *http.Request) {
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
 
-	if err := service.DeclineRegistration(r.Context(), id); err != nil {
-		writeServiceError(w, err, "couldn't decline user registration")
+	if err := service.DeleteUser(r.Context(), id); err != nil {
+		writeServiceError(w, err, "couldn't delete user")
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func ApproveRegistration(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid user id")
-		return
-	}
-
-	user, err := service.ApproveRegistration(r.Context(), id)
-	if err != nil {
-		writeServiceError(w, err, "couldn't approve user registration")
-		return
-	}
-
-	response.WriteJSON(w, http.StatusOK, user)
 }

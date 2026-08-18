@@ -14,18 +14,12 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-func GetAllItems(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
+func ListItems(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
 
-	limit, err := pagination.QueryValue(r, "limit", pagination.DefaultPageSize, pagination.MinimumPageSize, pagination.MaximumPageSize)
+	limit, offset, err := pagination.GetLimitOffset(r)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid limit")
-		return
-	}
-
-	offset, err := pagination.QueryValue(r, "offset", 0, 0, 0)
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid offset")
+		response.WriteError(w, http.StatusBadRequest, "invalid limit/offset")
 		return
 	}
 
@@ -35,8 +29,8 @@ func GetAllItems(w http.ResponseWriter, r *http.Request) {
 		Order:  "desc",
 	}
 
-	if v := q.Get("type_id"); v != "" {
-		typeID, err := strconv.ParseInt(v, 10, 64)
+	if val := query.Get("type_id"); val != "" {
+		typeID, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			response.WriteError(w, http.StatusBadRequest, "invalid type_id")
 			return
@@ -44,7 +38,7 @@ func GetAllItems(w http.ResponseWriter, r *http.Request) {
 		req.TypeID = &typeID
 	}
 
-	if vals, ok := q["consumption"]; ok {
+	if vals, ok := query["consumption"]; ok {
 		for _, v := range vals {
 			for _, part := range strings.Split(v, ",") {
 				if part == "" {
@@ -55,31 +49,31 @@ func GetAllItems(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if v := q.Get("created_from"); v != "" {
-		t, err := time.Parse(time.RFC3339, v)
+	if val := query.Get("created_from"); val != "" {
+		parsed_time, err := time.Parse(time.RFC3339, val)
 		if err != nil {
 			response.WriteError(w, http.StatusBadRequest, "invalid created_from")
 			return
 		}
-		req.CreatedFrom = &t
+		req.CreatedFrom = &parsed_time
 	}
 
-	if v := q.Get("created_to"); v != "" {
-		t, err := time.Parse(time.RFC3339, v)
+	if val := query.Get("created_to"); val != "" {
+		parsed_time, err := time.Parse(time.RFC3339, val)
 		if err != nil {
 			response.WriteError(w, http.StatusBadRequest, "invalid created_to")
 			return
 		}
-		req.CreatedTo = &t
+		req.CreatedTo = &parsed_time
 	}
 
-	if v := q.Get("order"); v != "" {
-		req.Order = v
+	if val := query.Get("order"); val != "" {
+		req.Order = val
 	}
 
-	result, err := service.GetAllItems(r.Context(), req)
+	result, err := service.ListItems(r.Context(), req)
 	if err != nil {
-		writeServiceError(w, err, "couldn't get items")
+		writeServiceError(w, err, "couldn't list items")
 		return
 	}
 
@@ -111,22 +105,26 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 
 	body := http.MaxBytesReader(w, r.Body, 1024)
 
-	var req dto.ConsumeItemRequest
-	if err := json.NewDecoder(body).Decode(&req); err != nil {
+	var rawReq dto.UpdateItemRequest
+	if err := json.NewDecoder(body).Decode(&rawReq); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-	req.ID = id
+	cleanReq := dto.UpdateItemRequest{
+		ID:          id,
+		Consumption: rawReq.Consumption,
+	}
 
-	if err := service.ConsumeItem(r.Context(), req); err != nil {
+	item, err := service.UpdateItem(r.Context(), cleanReq)
+	if err != nil {
 		writeServiceError(w, err, "couldn't consume item")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	response.WriteJSON(w, http.StatusOK, item)
 }
 
-func SetItemType(w http.ResponseWriter, r *http.Request) {
+func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid item id")
@@ -138,16 +136,17 @@ func SetItemType(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(body)
 	decoder.DisallowUnknownFields()
 
-	var req dto.SetItemTypeRequest
+	var req dto.UpdateItemRequest
 	if err := decoder.Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	req.ID = id
+	req.Consumption = nil
 
-	item, err := service.SetItemType(r.Context(), req)
+	item, err := service.UpdateItem(r.Context(), req)
 	if err != nil {
-		writeServiceError(w, err, "couldn't set item type")
+		writeServiceError(w, err, "couldn't update item")
 		return
 	}
 

@@ -23,11 +23,11 @@ WHERE full_name ILIKE '%' || sqlc.arg(search)::text || '%'
 -- name: CreateUser :one
 INSERT INTO users (email, password_hash, full_name, role, status) VALUES ($1, $2, $3, $4, $5) RETURNING *;
 
--- name: UpdateRole :one
+-- name: UpdateUserRole :one
 UPDATE users SET role = $2 WHERE id = $1 RETURNING *;
 
--- name: ApproveRegistration :one
-UPDATE users SET status = 'active' WHERE id = $1 AND status = 'requested' RETURNING *;
+-- name: UpdateUserStatus :one
+UPDATE users SET status = $2 WHERE id = $1 RETURNING *;
 
--- name: DeclineRegistration :execrows
-DELETE FROM users WHERE id = $1 AND status = 'requested';
+-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = $1;
