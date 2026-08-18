@@ -2157,6 +2157,9 @@ const docTemplate = `{
         "github_com_studentinovisad_popisomator_backend_internal_dto.PropertyOption": {
             "type": "object",
             "properties": {
+                "default_value": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
