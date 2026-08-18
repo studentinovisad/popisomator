@@ -9,6 +9,20 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
+func GetAllItemTypes(ctx context.Context) ([]dto.ItemType, error) {
+	itemTypes, err := db.Queries.GetAllItemTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	typesDTO := make([]dto.ItemType, len(itemTypes))
+	for i, itemType := range itemTypes {
+		typesDTO[i] = dto.ToItemTypeDTO(itemType)
+	}
+
+	return typesDTO, nil
+}
+
 func GetItemTypeOptions(ctx context.Context) ([]dto.ItemTypeOption, error) {
 	itemTypes, err := db.Queries.GetAllItemTypes(ctx)
 	if err != nil {

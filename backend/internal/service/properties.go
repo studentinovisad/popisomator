@@ -26,6 +26,20 @@ func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID
 	return dto.Validate(dto.PropertyValueCheck{Value: rawValue, ValueType: prop.ValueType})
 }
 
+func GetAllProperties(ctx context.Context) ([]dto.Property, error) {
+	props, err := db.Queries.GetAllProperties(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	propsDTO := make([]dto.Property, len(props))
+	for i, prop := range props {
+		propsDTO[i] = dto.ToPropertyDTO(prop)
+	}
+
+	return propsDTO, nil
+}
+
 func GetPropertyOptions(ctx context.Context) ([]dto.PropertyOption, error) {
 	props, err := db.Queries.GetAllProperties(ctx)
 	if err != nil {

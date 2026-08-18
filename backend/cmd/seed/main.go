@@ -266,14 +266,16 @@ func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) erro
 	for _, row := range rows {
 		properties := propertyValues(row, propIDs)
 
-		item, err := service.CreateItem(ctx, dto.CreateItemRequest{
+		items, err := service.CreateItem(ctx, dto.CreateItemRequest{
 			TypeID:     typeID,
 			Properties: properties,
+			Amount:     1,
 		})
 		if err != nil {
 			return fmt.Errorf("creating item %q: %w", row.Name, err)
 		}
-		fmt.Printf("created item %d (%s)\n", item.ID, row.Name)
+		itemCreated := items[0]
+		fmt.Printf("created item %d (%s)\n", itemCreated.ID, row.Name)
 		created++
 	}
 
