@@ -36,6 +36,7 @@ export class ServerPagination<T, Filters extends object = Record<string, never>>
 	hasNextPage = $derived(this.offset + this.items.length < this.total);
 
 	#loadVersion = 0;
+	#queryKey = '';
 	#loadPage: ServerPageLoader<T, Filters>;
 	#unavailableMessage: string;
 
@@ -75,18 +76,23 @@ export class ServerPagination<T, Filters extends object = Record<string, never>>
 		}
 	};
 
-	goToPage = (page: number) => {
-		void this.load((page - 1) * this.perPage);
-	};
+	sync = ({ page, search, filters }: { page: number; search?: string; filters?: Filters }) => {
+		const nextPage = Math.max(1, page);
+		const nextSearch = search ?? '';
+		const nextFilters = filters ?? this.filters;
+		const queryKey = JSON.stringify({
+			page: nextPage,
+			search: nextSearch,
+			filters: nextFilters,
+			perPage: this.perPage
+		});
 
-	searchBy = (search: string) => {
-		this.search = search;
-		void this.load();
-	};
+		if (queryKey === this.#queryKey) return;
 
-	setFilters = (filters: Partial<Filters>) => {
-		this.filters = { ...this.filters, ...filters };
-		void this.load();
+		this.#queryKey = queryKey;
+		this.search = nextSearch;
+		this.filters = nextFilters;
+		void this.load((nextPage - 1) * this.perPage);
 	};
 
 	reloadAfterDelete = () => {

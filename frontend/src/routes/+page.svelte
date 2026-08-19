@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
 	import {
@@ -16,6 +17,12 @@
 	import InventoryToolbar from '$lib/components/inventory/InventoryToolbar.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { pagination } from '$lib/state/pagination.svelte';
+	import {
+		getTableFilter,
+		getTablePage,
+		getTableSearch,
+		updateTableQuery
+	} from '$lib/state/table-query';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Inventar trenutno nije dostupan.' });
@@ -29,10 +36,9 @@
 	let inventoryOptionsLoaded = $state(false);
 	let inventoryError = $state('');
 	let derivedNameSearch = $state('');
-	let activeDerivedNameSearch = $state('');
 	let itemTypeFilter = $state('all');
-	let activeItemTypeID = $state<number | undefined>();
 	let loadVersion = 0;
+	let inventoryQueryKey = '';
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
 	let itemsTotal = $state(0);
@@ -46,17 +52,31 @@
 	onMount(() => {
 		void authPage.load().then(() => {
 			if (authPage.state.authorized) {
-				void loadInventory();
 				void loadInventoryOptions();
 			}
 		});
 	});
 
-	async function loadInventory(
-		offset = 0,
-		search = activeDerivedNameSearch,
-		itemTypeID = activeItemTypeID
-	) {
+	$effect(() => {
+		if (!authPage.state.authorized || !inventoryOptionsLoaded) return;
+
+		const url = page.url;
+		const search = getTableSearch(url);
+		const requestedTypeID = Number.parseInt(getTableFilter(url, 'type_id'), 10);
+		const itemTypeID =
+			Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0 ? requestedTypeID : undefined;
+		const currentPage = getTablePage(url);
+		const queryKey = JSON.stringify({ currentPage, search, itemTypeID, itemsPerPage });
+
+		if (queryKey === inventoryQueryKey) return;
+
+		inventoryQueryKey = queryKey;
+		derivedNameSearch = search;
+		itemTypeFilter = itemTypeID === undefined ? 'all' : String(itemTypeID);
+		void loadInventory((currentPage - 1) * itemsPerPage, search, itemTypeID);
+	});
+
+	async function loadInventory(offset: number, search: string, itemTypeID: number | undefined) {
 		const version = ++loadVersion;
 		loadingInventory = true;
 		inventoryError = '';
@@ -93,9 +113,12 @@
 			]);
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
-			if (nextItemTypes.length === 1 && activeItemTypeID === undefined) {
-				inventoryLoaded = false;
-				filterByItemType(nextItemTypes[0].id);
+			const requestedTypeID = Number.parseInt(getTableFilter(page.url, 'type_id'), 10);
+			if (
+				nextItemTypes.length === 1 &&
+				(!Number.isSafeInteger(requestedTypeID) || requestedTypeID <= 0)
+			) {
+				updateTableQuery({ type_id: nextItemTypes[0].id });
 			}
 			inventoryOptionsLoaded = true;
 		} catch (reason) {
@@ -122,18 +145,15 @@
 	}
 
 	function goToPage(page: number) {
-		void loadInventory((page - 1) * itemsPerPage, activeDerivedNameSearch, activeItemTypeID);
+		updateTableQuery({ page });
 	}
 
 	function searchItems(search: string) {
-		activeDerivedNameSearch = search;
-		void loadInventory(0, search);
+		updateTableQuery({ search, page: 1 });
 	}
 
 	function filterByItemType(itemTypeID: number | undefined) {
-		activeItemTypeID = itemTypeID;
-		itemTypeFilter = itemTypeID === undefined ? 'all' : String(itemTypeID);
-		void loadInventory(0, activeDerivedNameSearch, itemTypeID);
+		updateTableQuery({ type_id: itemTypeID, page: 1 });
 	}
 </script>
 

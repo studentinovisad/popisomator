@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { api, ApiError, type User, type UserStatus } from '$lib/api';
 	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
+	import { getTablePage, updateTableQuery } from '$lib/state/table-query';
 
 	let { onempty }: { onempty: () => void } = $props();
 
@@ -13,7 +14,9 @@
 		unavailableMessage: 'Zahtevi nisu učitani.'
 	});
 
-	onMount(() => void registrationsPage.load());
+	$effect(() => {
+		registrationsPage.sync({ page: getTablePage(page.url) });
+	});
 
 	$effect(() => {
 		if (registrationsPage.loaded && registrationsPage.total === 0) onempty();
@@ -34,6 +37,10 @@
 			registrationsPage.error =
 				reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.';
 		}
+	}
+
+	function goToPage(nextPage: number) {
+		updateTableQuery({ page: nextPage });
 	}
 </script>
 
@@ -100,6 +107,6 @@
 		hasPreviousPage={registrationsPage.hasPreviousPage}
 		hasNextPage={registrationsPage.hasNextPage}
 		loading={registrationsPage.loading}
-		onpagechange={registrationsPage.goToPage}
+		onpagechange={goToPage}
 	/>
 </section>

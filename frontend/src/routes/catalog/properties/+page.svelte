@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
@@ -10,6 +11,7 @@
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import TableSearch from '$lib/components/shared/TableSearch.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
+	import { getTablePage, getTableSearch, updateTableQuery } from '$lib/state/table-query';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({
@@ -22,11 +24,19 @@
 		loadPage: api.listProperties,
 		unavailableMessage: 'Svojstva nisu učitana.'
 	});
+	let search = $state('');
 
 	onMount(() => {
-		void authPage.load().then(() => {
-			if (authPage.state.authorized) void propertiesPage.load();
-		});
+		void authPage.load();
+	});
+
+	$effect(() => {
+		if (!authPage.state.authorized) return;
+
+		const url = page.url;
+		const nextSearch = getTableSearch(url);
+		search = nextSearch;
+		propertiesPage.sync({ page: getTablePage(url), search: nextSearch });
 	});
 
 	async function deleteProperty(property: Property) {
@@ -39,6 +49,14 @@
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Svojstvo nije obrisano.';
 		}
+	}
+
+	function searchProperties(nextSearch: string) {
+		updateTableQuery({ search: nextSearch, page: 1 });
+	}
+
+	function goToPage(nextPage: number) {
+		updateTableQuery({ page: nextPage });
 	}
 </script>
 
@@ -79,9 +97,9 @@
 		<TableSearch
 			id="property-name-search"
 			placeholder="Pretraži po nazivu"
-			bind:search={propertiesPage.search}
+			bind:search
 			loading={propertiesPage.loading}
-			onsearch={propertiesPage.searchBy}
+			onsearch={searchProperties}
 		/>
 		<PropertiesList properties={propertiesPage.items} deleteproperty={deleteProperty} />
 		<PaginationFooter
@@ -91,7 +109,7 @@
 			hasPreviousPage={propertiesPage.hasPreviousPage}
 			hasNextPage={propertiesPage.hasNextPage}
 			loading={propertiesPage.loading}
-			onpagechange={propertiesPage.goToPage}
+			onpagechange={goToPage}
 		/>
 	</ProtectedPageState>
 </main>

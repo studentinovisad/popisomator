@@ -1,16 +1,24 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { page } from '$app/state';
 	import { api, ApiError, type User, type UserRole } from '$lib/api';
 	import UsersMobileList from '$lib/components/users/UsersMobileList.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import UsersTable from '$lib/components/users/UsersTable.svelte';
 	import UsersToolbar from '$lib/components/users/UsersToolbar.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
-	import type { UserRoleFilter } from '$lib/domain/users';
+	import { roleFilterOptions, type UserRoleFilter } from '$lib/domain/users';
+	import {
+		getTableFilter,
+		getTablePage,
+		getTableSearch,
+		updateTableQuery
+	} from '$lib/state/table-query';
 
 	let { refreshKey, currentUserID }: { refreshKey: number; currentUserID: number } = $props();
 
 	let pendingUsersTotal = $state(0);
+	let search = $state('');
+	let previousRefreshKey = $state<number | undefined>();
 	const usersPage = createServerPagination<User, { role: UserRoleFilter }>({
 		initialFilters: { role: 'all' },
 		loadPage: ({ limit, offset, search, role }) =>
@@ -25,11 +33,24 @@
 	});
 
 	$effect(() => {
-		void refreshKey;
-		untrack(() => {
-			void usersPage.load();
-			void loadPendingUsersTotal();
-		});
+		const url = page.url;
+		const nextSearch = getTableSearch(url);
+		const requestedRole = getTableFilter(url, 'role');
+		const role = roleFilterOptions.some((option) => option.value === requestedRole)
+			? (requestedRole as UserRoleFilter)
+			: 'all';
+
+		search = nextSearch;
+		usersPage.sync({ page: getTablePage(url), search: nextSearch, filters: { role } });
+	});
+
+	$effect(() => {
+		if (previousRefreshKey === refreshKey) return;
+
+		const shouldReloadUsers = previousRefreshKey !== undefined;
+		previousRefreshKey = refreshKey;
+		void loadPendingUsersTotal();
+		if (shouldReloadUsers) void usersPage.load(usersPage.offset);
 	});
 
 	async function loadPendingUsersTotal() {
@@ -55,7 +76,15 @@
 	}
 
 	function filterByRole(role: UserRoleFilter) {
-		usersPage.setFilters({ role });
+		updateTableQuery({ role: role === 'all' ? undefined : role, page: 1 });
+	}
+
+	function searchUsers(nextSearch: string) {
+		updateTableQuery({ search: nextSearch, page: 1 });
+	}
+
+	function goToPage(nextPage: number) {
+		updateTableQuery({ page: nextPage });
 	}
 </script>
 
@@ -65,10 +94,10 @@
 		total={usersPage.total}
 		hasPendingUsers={pendingUsersTotal > 0}
 		role={usersPage.filters.role}
-		bind:search={usersPage.search}
+		bind:search
 		loading={usersPage.loading}
 		onrolechange={filterByRole}
-		onsearch={usersPage.searchBy}
+		onsearch={searchUsers}
 	/>
 	{#if usersPage.error}
 		<p class="mt-3 text-sm text-danger" role="alert">{usersPage.error}</p>
@@ -84,6 +113,6 @@
 		hasPreviousPage={usersPage.hasPreviousPage}
 		hasNextPage={usersPage.hasNextPage}
 		loading={usersPage.loading}
-		onpagechange={usersPage.goToPage}
+		onpagechange={goToPage}
 	/>
 </section>

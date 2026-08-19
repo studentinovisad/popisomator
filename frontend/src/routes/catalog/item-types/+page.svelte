@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type ItemType, type PropertyOption } from '$lib/api';
@@ -9,6 +10,7 @@
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import TableSearch from '$lib/components/shared/TableSearch.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
+	import { getTablePage, getTableSearch, updateTableQuery } from '$lib/state/table-query';
 	import { Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({
@@ -23,13 +25,23 @@
 	});
 	let propertyOptions = $state<PropertyOption[]>([]);
 	let propertyOptionsLoading = $state(true);
+	let search = $state('');
 
 	onMount(() => {
 		void authPage.load().then(() => {
 			if (authPage.state.authorized) {
-				void Promise.all([itemTypesPage.load(), loadPropertyOptions()]);
+				void loadPropertyOptions();
 			}
 		});
+	});
+
+	$effect(() => {
+		if (!authPage.state.authorized) return;
+
+		const url = page.url;
+		const nextSearch = getTableSearch(url);
+		search = nextSearch;
+		itemTypesPage.sync({ page: getTablePage(url), search: nextSearch });
 	});
 
 	async function loadPropertyOptions() {
@@ -55,6 +67,14 @@
 		} catch (reason) {
 			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije obrisan.';
 		}
+	}
+
+	function searchItemTypes(nextSearch: string) {
+		updateTableQuery({ search: nextSearch, page: 1 });
+	}
+
+	function goToPage(nextPage: number) {
+		updateTableQuery({ page: nextPage });
 	}
 </script>
 
@@ -95,9 +115,9 @@
 		<TableSearch
 			id="item-type-name-search"
 			placeholder="Pretraži po nazivu"
-			bind:search={itemTypesPage.search}
+			bind:search
 			loading={itemTypesPage.loading}
-			onsearch={itemTypesPage.searchBy}
+			onsearch={searchItemTypes}
 		/>
 		<ItemTypesList
 			itemTypes={itemTypesPage.items}
@@ -111,7 +131,7 @@
 			hasPreviousPage={itemTypesPage.hasPreviousPage}
 			hasNextPage={itemTypesPage.hasNextPage}
 			loading={itemTypesPage.loading}
-			onpagechange={itemTypesPage.goToPage}
+			onpagechange={goToPage}
 		/>
 	</ProtectedPageState>
 </main>
