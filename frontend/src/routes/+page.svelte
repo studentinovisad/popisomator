@@ -112,13 +112,7 @@
 		{/if}
 
 		{#if inventoryError}<p class="mt-3 text-sm text-danger" role="alert">{inventoryError}</p>{/if}
-		<InventoryList
-			{items}
-			{itemTypes}
-			{properties}
-			user={authPage.state.user!}
-			onconsumptionchange={changeConsumption}
-		/>
+		<InventoryList {items} {itemTypes} {properties} onconsumptionchange={changeConsumption} />
 		<PaginationFooter
 			total={itemsTotal}
 			perPage={itemsPerPage}
