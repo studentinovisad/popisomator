@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
 	import {
 		api,
@@ -103,10 +104,12 @@
 		{#if canManage}
 			<Portal to="#page-header-actions">
 				<a
-					class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-strong"
+					class="inline-flex size-10 items-center justify-center rounded-md bg-brand text-on-brand hover:bg-brand-strong"
 					href={resolve('/items/new')}
+					aria-label="Dodaj stavku"
+					title="Dodaj stavku"
 				>
-					Dodaj stavku
+					<Plus class="size-4" aria-hidden="true" />
 				</a>
 			</Portal>
 		{/if}

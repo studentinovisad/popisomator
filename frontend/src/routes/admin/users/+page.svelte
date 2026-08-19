@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Plus from '@lucide/svelte/icons/plus';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import CreateUserForm from '$lib/components/auth/CreateUserForm.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
@@ -38,9 +39,11 @@
 		<Dialog.Root bind:open={createUserDialogOpen}>
 			<Portal to="#page-header-actions">
 				<Dialog.Trigger
-					class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-strong"
+					class="inline-flex size-10 items-center justify-center rounded-md bg-brand text-on-brand hover:bg-brand-strong"
+					aria-label="Dodaj korisnika"
+					title="Dodaj korisnika"
 				>
-					Dodaj korisnika
+					<Plus class="size-4" aria-hidden="true" />
 				</Dialog.Trigger>
 			</Portal>
 			<Dialog.Portal>

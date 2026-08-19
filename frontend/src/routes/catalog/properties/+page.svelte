@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type Property } from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
@@ -55,10 +56,12 @@
 		</p>
 		<Portal to="#page-header-actions">
 			<a
-				class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-strong"
+				class="inline-flex size-10 items-center justify-center rounded-md bg-brand text-on-brand hover:bg-brand-strong"
 				href={resolve('/catalog/properties/new')}
+				aria-label="Dodaj svojstvo"
+				title="Dodaj svojstvo"
 			>
-				Dodaj svojstvo
+				<Plus class="size-4" aria-hidden="true" />
 			</a>
 			<a
 				class="inline-flex size-10 items-center justify-center rounded-md border border-line bg-surface text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"

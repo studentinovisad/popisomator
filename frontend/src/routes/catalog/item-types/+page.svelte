@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
 	import { api, ApiError, type ItemType, type PropertyOption } from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
@@ -73,10 +74,12 @@
 
 		<Portal to="#page-header-actions">
 			<a
-				class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-strong"
+				class="inline-flex size-10 items-center justify-center rounded-md bg-brand text-on-brand hover:bg-brand-strong"
 				href={resolve('/catalog/item-types/new')}
+				aria-label="Dodaj tip"
+				title="Dodaj tip"
 			>
-				Dodaj tip
+				<Plus class="size-4" aria-hidden="true" />
 			</a>
 			<a
 				class="inline-flex h-10 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-medium text-ink hover:bg-soft"
