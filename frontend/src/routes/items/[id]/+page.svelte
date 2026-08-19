@@ -13,7 +13,6 @@
 		type ConsumptionStatus,
 		type Item,
 		type ItemType,
-		type ItemTypeOption,
 		type PropertyOption
 	} from '$lib/api';
 	import ItemPropertiesForm from '$lib/components/catalog/ItemPropertiesForm.svelte';
@@ -30,7 +29,6 @@
 
 	let item = $state<Item | null>(null);
 	let itemType = $state<ItemType | null>(null);
-	let itemTypes = $state<ItemTypeOption[]>([]);
 	let properties = $state<PropertyOption[]>([]);
 	let loading = $state(false);
 	let loadError = $state('');
@@ -41,7 +39,6 @@
 	let canManage = $derived(
 		authPage.state.user?.role === 'admin' || authPage.state.user?.role === 'manager'
 	);
-	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
 	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
 
 	onMount(() => {
@@ -66,14 +63,12 @@
 		loadError = '';
 		try {
 			const nextItem = await api.getItem(id);
-			const [nextItemType, nextItemTypes, nextProperties] = await Promise.all([
+			const [nextItemType, nextProperties] = await Promise.all([
 				api.getItemType(nextItem.type_id),
-				api.getItemTypeOptions(),
 				api.getPropertyOptions()
 			]);
 			item = nextItem;
 			itemType = nextItemType;
-			itemTypes = nextItemTypes;
 			properties = nextProperties;
 		} catch (reason) {
 			loadError =
@@ -108,7 +103,7 @@
 	async function deleteItem() {
 		if (!item) return;
 
-		const name = item.derived_name || typeName(item);
+		const name = item.derived_name || typeName();
 		if (!confirm(`Obrisati stavku „${name}“?`)) return;
 
 		deleting = true;
@@ -131,8 +126,8 @@
 		});
 	}
 
-	function typeName(currentItem: Item) {
-		return typeNames.get(currentItem.type_id) ?? 'Nepoznat tip';
+	function typeName() {
+		return itemType?.name ?? 'Nepoznat tip';
 	}
 </script>
 
@@ -161,9 +156,9 @@
 			<section class="mx-auto max-w-4xl" aria-labelledby="item-heading">
 				<div class="border-b border-line pb-5">
 					<div class="min-w-0">
-						<p class="text-sm text-muted">{typeName(item)}</p>
+						<p class="text-sm text-muted">{typeName()}</p>
 						<h2 id="item-heading" class="mt-1 truncate text-xl font-semibold text-ink">
-							{item.derived_name || typeName(item)}
+							{item.derived_name || typeName()}
 						</h2>
 					</div>
 					<div class="mt-3 flex min-w-0 items-center gap-2">
