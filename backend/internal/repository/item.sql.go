@@ -81,24 +81,8 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
         AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
         AND item_properties.property_value #>> '{}' ILIKE '%' || $5 || '%'
     )
-    OR COALESCE((
-      SELECT string_agg(
-        CASE
-          WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
-          ELSE token.parts[2]
-        END,
-        '' ORDER BY token.position
-      )
-      FROM regexp_matches(
-        item_types.derived_name_format,
-        '\{([^{}]+)\}|([^{}]+)',
-        'g'
-      ) WITH ORDINALITY AS token(parts, position)
-      LEFT JOIN properties ON properties.name = token.parts[1]
-      LEFT JOIN item_properties AS item_property
-        ON item_property.item_id = items.id
-       AND item_property.property_id = properties.id
-    ), '') ILIKE '%' || $5 || '%'
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(trim($5), ' ', '%') || '%'
   )
 `
 
@@ -249,24 +233,8 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
         AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
         AND item_properties.property_value #>> '{}' ILIKE '%' || $5 || '%'
     )
-    OR COALESCE((
-      SELECT string_agg(
-        CASE
-          WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
-          ELSE token.parts[2]
-        END,
-        '' ORDER BY token.position
-      )
-      FROM regexp_matches(
-        item_types.derived_name_format,
-        '\{([^{}]+)\}|([^{}]+)',
-        'g'
-      ) WITH ORDINALITY AS token(parts, position)
-      LEFT JOIN properties ON properties.name = token.parts[1]
-      LEFT JOIN item_properties AS item_property
-        ON item_property.item_id = items.id
-       AND item_property.property_id = properties.id
-    ), '') ILIKE '%' || $5 || '%'
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(trim($5), ' ', '%') || '%'
   )
 ORDER BY
   CASE WHEN $6::bool THEN items.created_at END ASC,

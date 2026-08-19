@@ -19,24 +19,8 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
         AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
         AND item_properties.property_value #>> '{}' ILIKE '%' || sqlc.arg('search') || '%'
     )
-    OR COALESCE((
-      SELECT string_agg(
-        CASE
-          WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
-          ELSE token.parts[2]
-        END,
-        '' ORDER BY token.position
-      )
-      FROM regexp_matches(
-        item_types.derived_name_format,
-        '\{([^{}]+)\}|([^{}]+)',
-        'g'
-      ) WITH ORDINALITY AS token(parts, position)
-      LEFT JOIN properties ON properties.name = token.parts[1]
-      LEFT JOIN item_properties AS item_property
-        ON item_property.item_id = items.id
-       AND item_property.property_id = properties.id
-    ), '') ILIKE '%' || sqlc.arg('search') || '%'
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(trim(sqlc.arg('search')), ' ', '%') || '%'
   )
 ORDER BY
   CASE WHEN sqlc.arg('order_asc')::bool THEN items.created_at END ASC,
@@ -62,24 +46,8 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
         AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
         AND item_properties.property_value #>> '{}' ILIKE '%' || sqlc.arg('search') || '%'
     )
-    OR COALESCE((
-      SELECT string_agg(
-        CASE
-          WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
-          ELSE token.parts[2]
-        END,
-        '' ORDER BY token.position
-      )
-      FROM regexp_matches(
-        item_types.derived_name_format,
-        '\{([^{}]+)\}|([^{}]+)',
-        'g'
-      ) WITH ORDINALITY AS token(parts, position)
-      LEFT JOIN properties ON properties.name = token.parts[1]
-      LEFT JOIN item_properties AS item_property
-        ON item_property.item_id = items.id
-       AND item_property.property_id = properties.id
-    ), '') ILIKE '%' || sqlc.arg('search') || '%'
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(trim(sqlc.arg('search')), ' ', '%') || '%'
   );
 
 -- name: CreateItems :many
