@@ -28,7 +28,7 @@
 </script>
 
 <div class="-mx-4 mt-4 overflow-hidden border-y border-line bg-surface sm:-mx-6">
-	<table class="hidden min-w-full table-fixed text-left text-sm md:table">
+	<table class="hidden w-full table-fixed text-left text-sm md:table">
 		<colgroup>
 			<col class="w-[28%]" />
 			<col />

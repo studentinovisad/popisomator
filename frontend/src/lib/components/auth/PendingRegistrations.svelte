@@ -76,7 +76,7 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<table class="hidden min-w-full table-fixed text-left text-sm md:table">
+		<table class="hidden w-full table-fixed text-left text-sm md:table">
 			<colgroup>
 				<col class="w-[35%]" />
 				<col />
