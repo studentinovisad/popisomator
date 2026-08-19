@@ -113,36 +113,6 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 	return items, nil
 }
 
-const listItemTypeOptions = `-- name: ListItemTypeOptions :many
-SELECT id, name FROM item_types
-ORDER BY name
-`
-
-type ListItemTypeOptionsRow struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
-func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error) {
-	rows, err := q.db.Query(ctx, listItemTypeOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListItemTypeOptionsRow
-	for rows.Next() {
-		var i ListItemTypeOptionsRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getItemTypeByID = `-- name: GetItemTypeByID :one
 SELECT id, name, description, derived_name_format FROM item_types
 WHERE id = $1 LIMIT 1
@@ -180,6 +150,36 @@ func (q *Queries) GetItemTypeProperties(ctx context.Context, typeIds []int64) ([
 			&i.DefaultValue,
 			&i.Visibility,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listItemTypeOptions = `-- name: ListItemTypeOptions :many
+SELECT id, name FROM item_types
+ORDER BY name
+`
+
+type ListItemTypeOptionsRow struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listItemTypeOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemTypeOptionsRow
+	for rows.Next() {
+		var i ListItemTypeOptionsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -133,6 +133,378 @@
                 }
             }
         },
+        "/item-requests": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "List item requests (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by item request status",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid limit/offset",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "Create an item request (admin only)",
+                "parameters": [
+                    {
+                        "description": "Item request to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "Delete an item request (admin only)",
+                "parameters": [
+                    {
+                        "description": "Item request to delete",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/item-requests/approve": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "Approve an item request (admin only). Approving an item request deletes other unapproved requests for the same item.",
+                "parameters": [
+                    {
+                        "description": "Item request to approve",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/item-requests/me": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "List personal item requests (of logged in user)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid limit/offset",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "Create an item request on behalf of logged in user",
+                "parameters": [
+                    {
+                        "description": "Item request to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreatePersonalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/item-requests/me/{item_id}": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "Get personal item request (that the logged in user created) by item ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item ID",
+                        "name": "item_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid item id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/item-types": {
             "get": {
                 "security": [
@@ -989,6 +1361,12 @@
                     },
                     "401": {
                         "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "not approved to consume item",
                         "schema": {
                             "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
                         }
@@ -1874,11 +2252,13 @@
         "github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemTypeRequest": {
             "type": "object",
             "required": [
+                "derived_name_format",
                 "name"
             ],
             "properties": {
                 "derived_name_format": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "type": "string"
@@ -1975,6 +2355,12 @@
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty"
                     }
                 },
+                "requests": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item_RequestInformation"
+                    }
+                },
                 "type_id": {
                     "type": "integer"
                 }
@@ -1998,11 +2384,102 @@
                 }
             }
         },
-        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemType": {
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest": {
             "type": "object",
             "properties": {
-                "derived_name_format": {
+                "created_at": {
                     "type": "string"
+                },
+                "item_id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreatePersonalRequest": {
+            "type": "object",
+            "properties": {
+                "item_id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreateRequest": {
+            "type": "object",
+            "required": [
+                "item_id",
+                "reason",
+                "user_id"
+            ],
+            "properties": {
+                "item_id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 400
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest": {
+            "type": "object",
+            "required": [
+                "item_id",
+                "user_id"
+            ],
+            "properties": {
+                "item_id": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "ItemRequest page items",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemType": {
+            "type": "object",
+            "required": [
+                "derived_name_format"
+            ],
+            "properties": {
+                "derived_name_format": {
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "type": "string"
@@ -2070,6 +2547,17 @@
                     "type": "integer"
                 },
                 "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.Item_RequestInformation": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus"
+                },
+                "user_id": {
                     "type": "integer"
                 }
             }
@@ -2208,7 +2696,8 @@
             ],
             "properties": {
                 "derived_name_format": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "type": "string"
@@ -2325,6 +2814,17 @@
             "x-enum-varnames": [
                 "PropertyVisibilityOverview",
                 "PropertyVisibilityDetails"
+            ]
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus": {
+            "type": "string",
+            "enum": [
+                "requested",
+                "approved"
+            ],
+            "x-enum-varnames": [
+                "RequestStatusRequested",
+                "RequestStatusApproved"
             ]
         },
         "github_com_studentinovisad_popisomator_backend_internal_repository.UserRole": {

@@ -169,7 +169,12 @@ func (q *Queries) ListPropertyOptions(ctx context.Context) ([]ListPropertyOption
 	var items []ListPropertyOptionsRow
 	for rows.Next() {
 		var i ListPropertyOptionsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.ValueType, &i.DefaultValue); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ValueType,
+			&i.DefaultValue,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -171,5 +171,39 @@ func New() *http.ServeMux {
 		middleware.Handle(controller.RemoveItemTypeProperty),
 	))
 
+	// Item requests
+	mux.Handle("POST /item-requests", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.CreateItemRequest),
+	))
+	mux.Handle("GET /item-requests", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.ListItemRequests),
+	))
+	mux.Handle("POST /item-requests/me", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.CreatePersonalItemRequest),
+	))
+	mux.Handle("GET /item-requests/me", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ListPersonalItemRequests),
+	))
+	mux.Handle("GET /item-requests/me/{item_id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetPersonalItemRequest),
+	))
+	mux.Handle("POST /item-requests/approve", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.ApproveItemRequest),
+	))
+	mux.Handle("DELETE /item-requests", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.DeleteItemRequest),
+	))
+
 	return mux
 }

@@ -56,3 +56,20 @@ CREATE TABLE item_properties (
 );
 
 CREATE INDEX idx_item_properties_property_id ON item_properties(property_id);
+
+CREATE TYPE request_status AS ENUM ('requested', 'approved');
+CREATE TABLE item_requests (
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    item_id BIGINT REFERENCES items(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    status request_status NOT NULL DEFAULT 'requested',
+    reason TEXT NOT NULL,
+    PRIMARY KEY (user_id, item_id)
+);
+
+CREATE INDEX idx_item_requests_user_id ON item_requests(user_id);
+CREATE INDEX idx_item_requests_item_id ON item_requests(item_id);
+
+CREATE UNIQUE INDEX idx_unique_approved_item_requests
+ON item_requests(item_id) 
+WHERE status = 'approved';

@@ -12,6 +12,12 @@ type Item struct {
 	Properties  []ItemProperty               `json:"properties"`
 	TypeID      int64                        `json:"type_id"`
 	DerivedName string                       `json:"derived_name,omitempty"`
+	Requests    []Item_RequestInformation    `json:"requests,omitempty"`
+}
+
+type Item_RequestInformation struct {
+	UserID int64                    `json:"user_id"`
+	Status repository.RequestStatus `json:"status"`
 }
 
 func ToItemDTO(item repository.Item) Item {
