@@ -13,7 +13,7 @@
 	} = $props();
 </script>
 
-<table class="hidden w-full table-fixed text-left text-sm md:table">
+<table class="hidden w-full table-fixed text-left text-sm lg:table">
 	<colgroup>
 		<col class="w-[35%]" />
 		<col />

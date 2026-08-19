@@ -31,7 +31,7 @@
 </script>
 
 <div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-	<table class="hidden min-w-full table-fixed text-left text-sm md:table">
+	<table class="hidden min-w-full table-fixed text-left text-sm lg:table">
 		<colgroup>
 			<col class="w-64" />
 			<col />
@@ -124,7 +124,7 @@
 		</tbody>
 	</table>
 
-	<ul class="divide-y divide-line md:hidden" aria-label="Stavke">
+	<ul class="divide-y divide-line lg:hidden" aria-label="Stavke">
 		{#each items as item (item.id)}
 			{@const overviewProperties = item.properties.filter(
 				(property) => property.visibility === 'overview'

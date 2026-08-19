@@ -21,7 +21,7 @@
 </script>
 
 <div class="-mx-4 mt-4 overflow-hidden border-y border-line bg-surface sm:-mx-6">
-	<table class="hidden w-full table-fixed text-left text-sm md:table">
+	<table class="hidden w-full table-fixed text-left text-sm lg:table">
 		<colgroup>
 			<col class="w-[30%]" />
 			<col class="w-36" />
@@ -113,12 +113,12 @@
 	</table>
 
 	<div
-		class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-line bg-soft px-4 py-2 text-xs font-medium text-muted md:hidden"
+		class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-line bg-soft px-4 py-2 text-xs font-medium text-muted lg:hidden"
 	>
 		<span>Naziv · tip · ima podrazumevanu vrednost</span>
 		<span>Radnje</span>
 	</div>
-	<ul class="divide-y divide-line md:hidden" aria-label="Svojstva">
+	<ul class="divide-y divide-line lg:hidden" aria-label="Svojstva">
 		{#each properties as property (property.id)}
 			<li class="px-4 py-3">
 				<Collapsible.Root>

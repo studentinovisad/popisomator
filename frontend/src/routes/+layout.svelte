@@ -16,7 +16,7 @@
 	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/domain/navigation';
 	import { session } from '$lib/state/session.svelte';
 	import { theme } from '$lib/state/theme.svelte';
-	import { Button, Collapsible, Popover } from 'bits-ui';
+	import { Button, Collapsible, Popover, ScrollArea } from 'bits-ui';
 	import '../app.css';
 
 	let { children, data } = $props();
@@ -99,12 +99,12 @@
 </svelte:head>
 
 <div
-	class="flex min-h-svh pb-16 text-ink max-sm:pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+	class="flex h-svh overflow-hidden pb-16 text-ink max-sm:pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
 >
 	<Collapsible.Root
 		open={sidebarExpanded}
 		onOpenChange={setSidebarExpanded}
-		class={`hidden shrink-0 transition-[width] duration-200 ease-out md:block ${
+		class={`hidden h-full shrink-0 transition-[width] duration-200 ease-out lg:block ${
 			sidebarExpanded ? 'w-60' : 'w-16'
 		}`}
 	>
@@ -201,8 +201,8 @@
 		</aside>
 	</Collapsible.Root>
 
-	<div class="flex min-w-0 flex-1 flex-col">
-		<header class="border-b border-chrome-line bg-chrome text-on-chrome md:hidden">
+	<div class="flex min-h-0 min-w-0 flex-1 flex-col">
+		<header class="border-b border-chrome-line bg-chrome text-on-chrome lg:hidden">
 			<div class="flex h-16 items-center justify-between px-4">
 				<a class="font-semibold tracking-tight" href={resolve('/')}>Popisomator</a>
 				<div class="flex items-center gap-2">
@@ -278,9 +278,14 @@
 			</div>
 		</header>
 
-		<div class="app-content flex-1">
-			{@render children()}
-		</div>
+		<ScrollArea.Root class="app-content min-h-0 flex-1 overflow-hidden" type="auto">
+			<ScrollArea.Viewport class="h-full w-full">
+				<div class="min-h-full">{@render children()}</div>
+			</ScrollArea.Viewport>
+			<ScrollArea.Scrollbar class="flex w-2.5 touch-none bg-soft p-0.5" orientation="vertical">
+				<ScrollArea.Thumb class="flex-1 rounded-full bg-line" />
+			</ScrollArea.Scrollbar>
+		</ScrollArea.Root>
 
 		<footer
 			class="page-footer h-16 shrink-0 border-t border-chrome-line bg-chrome text-chrome-muted"
@@ -290,7 +295,7 @@
 	</div>
 
 	<nav
-		class="fixed inset-x-0 bottom-0 z-10 border-t border-chrome-line bg-chrome pb-[env(safe-area-inset-bottom)] md:hidden"
+		class="fixed inset-x-0 bottom-0 z-10 border-t border-chrome-line bg-chrome pb-[env(safe-area-inset-bottom)] lg:hidden"
 		aria-label="Glavna navigacija"
 	>
 		<NavigationLinks

@@ -76,7 +76,7 @@
 		<p class="mt-3 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<table class="hidden w-full table-fixed text-left text-sm md:table">
+		<table class="hidden w-full table-fixed text-left text-sm lg:table">
 			<colgroup>
 				<col class="w-[35%]" />
 				<col />
@@ -108,7 +108,7 @@
 				{/if}
 			</tbody>
 		</table>
-		<ul class="divide-y divide-line md:hidden" aria-label="Zahtevi za registraciju">
+		<ul class="divide-y divide-line lg:hidden" aria-label="Zahtevi za registraciju">
 			{#each users as user (user.id)}
 				<li class="px-4 py-3">
 					<p class="truncate text-sm font-medium text-ink">{user.full_name}</p>
