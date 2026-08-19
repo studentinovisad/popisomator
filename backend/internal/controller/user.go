@@ -16,8 +16,6 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
 
-const maxUserSearchLength = 100
-
 // UserDetailsPersonal godoc
 // @Summary Get the currently authenticated user's own details
 // @Tags Users
@@ -64,9 +62,9 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	search := strings.TrimSpace(r.URL.Query().Get("search"))
-	if len(search) > maxUserSearchLength {
-		response.WriteError(w, http.StatusBadRequest, "search is too long")
+	search, err := pagination.GetSearch(r)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

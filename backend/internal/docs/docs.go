@@ -166,6 +166,12 @@ const docTemplate = `{
                         "description": "Page offset (default 0)",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name substring (max 100 chars)",
+                        "name": "search",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -652,6 +658,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page offset (default 0)",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by derived item name substring (max 100 chars)",
+                        "name": "search",
                         "in": "query"
                     },
                     {
@@ -1236,6 +1248,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page offset (default 0)",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name substring (max 100 chars)",
+                        "name": "search",
                         "in": "query"
                     }
                 ],
@@ -1881,11 +1899,13 @@ const docTemplate = `{
         "github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemTypeRequest": {
             "type": "object",
             "required": [
+                "derived_name_format",
                 "name"
             ],
             "properties": {
                 "derived_name_format": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "type": "string"
@@ -2007,9 +2027,13 @@ const docTemplate = `{
         },
         "github_com_studentinovisad_popisomator_backend_internal_dto.ItemType": {
             "type": "object",
+            "required": [
+                "derived_name_format"
+            ],
             "properties": {
                 "derived_name_format": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "type": "string"
@@ -2215,7 +2239,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "derived_name_format": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "type": "string"

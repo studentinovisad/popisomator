@@ -37,8 +37,9 @@ func GetItemTypeOptions(ctx context.Context) ([]dto.ItemTypeOption, error) {
 	return typeOptionsDTO, nil
 }
 
-func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage, error) {
-	total, err := db.Queries.CountItemTypes(ctx)
+func ListItemTypes(ctx context.Context, limit, offset int32, search string) (dto.ItemTypesPage, error) {
+	searchText := pgtype.Text{String: search, Valid: true}
+	total, err := db.Queries.CountItemTypes(ctx, searchText)
 	if err != nil {
 		return dto.ItemTypesPage{}, err
 	}
@@ -46,6 +47,7 @@ func ListItemTypes(ctx context.Context, limit, offset int32) (dto.ItemTypesPage,
 	itemTypes, err := db.Queries.ListItemTypes(ctx, repository.ListItemTypesParams{
 		LimitVal:  limit,
 		OffsetVal: offset,
+		Search:    searchText,
 	})
 	if err != nil {
 		return dto.ItemTypesPage{}, err

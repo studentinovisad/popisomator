@@ -7,11 +7,13 @@ ORDER BY name;
 
 -- name: ListItemTypes :many
 SELECT * FROM item_types
+WHERE name ILIKE '%' || sqlc.arg('search') || '%'
 ORDER BY id
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: CountItemTypes :one
-SELECT count(*) FROM item_types;
+SELECT count(*) FROM item_types
+WHERE name ILIKE '%' || sqlc.arg('search') || '%';
 
 -- name: GetItemTypeByID :one
 SELECT * FROM item_types

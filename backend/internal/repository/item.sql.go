@@ -66,10 +66,40 @@ func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBu
 
 const countItems = `-- name: CountItems :one
 SELECT count(*) FROM items
-WHERE ($1::bigint IS NULL OR type_id = $1)
-  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
-  AND ($3::timestamptz IS NULL OR created_at >= $3)
-  AND ($4::timestamptz IS NULL OR created_at <= $4)
+JOIN item_types ON item_types.id = items.type_id
+WHERE ($1::bigint IS NULL OR items.type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR items.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR items.created_at <= $4)
+  AND (
+    $5::text = ''
+    OR item_types.derived_name_format ILIKE '%' || $5 || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || $5 || '%'
+    )
+    OR COALESCE((
+      SELECT string_agg(
+        CASE
+          WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
+          ELSE token.parts[2]
+        END,
+        '' ORDER BY token.position
+      )
+      FROM regexp_matches(
+        item_types.derived_name_format,
+        '\{([^{}]+)\}|([^{}]+)',
+        'g'
+      ) WITH ORDINALITY AS token(parts, position)
+      LEFT JOIN properties ON properties.name = token.parts[1]
+      LEFT JOIN item_properties AS item_property
+        ON item_property.item_id = items.id
+       AND item_property.property_id = properties.id
+    ), '') ILIKE '%' || $5 || '%'
+  )
 `
 
 type CountItemsParams struct {
@@ -77,6 +107,7 @@ type CountItemsParams struct {
 	Consumption []ConsumptionStatus `json:"consumption"`
 	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	Search      string              `json:"search"`
 }
 
 func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
@@ -85,6 +116,7 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.Search,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -201,17 +233,47 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]Get
 }
 
 const listItems = `-- name: ListItems :many
-SELECT id, created_at, consumption, type_id FROM items
-WHERE ($1::bigint IS NULL OR type_id = $1)
-  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
-  AND ($3::timestamptz IS NULL OR created_at >= $3)
-  AND ($4::timestamptz IS NULL OR created_at <= $4)
+SELECT items.id, items.created_at, items.consumption, items.type_id FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE ($1::bigint IS NULL OR items.type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR items.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR items.created_at <= $4)
+  AND (
+    $5::text = ''
+    OR item_types.derived_name_format ILIKE '%' || $5 || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || $5 || '%'
+    )
+    OR COALESCE((
+      SELECT string_agg(
+        CASE
+          WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
+          ELSE token.parts[2]
+        END,
+        '' ORDER BY token.position
+      )
+      FROM regexp_matches(
+        item_types.derived_name_format,
+        '\{([^{}]+)\}|([^{}]+)',
+        'g'
+      ) WITH ORDINALITY AS token(parts, position)
+      LEFT JOIN properties ON properties.name = token.parts[1]
+      LEFT JOIN item_properties AS item_property
+        ON item_property.item_id = items.id
+       AND item_property.property_id = properties.id
+    ), '') ILIKE '%' || $5 || '%'
+  )
 ORDER BY
-  CASE WHEN $5::bool THEN created_at END ASC,
-  CASE WHEN $5::bool THEN id END ASC,
-  CASE WHEN NOT $5::bool THEN created_at END DESC,
-  CASE WHEN NOT $5::bool THEN id END DESC
-LIMIT $7 OFFSET $6
+  CASE WHEN $6::bool THEN items.created_at END ASC,
+  CASE WHEN $6::bool THEN items.id END ASC,
+  CASE WHEN NOT $6::bool THEN items.created_at END DESC,
+  CASE WHEN NOT $6::bool THEN items.id END DESC
+LIMIT $8 OFFSET $7
 `
 
 type ListItemsParams struct {
@@ -219,6 +281,7 @@ type ListItemsParams struct {
 	Consumption []ConsumptionStatus `json:"consumption"`
 	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	Search      string              `json:"search"`
 	OrderAsc    bool                `json:"order_asc"`
 	OffsetVal   int32               `json:"offset_val"`
 	LimitVal    int32               `json:"limit_val"`
@@ -230,6 +293,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.Search,
 		arg.OrderAsc,
 		arg.OffsetVal,
 		arg.LimitVal,

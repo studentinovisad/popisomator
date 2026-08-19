@@ -1,14 +1,17 @@
 package pagination
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const (
-	DefaultPageSize int32 = 20
-	MinimumPageSize int32 = 1
-	MaximumPageSize int32 = 50
+	DefaultPageSize     int32 = 20
+	MinimumPageSize     int32 = 1
+	MaximumPageSize     int32 = 50
+	MaximumSearchLength       = 100
 )
 
 func queryValue(request *http.Request, key string, fallback, minimum, maximum int32) (int32, error) {
@@ -42,4 +45,13 @@ func GetLimitOffset(request *http.Request) (int32, int32, error) {
 	}
 
 	return limit, offset, nil
+}
+
+func GetSearch(request *http.Request) (string, error) {
+	search := strings.TrimSpace(request.URL.Query().Get("search"))
+	if len(search) > MaximumSearchLength {
+		return "", errors.New("search is too long")
+	}
+
+	return search, nil
 }

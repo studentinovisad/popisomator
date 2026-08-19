@@ -7,11 +7,13 @@ ORDER BY name;
 
 -- name: ListProperties :many
 SELECT * FROM properties
+WHERE name ILIKE '%' || sqlc.arg('search') || '%'
 ORDER BY id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: CountProperties :one
-SELECT count(*) FROM properties;
+SELECT count(*) FROM properties
+WHERE name ILIKE '%' || sqlc.arg('search') || '%';
 
 -- name: GetPropertyByID :one
 SELECT * FROM properties

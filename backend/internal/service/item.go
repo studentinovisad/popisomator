@@ -96,6 +96,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
 		CreatedTo:   createdTo,
+		Search:      req.Search,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -106,6 +107,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
 		CreatedTo:   createdTo,
+		Search:      req.Search,
 		LimitVal:    req.Limit,
 		OffsetVal:   req.Offset,
 		OrderAsc:    req.Order == "asc",
