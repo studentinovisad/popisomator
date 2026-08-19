@@ -4,18 +4,20 @@
 
 	let {
 		loading,
+		contentLoaded = false,
 		error = '',
 		authorized,
 		children
 	}: {
 		loading: boolean;
+		contentLoaded?: boolean;
 		error?: string;
 		authorized: boolean;
 		children: Snippet;
 	} = $props();
 </script>
 
-{#if loading}
+{#if loading && !contentLoaded}
 	<PageLoader />
 {:else if error}
 	<div class="grid min-h-[calc(100svh-14rem)] place-items-center">

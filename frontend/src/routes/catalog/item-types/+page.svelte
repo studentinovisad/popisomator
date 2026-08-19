@@ -7,6 +7,7 @@
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import ItemTypesList from '$lib/components/catalog/ItemTypesList.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import TableSearch from '$lib/components/shared/TableSearch.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { Portal } from 'bits-ui';
 
@@ -64,7 +65,8 @@
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading ||
-			(authPage.state.authorized && itemTypesPage.loading && propertyOptionsLoading)}
+			(authPage.state.authorized && (itemTypesPage.loading || propertyOptionsLoading))}
+		contentLoaded={itemTypesPage.loaded && !propertyOptionsLoading}
 		error={authPage.state.error || itemTypesPage.error}
 		authorized={authPage.state.authorized}
 	>
@@ -90,6 +92,13 @@
 		</Portal>
 
 		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
+		<TableSearch
+			id="item-type-name-search"
+			placeholder="Pretraži po nazivu"
+			bind:search={itemTypesPage.search}
+			loading={itemTypesPage.loading}
+			onsearch={itemTypesPage.searchBy}
+		/>
 		<ItemTypesList
 			itemTypes={itemTypesPage.items}
 			deleteitemtype={deleteItemType}

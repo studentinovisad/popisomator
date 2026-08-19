@@ -16,8 +16,9 @@ import type {
 } from '$lib/api/types';
 
 export const catalogApi = {
-	listItemTypes: ({ limit = 20, offset = 0 }: PageRequest = {}) => {
+	listItemTypes: ({ limit = 20, offset = 0, search = '' }: PageRequest = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		if (search) query.set('search', search);
 		return request<ItemTypesPage>(`/item-types?${query}`);
 	},
 	getItemTypeOptions: () => request<ItemTypeOption[]>('/item-types/options'),
@@ -40,8 +41,9 @@ export const catalogApi = {
 		),
 	removeItemTypeProperty: (itemTypeID: number, propertyID: number) =>
 		request<void>(`/item-types/${itemTypeID}/properties/${propertyID}`, { method: 'DELETE' }),
-	listProperties: ({ limit = 20, offset = 0 }: PageRequest = {}) => {
+	listProperties: ({ limit = 20, offset = 0, search = '' }: PageRequest = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		if (search) query.set('search', search);
 		return request<PropertiesPage>(`/properties?${query}`);
 	},
 	getPropertyOptions: () => request<PropertyOption[]>('/properties/options'),

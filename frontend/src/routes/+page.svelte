@@ -13,6 +13,7 @@
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import InventoryList from '$lib/components/inventory/InventoryList.svelte';
+	import InventoryToolbar from '$lib/components/inventory/InventoryToolbar.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { pagination } from '$lib/state/pagination.svelte';
 	import { Portal } from 'bits-ui';
@@ -23,7 +24,14 @@
 	let itemTypes = $state<ItemTypeOption[]>([]);
 	let properties = $state<PropertyOption[]>([]);
 	let loadingInventory = $state(false);
+	let loadingInventoryOptions = $state(false);
+	let inventoryLoaded = $state(false);
+	let inventoryOptionsLoaded = $state(false);
 	let inventoryError = $state('');
+	let derivedNameSearch = $state('');
+	let activeDerivedNameSearch = $state('');
+	let itemTypeFilter = $state('all');
+	let activeItemTypeID = $state<number | undefined>();
 	let loadVersion = 0;
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
@@ -37,33 +45,64 @@
 
 	onMount(() => {
 		void authPage.load().then(() => {
-			if (authPage.state.authorized) void loadInventory();
+			if (authPage.state.authorized) {
+				void loadInventory();
+				void loadInventoryOptions();
+			}
 		});
 	});
 
-	async function loadInventory(offset = 0) {
+	async function loadInventory(
+		offset = 0,
+		search = activeDerivedNameSearch,
+		itemTypeID = activeItemTypeID
+	) {
 		const version = ++loadVersion;
 		loadingInventory = true;
 		inventoryError = '';
 
 		try {
-			const [nextItems, nextItemTypes, nextProperties] = await Promise.all([
-				api.listItems({ limit: itemsPerPage, offset }),
-				api.getItemTypeOptions(),
-				api.getPropertyOptions()
-			]);
+			const nextItems = await api.listItems({
+				limit: itemsPerPage,
+				offset,
+				search,
+				typeID: itemTypeID
+			});
 			if (version !== loadVersion) return;
 
 			items = nextItems.items;
 			itemOffset = nextItems.offset;
 			itemsTotal = nextItems.total;
-			itemTypes = nextItemTypes;
-			properties = nextProperties;
+			inventoryLoaded = true;
 		} catch (reason) {
 			if (version !== loadVersion) return;
 			inventoryError = reason instanceof ApiError ? reason.message : 'Stavke nisu učitane.';
 		} finally {
 			if (version === loadVersion) loadingInventory = false;
+		}
+	}
+
+	async function loadInventoryOptions() {
+		loadingInventoryOptions = true;
+		inventoryError = '';
+
+		try {
+			const [nextItemTypes, nextProperties] = await Promise.all([
+				api.getItemTypeOptions(),
+				api.getPropertyOptions()
+			]);
+			itemTypes = nextItemTypes;
+			properties = nextProperties;
+			if (nextItemTypes.length === 1 && activeItemTypeID === undefined) {
+				inventoryLoaded = false;
+				filterByItemType(nextItemTypes[0].id);
+			}
+			inventoryOptionsLoaded = true;
+		} catch (reason) {
+			inventoryError =
+				reason instanceof ApiError ? reason.message : 'Podaci kataloga nisu učitani.';
+		} finally {
+			loadingInventoryOptions = false;
 		}
 	}
 
@@ -83,7 +122,18 @@
 	}
 
 	function goToPage(page: number) {
-		void loadInventory((page - 1) * itemsPerPage);
+		void loadInventory((page - 1) * itemsPerPage, activeDerivedNameSearch, activeItemTypeID);
+	}
+
+	function searchItems(search: string) {
+		activeDerivedNameSearch = search;
+		void loadInventory(0, search);
+	}
+
+	function filterByItemType(itemTypeID: number | undefined) {
+		activeItemTypeID = itemTypeID;
+		itemTypeFilter = itemTypeID === undefined ? 'all' : String(itemTypeID);
+		void loadInventory(0, activeDerivedNameSearch, itemTypeID);
 	}
 </script>
 
@@ -93,14 +143,12 @@
 
 <main class="px-4 pt-4 sm:px-6">
 	<ProtectedPageState
-		loading={authPage.state.loading || (authPage.state.authorized && loadingInventory)}
+		loading={authPage.state.loading ||
+			(authPage.state.authorized && (loadingInventory || loadingInventoryOptions))}
+		contentLoaded={inventoryLoaded && inventoryOptionsLoaded}
 		error={authPage.state.error}
 		authorized={authPage.state.authorized && authPage.state.user !== null}
 	>
-		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
-			UKUPNO: {itemsTotal}
-		</p>
-
 		{#if canManage}
 			<Portal to="#page-header-actions">
 				<a
@@ -115,6 +163,15 @@
 		{/if}
 
 		{#if inventoryError}<p class="mt-3 text-sm text-danger" role="alert">{inventoryError}</p>{/if}
+		<InventoryToolbar
+			total={itemsTotal}
+			{itemTypes}
+			typeFilter={itemTypeFilter}
+			bind:search={derivedNameSearch}
+			loading={loadingInventory}
+			onitemtypechange={filterByItemType}
+			onsearch={searchItems}
+		/>
 		<InventoryList {items} {itemTypes} {properties} onconsumptionchange={changeConsumption} />
 		<PaginationFooter
 			total={itemsTotal}
