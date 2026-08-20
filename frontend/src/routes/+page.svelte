@@ -155,6 +155,13 @@
 	function filterByItemType(itemTypeID: number | undefined) {
 		updateTableQuery({ type_id: itemTypeID, page: 1 });
 	}
+
+	function refreshInventory() {
+		const requestedTypeID = Number.parseInt(getTableFilter(page.url, 'type_id'), 10);
+		const itemTypeID =
+			Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0 ? requestedTypeID : undefined;
+		void loadInventory(itemOffset, derivedNameSearch, itemTypeID);
+	}
 </script>
 
 <svelte:head>
@@ -192,7 +199,15 @@
 			onitemtypechange={filterByItemType}
 			onsearch={searchItems}
 		/>
-		<InventoryList {items} {itemTypes} {properties} onconsumptionchange={changeConsumption} />
+		<InventoryList
+			{items}
+			{itemTypes}
+			{properties}
+			{canManage}
+			currentUserID={authPage.state.user?.id}
+			onconsumptionchange={changeConsumption}
+			onrequested={refreshInventory}
+		/>
 		<PaginationFooter
 			total={itemsTotal}
 			perPage={itemsPerPage}

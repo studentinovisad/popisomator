@@ -6,7 +6,7 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { onMount } from 'svelte';
-	import { Button, Portal, Select } from 'bits-ui';
+	import { Button, Portal } from 'bits-ui';
 	import {
 		api,
 		ApiError,
@@ -15,14 +15,10 @@
 		type ItemType,
 		type PropertyOption
 	} from '$lib/api';
+	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
 	import ItemPropertiesForm from '$lib/components/catalog/ItemPropertiesForm.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
-	import {
-		consumptionClass,
-		consumptionLabel,
-		consumptionOptions,
-		displayJson
-	} from '$lib/domain/items';
+	import { displayJson } from '$lib/domain/items';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Stavka trenutno nije dostupna.' });
@@ -162,46 +158,18 @@
 						</h2>
 					</div>
 					<div class="mt-3 flex min-w-0 items-center gap-2">
-						{#if canManage}
-							<Select.Root
-								type="single"
-								value={item.consumption}
-								items={consumptionOptions}
-								disabled={changingConsumption}
-								onValueChange={(value) => void changeConsumption(value as ConsumptionStatus)}
-							>
-								<Select.Trigger
-									class={`flex h-9 min-w-0 flex-1 items-center justify-between rounded-md px-3 text-sm font-medium sm:w-44 sm:flex-none ${consumptionClass(item.consumption)}`}
-									aria-label="Stanje stavke"
-								>
-									<Select.Value />
-								</Select.Trigger>
-								<Select.Portal>
-									<Select.Content
-										class="z-30 w-48 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-										sideOffset={4}
-									>
-										<Select.Viewport>
-											{#each consumptionOptions as option (option.value)}
-												<Select.Item
-													value={option.value}
-													label={option.label}
-													class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-												>
-													{option.label}
-												</Select.Item>
-											{/each}
-										</Select.Viewport>
-									</Select.Content>
-								</Select.Portal>
-							</Select.Root>
-						{:else}
-							<span
-								class={`inline-flex h-9 min-w-0 flex-1 items-center rounded-md px-3 text-sm font-medium sm:w-44 sm:flex-none ${consumptionClass(item.consumption)}`}
-							>
-								{consumptionLabel(item.consumption)}
-							</span>
-						{/if}
+						<ItemConsumptionControl
+							{item}
+							currentUserID={authPage.state.user?.id}
+							{canManage}
+							disabled={changingConsumption}
+							onconsumptionchange={(_, status) => void changeConsumption(status)}
+							onrequested={() =>
+								void refreshItem().catch((reason) => {
+									actionError =
+										reason instanceof ApiError ? reason.message : 'Stavka nije osvežena.';
+								})}
+						/>
 						{#if canManage}
 							<Button.Root
 								class={`inline-grid size-8 place-items-center rounded transition-colors sm:ml-auto ${

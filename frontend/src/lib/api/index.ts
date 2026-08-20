@@ -1,4 +1,5 @@
 import { catalogApi } from '$lib/api/catalog';
+import { itemRequestsApi } from '$lib/api/item-requests';
 import { itemsApi } from '$lib/api/items';
 import { usersApi } from '$lib/api/users';
 
@@ -8,5 +9,6 @@ export type * from '$lib/api/types';
 export const api = {
 	...usersApi,
 	...itemsApi,
-	...catalogApi
+	...catalogApi,
+	...itemRequestsApi
 };

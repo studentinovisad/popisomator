@@ -4,7 +4,9 @@ VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: CountItemRequests :one
-SELECT count(*) FROM item_requests;
+SELECT count(*) FROM item_requests
+WHERE (sqlc.narg('status')::request_status IS NULL OR status = sqlc.narg('status'))
+  AND (sqlc.narg('user_id')::bigint IS NULL OR user_id = sqlc.narg('user_id'));
 
 -- name: ListItemRequests :many
 SELECT * FROM item_requests

@@ -27,7 +27,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 	return body as T;
 }
 
-export function jsonRequest(method: 'PATCH' | 'POST' | 'PUT', body: unknown): RequestInit {
+export function jsonRequest(
+	method: 'DELETE' | 'PATCH' | 'POST' | 'PUT',
+	body: unknown
+): RequestInit {
 	return {
 		method,
 		headers: { 'Content-Type': 'application/json' },

@@ -41,8 +41,8 @@ type ItemRequestIdentifierRequest struct {
 type ItemRequestsListRequest struct {
 	Limit  int32
 	Offset int32
-	Status *string
-	UserID *int64 `validate:"gt=0"`
+	Status *string `validate:"omitempty,oneof=requested approved"`
+	UserID *int64  `validate:"omitempty,gt=0"`
 }
 
 func ToItemRequestDTO(request repository.ItemRequest) ItemRequest {

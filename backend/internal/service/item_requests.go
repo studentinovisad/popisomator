@@ -111,8 +111,7 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 }
 
 func ListItemRequests(ctx context.Context, req dto.ItemRequestsListRequest) (dto.ItemRequestsPage, error) {
-	total, err := db.Queries.CountItemRequests(ctx)
-	if err != nil {
+	if err := dto.Validate(req); err != nil {
 		return dto.ItemRequestsPage{}, err
 	}
 
@@ -124,9 +123,17 @@ func ListItemRequests(ctx context.Context, req dto.ItemRequestsListRequest) (dto
 	status := repository.NullRequestStatus{}
 	if req.Status != nil {
 		status = repository.NullRequestStatus{
-			RequestStatus: status.RequestStatus,
+			RequestStatus: repository.RequestStatus(*req.Status),
 			Valid:         true,
 		}
+	}
+
+	total, err := db.Queries.CountItemRequests(ctx, repository.CountItemRequestsParams{
+		UserID: userID,
+		Status: status,
+	})
+	if err != nil {
+		return dto.ItemRequestsPage{}, err
 	}
 
 	requests, err := db.Queries.ListItemRequests(ctx, repository.ListItemRequestsParams{
