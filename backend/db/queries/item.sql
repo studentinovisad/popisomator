@@ -66,12 +66,18 @@ UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
 DELETE FROM items WHERE id = $1;
 
 -- name: GetItemProperties :many
-SELECT sqlc.embed(ip), itp.visibility, p.name AS property_name, it.derived_name_format FROM item_properties ip
+SELECT sqlc.embed(ip), itp.visibility, p.name AS property_name FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
-JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id
 JOIN properties p ON ip.property_id = p.id
 WHERE ip.item_id = ANY(sqlc.arg('item_ids')::bigint[]);
+
+-- name: GetItemsDerivedNames :many
+SELECT items.id AS item_id, render_item_derived_name(items.id, item_types.derived_name_format) AS derived_name
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE items.id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: AddItemProperty :one
 INSERT INTO item_properties (item_id, property_id, property_value) VALUES ($1, $2, $3) RETURNING *;

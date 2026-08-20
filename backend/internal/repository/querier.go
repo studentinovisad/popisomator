@@ -32,6 +32,7 @@ type Querier interface {
 	GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error)
 	GetItemTypeByID(ctx context.Context, id int64) (ItemType, error)
 	GetItemTypeProperties(ctx context.Context, typeIds []int64) ([]ItemTypeProperty, error)
+	GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error)
 	GetPropertyByID(ctx context.Context, id int64) (Property, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)

@@ -174,19 +174,18 @@ func (q *Queries) GetItemByID(ctx context.Context, id int64) (Item, error) {
 }
 
 const getItemProperties = `-- name: GetItemProperties :many
-SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name, it.derived_name_format FROM item_properties ip
+SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
-JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id
 JOIN properties p ON ip.property_id = p.id
 WHERE ip.item_id = ANY($1::bigint[])
 `
 
 type GetItemPropertiesRow struct {
-	ItemProperty      ItemProperty       `json:"item_property"`
-	Visibility        PropertyVisibility `json:"visibility"`
-	PropertyName      string             `json:"property_name"`
-	DerivedNameFormat pgtype.Text        `json:"derived_name_format"`
+	ItemProperty ItemProperty       `json:"item_property"`
+	Visibility   PropertyVisibility `json:"visibility"`
+	PropertyName string             `json:"property_name"`
 }
 
 func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error) {
@@ -204,8 +203,39 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]Get
 			&i.ItemProperty.PropertyValue,
 			&i.Visibility,
 			&i.PropertyName,
-			&i.DerivedNameFormat,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getItemsDerivedNames = `-- name: GetItemsDerivedNames :many
+SELECT items.id AS item_id, render_item_derived_name(items.id, item_types.derived_name_format) AS derived_name
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE items.id = ANY($1::bigint[])
+`
+
+type GetItemsDerivedNamesRow struct {
+	ItemID      int64  `json:"item_id"`
+	DerivedName string `json:"derived_name"`
+}
+
+func (q *Queries) GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error) {
+	rows, err := q.db.Query(ctx, getItemsDerivedNames, itemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetItemsDerivedNamesRow
+	for rows.Next() {
+		var i GetItemsDerivedNamesRow
+		if err := rows.Scan(&i.ItemID, &i.DerivedName); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
