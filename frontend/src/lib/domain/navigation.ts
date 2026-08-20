@@ -1,13 +1,15 @@
 import type { UserRole } from '$lib/api';
 
-export type NavigationIconName = 'inventory' | 'catalog' | 'settings' | 'users';
+export type NavigationIconName = 'inventory' | 'catalog' | 'settings' | 'users' | 'requests';
 
 export type AppPath =
 	| '/'
 	| '/items/new'
+	| '/requests'
 	| '/account'
 	| '/admin/users'
 	| '/admin/users/pending'
+	| '/admin/item-requests'
 	| '/catalog/item-types'
 	| '/catalog/properties'
 	| '/settings'
@@ -40,6 +42,10 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Nova stavka',
 		description: 'Dodajte stavku i njene početne vrednosti svojstava.'
 	},
+	'/requests': {
+		title: 'Zahtevi',
+		description: 'Pratite status svojih zahteva za korišćenje stavki.'
+	},
 	'/account': {
 		title: 'Moj nalog',
 		description: 'Pregledajte podatke svog naloga.'
@@ -51,6 +57,10 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/admin/users/pending': {
 		title: 'Zahtevi za registraciju',
 		description: 'Odobrite ili odbijte zahteve za pristup sistemu.'
+	},
+	'/admin/item-requests': {
+		title: 'Zahtevi za stavke',
+		description: 'Odobrite ili odbijte zahteve korisnika za korišćenje stavki.'
 	},
 	'/catalog/item-types': {
 		title: 'Tipovi stavki',
@@ -76,10 +86,17 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 
 export const primaryNavigation: NavigationItem[] = [
 	{ path: '/', label: 'Stavke', icon: 'inventory' },
+	{ path: '/requests', label: 'Zahtevi', icon: 'requests', requiredRoles: ['user'] },
 	{
 		path: '/catalog/item-types',
 		label: 'Katalog',
 		icon: 'catalog',
+		requiredRoles: ['admin']
+	},
+	{
+		path: '/admin/item-requests',
+		label: 'Zahtevi za stavke',
+		icon: 'requests',
 		requiredRoles: ['admin']
 	},
 	{ path: '/admin/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] }

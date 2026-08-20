@@ -69,10 +69,17 @@ func (q *Queries) CheckItemsForRequests(ctx context.Context, itemIds []int64) ([
 
 const countItemRequests = `-- name: CountItemRequests :one
 SELECT count(*) FROM item_requests
+WHERE ($1::request_status IS NULL OR status = $1)
+  AND ($2::bigint IS NULL OR user_id = $2)
 `
 
-func (q *Queries) CountItemRequests(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countItemRequests)
+type CountItemRequestsParams struct {
+	Status NullRequestStatus `json:"status"`
+	UserID pgtype.Int8       `json:"user_id"`
+}
+
+func (q *Queries) CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countItemRequests, arg.Status, arg.UserID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

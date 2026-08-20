@@ -1,25 +1,26 @@
 <script lang="ts">
 	import Eye from '@lucide/svelte/icons/eye';
-	import { Select } from 'bits-ui';
 	import { resolve } from '$app/paths';
 	import type { ConsumptionStatus, Item, ItemTypeOption, PropertyOption } from '$lib/api';
-	import {
-		consumptionClass,
-		consumptionLabel,
-		consumptionOptions,
-		displayJson
-	} from '$lib/domain/items';
+	import { displayJson } from '$lib/domain/items';
+	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
 
 	let {
 		items,
 		itemTypes,
 		properties,
-		onconsumptionchange
+		canManage,
+		currentUserID,
+		onconsumptionchange,
+		onrequested
 	}: {
 		items: Item[];
 		itemTypes: ItemTypeOption[];
 		properties: PropertyOption[];
+		canManage: boolean;
+		currentUserID: number | undefined;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
+		onrequested: () => void;
 	} = $props();
 
 	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
@@ -70,37 +71,14 @@
 						</div>
 					</td>
 					<td class="px-4 py-3 align-middle">
-						<Select.Root
-							type="single"
-							value={item.consumption}
-							items={consumptionOptions}
-							onValueChange={(value) => onconsumptionchange(item, value as ConsumptionStatus)}
-						>
-							<Select.Trigger
-								class={`flex h-8 w-44 items-center justify-between rounded-md px-2.5 text-xs font-medium ${consumptionClass(item.consumption)}`}
-								aria-label={`Stanje stavke ${item.id}`}
-							>
-								<Select.Value />
-							</Select.Trigger>
-							<Select.Portal>
-								<Select.Content
-									class="z-30 w-48 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-									sideOffset={4}
-								>
-									<Select.Viewport>
-										{#each consumptionOptions as option (option.value)}
-											<Select.Item
-												value={option.value}
-												label={option.label}
-												class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-											>
-												{option.label}
-											</Select.Item>
-										{/each}
-									</Select.Viewport>
-								</Select.Content>
-							</Select.Portal>
-						</Select.Root>
+						<ItemConsumptionControl
+							{item}
+							{currentUserID}
+							{canManage}
+							class="h-8 w-44 px-2.5 text-xs font-medium"
+							{onconsumptionchange}
+							{onrequested}
+						/>
 					</td>
 					<td class="px-4 py-3 text-right align-middle">
 						<div class="flex justify-end gap-1">
@@ -163,36 +141,14 @@
 					</div>
 				</div>
 				<div class="mt-3">
-					<Select.Root
-						type="single"
-						value={item.consumption}
-						items={consumptionOptions}
-						onValueChange={(value) => onconsumptionchange(item, value as ConsumptionStatus)}
-					>
-						<Select.Trigger
-							class={`flex h-8 w-full items-center justify-between rounded-md px-2.5 text-xs font-medium ${consumptionClass(item.consumption)}`}
-						>
-							<Select.Value>{consumptionLabel(item.consumption)}</Select.Value>
-						</Select.Trigger>
-						<Select.Portal>
-							<Select.Content
-								class="z-30 w-(--bits-select-anchor-width) rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-								sideOffset={4}
-							>
-								<Select.Viewport>
-									{#each consumptionOptions as option (option.value)}
-										<Select.Item
-											value={option.value}
-											label={option.label}
-											class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-										>
-											{option.label}
-										</Select.Item>
-									{/each}
-								</Select.Viewport>
-							</Select.Content>
-						</Select.Portal>
-					</Select.Root>
+					<ItemConsumptionControl
+						{item}
+						{currentUserID}
+						{canManage}
+						class="h-8 w-full px-2.5 text-xs font-medium"
+						{onconsumptionchange}
+						{onrequested}
+					/>
 				</div>
 			</li>
 		{/each}
