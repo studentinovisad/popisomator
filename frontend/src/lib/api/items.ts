@@ -5,13 +5,15 @@ import type {
 	Item,
 	ItemProperty,
 	ItemsPage,
-	PageRequest,
+	ListItemsParams,
 	UpdateItemRequest
 } from '$lib/api/types';
 
 export const itemsApi = {
-	listItems: ({ limit = 20, offset = 0 }: PageRequest = {}) => {
+	listItems: ({ limit = 20, offset = 0, search = '', typeID }: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		if (search) query.set('search', search);
+		if (typeID) query.set('type_id', String(typeID));
 		return request<ItemsPage>(`/items?${query}`);
 	},
 	getItem: (id: number) => request<Item>(`/items/${id}`),

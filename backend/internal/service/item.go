@@ -62,7 +62,12 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 	if err != nil {
 		return nil, err
 	}
-	populateItemDetails(itemsDTO, propertyRows)
+
+	derivedNameRows, err := queriesTx.GetItemsDerivedNames(ctx, itemIDs)
+	if err != nil {
+		return nil, err
+	}
+	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -96,6 +101,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
 		CreatedTo:   createdTo,
+		Search:      req.Search,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -106,6 +112,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Consumption: req.Consumption,
 		CreatedFrom: createdFrom,
 		CreatedTo:   createdTo,
+		Search:      req.Search,
 		LimitVal:    req.Limit,
 		OffsetVal:   req.Offset,
 		OrderAsc:    req.Order == "asc",
@@ -126,7 +133,12 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		if err != nil {
 			return dto.ItemsPage{}, err
 		}
-		populateItemDetails(itemsDTO, propRows)
+
+		derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, itemIDs)
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+		populateItemDetails(itemsDTO, propRows, derivedNameRows)
 	}
 
 	return dto.ItemsPage{
@@ -148,8 +160,13 @@ func GetItem(ctx context.Context, id int64) (dto.Item, error) {
 		return dto.Item{}, err
 	}
 
+	derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, []int64{id})
+	if err != nil {
+		return dto.Item{}, err
+	}
+
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
-	populateItemDetails(itemsDTO, propertyRows)
+	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
 
 	return itemsDTO[0], nil
 }
@@ -200,8 +217,13 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 		return dto.Item{}, err
 	}
 
+	derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, []int64{item.ID})
+	if err != nil {
+		return dto.Item{}, err
+	}
+
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
-	populateItemDetails(itemsDTO, propertyRows)
+	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
 
 	return itemsDTO[0], nil
 }

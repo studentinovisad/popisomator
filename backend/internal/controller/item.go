@@ -21,6 +21,7 @@ import (
 // @Security CookieAuth
 // @Param limit query int false "Page size (default 20, max 50)"
 // @Param offset query int false "Page offset (default 0)"
+// @Param search query string false "Filter by derived item name substring (max 100 chars)"
 // @Param type_id query int false "Filter by item type ID"
 // @Param consumption query []string false "Filter by consumption status (comma-separated)" collectionFormat(csv) Enums(not_consumed, partially_consumed, fully_consumed, damaged)
 // @Param created_from query string false "Filter by creation time, RFC3339"
@@ -38,11 +39,17 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid limit/offset")
 		return
 	}
+	search, err := pagination.GetSearch(r)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	req := dto.ListItemsRequest{
 		Limit:  limit,
 		Offset: offset,
 		Order:  "desc",
+		Search: search,
 	}
 
 	if val := query.Get("type_id"); val != "" {

@@ -8,7 +8,7 @@ WHERE id = $1 LIMIT 1;
 
 -- name: ListUsers :many
 SELECT * FROM users
-WHERE full_name ILIKE '%' || sqlc.arg(search)::text || '%'
+WHERE full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
   AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
   AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status)
 ORDER BY id
@@ -16,7 +16,7 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: CountUsers :one
 SELECT count(*) FROM users
-WHERE full_name ILIKE '%' || sqlc.arg(search)::text || '%'
+WHERE full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
   AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
   AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status);
 

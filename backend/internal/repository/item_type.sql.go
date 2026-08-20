@@ -41,10 +41,11 @@ func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypeProper
 
 const countItemTypes = `-- name: CountItemTypes :one
 SELECT count(*) FROM item_types
+WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 `
 
-func (q *Queries) CountItemTypes(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countItemTypes)
+func (q *Queries) CountItemTypes(ctx context.Context, search string) (int64, error) {
+	row := q.db.QueryRow(ctx, countItemTypes, search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -113,36 +114,6 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 	return items, nil
 }
 
-const listItemTypeOptions = `-- name: ListItemTypeOptions :many
-SELECT id, name FROM item_types
-ORDER BY name
-`
-
-type ListItemTypeOptionsRow struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
-func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error) {
-	rows, err := q.db.Query(ctx, listItemTypeOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListItemTypeOptionsRow
-	for rows.Next() {
-		var i ListItemTypeOptionsRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getItemTypeByID = `-- name: GetItemTypeByID :one
 SELECT id, name, description, derived_name_format FROM item_types
 WHERE id = $1 LIMIT 1
@@ -190,19 +161,51 @@ func (q *Queries) GetItemTypeProperties(ctx context.Context, typeIds []int64) ([
 	return items, nil
 }
 
+const listItemTypeOptions = `-- name: ListItemTypeOptions :many
+SELECT id, name FROM item_types
+ORDER BY name
+`
+
+type ListItemTypeOptionsRow struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listItemTypeOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemTypeOptionsRow
+	for rows.Next() {
+		var i ListItemTypeOptionsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItemTypes = `-- name: ListItemTypes :many
 SELECT id, name, description, derived_name_format FROM item_types
+WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 ORDER BY id
-LIMIT $2 OFFSET $1
+LIMIT $3 OFFSET $2
 `
 
 type ListItemTypesParams struct {
-	OffsetVal int32 `json:"offset_val"`
-	LimitVal  int32 `json:"limit_val"`
+	Search    string `json:"search"`
+	OffsetVal int32  `json:"offset_val"`
+	LimitVal  int32  `json:"limit_val"`
 }
 
 func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error) {
-	rows, err := q.db.Query(ctx, listItemTypes, arg.OffsetVal, arg.LimitVal)
+	rows, err := q.db.Query(ctx, listItemTypes, arg.Search, arg.OffsetVal, arg.LimitVal)
 	if err != nil {
 		return nil, err
 	}

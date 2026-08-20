@@ -3,24 +3,52 @@ SELECT * FROM items
 WHERE id = $1 LIMIT 1;
 
 -- name: ListItems :many
-SELECT * FROM items
-WHERE (sqlc.narg('type_id')::bigint IS NULL OR type_id = sqlc.narg('type_id'))
-  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
-  AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from'))
-  AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at <= sqlc.narg('created_to'))
+SELECT items.* FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (
+    sqlc.arg('search')::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+    )
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
+  )
 ORDER BY
-  CASE WHEN sqlc.arg('order_asc')::bool THEN created_at END ASC,
-  CASE WHEN sqlc.arg('order_asc')::bool THEN id END ASC,
-  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN created_at END DESC,
-  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN id END DESC
+  CASE WHEN sqlc.arg('order_asc')::bool THEN items.created_at END ASC,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN items.id END ASC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN items.created_at END DESC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN items.id END DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: CountItems :one
 SELECT count(*) FROM items
-WHERE (sqlc.narg('type_id')::bigint IS NULL OR type_id = sqlc.narg('type_id'))
-  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
-  AND (sqlc.narg('created_from')::timestamptz IS NULL OR created_at >= sqlc.narg('created_from'))
-  AND (sqlc.narg('created_to')::timestamptz IS NULL OR created_at <= sqlc.narg('created_to'));
+JOIN item_types ON item_types.id = items.type_id
+WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (
+    sqlc.arg('search')::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+    )
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
+  );
 
 -- name: CreateItems :many
 INSERT INTO items (type_id) 
@@ -38,12 +66,18 @@ UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
 DELETE FROM items WHERE id = $1;
 
 -- name: GetItemProperties :many
-SELECT sqlc.embed(ip), itp.visibility, p.name AS property_name, it.derived_name_format FROM item_properties ip
+SELECT sqlc.embed(ip), itp.visibility, p.name AS property_name FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
-JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id
 JOIN properties p ON ip.property_id = p.id
 WHERE ip.item_id = ANY(sqlc.arg('item_ids')::bigint[]);
+
+-- name: GetItemsDerivedNames :many
+SELECT items.id AS item_id, render_item_derived_name(items.id, item_types.derived_name_format) AS derived_name
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE items.id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: AddItemProperty :one
 INSERT INTO item_properties (item_id, property_id, property_value) VALUES ($1, $2, $3) RETURNING *;

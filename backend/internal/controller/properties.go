@@ -66,6 +66,7 @@ func GetPropertyOptions(w http.ResponseWriter, r *http.Request) {
 // @Security CookieAuth
 // @Param limit query int false "Page size (default 20, max 50)"
 // @Param offset query int false "Page offset (default 0)"
+// @Param search query string false "Filter by name substring (max 100 chars)"
 // @Success 200 {object} dto.PropertiesPage
 // @Failure 400 {object} response.Error "invalid limit/offset"
 // @Failure 401 {object} response.Error "not logged in"
@@ -77,7 +78,13 @@ func ListProperties(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	properties, err := service.ListProperties(r.Context(), limit, offset)
+	search, err := pagination.GetSearch(r)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	properties, err := service.ListProperties(r.Context(), limit, offset, search)
 	if err != nil {
 		writeServiceError(w, err, "couldn't list properties")
 		return

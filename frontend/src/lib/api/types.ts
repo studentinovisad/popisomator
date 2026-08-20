@@ -1,6 +1,7 @@
 export type PageRequest = {
 	limit?: number;
 	offset?: number;
+	search?: string;
 };
 
 export type UserRole = 'admin' | 'manager' | 'user';
@@ -69,6 +70,10 @@ export type ItemsPage = {
 	limit: number;
 	offset: number;
 	total: number;
+};
+
+export type ListItemsParams = PageRequest & {
+	typeID?: number;
 };
 
 export type UpdateItemRequest = {

@@ -66,10 +66,24 @@ func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBu
 
 const countItems = `-- name: CountItems :one
 SELECT count(*) FROM items
-WHERE ($1::bigint IS NULL OR type_id = $1)
-  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
-  AND ($3::timestamptz IS NULL OR created_at >= $3)
-  AND ($4::timestamptz IS NULL OR created_at <= $4)
+JOIN item_types ON item_types.id = items.type_id
+WHERE ($1::bigint IS NULL OR items.type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR items.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR items.created_at <= $4)
+  AND (
+    $5::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($5::text) || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($5::text) || '%'
+    )
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
+  )
 `
 
 type CountItemsParams struct {
@@ -77,6 +91,7 @@ type CountItemsParams struct {
 	Consumption []ConsumptionStatus `json:"consumption"`
 	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	Search      string              `json:"search"`
 }
 
 func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
@@ -85,6 +100,7 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.Search,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -158,19 +174,18 @@ func (q *Queries) GetItemByID(ctx context.Context, id int64) (Item, error) {
 }
 
 const getItemProperties = `-- name: GetItemProperties :many
-SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name, it.derived_name_format FROM item_properties ip
+SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
-JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id 
+JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id
 JOIN properties p ON ip.property_id = p.id
 WHERE ip.item_id = ANY($1::bigint[])
 `
 
 type GetItemPropertiesRow struct {
-	ItemProperty      ItemProperty       `json:"item_property"`
-	Visibility        PropertyVisibility `json:"visibility"`
-	PropertyName      string             `json:"property_name"`
-	DerivedNameFormat pgtype.Text        `json:"derived_name_format"`
+	ItemProperty ItemProperty       `json:"item_property"`
+	Visibility   PropertyVisibility `json:"visibility"`
+	PropertyName string             `json:"property_name"`
 }
 
 func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error) {
@@ -188,7 +203,6 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]Get
 			&i.ItemProperty.PropertyValue,
 			&i.Visibility,
 			&i.PropertyName,
-			&i.DerivedNameFormat,
 		); err != nil {
 			return nil, err
 		}
@@ -200,18 +214,64 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]Get
 	return items, nil
 }
 
+const getItemsDerivedNames = `-- name: GetItemsDerivedNames :many
+SELECT items.id AS item_id, render_item_derived_name(items.id, item_types.derived_name_format) AS derived_name
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE items.id = ANY($1::bigint[])
+`
+
+type GetItemsDerivedNamesRow struct {
+	ItemID      int64  `json:"item_id"`
+	DerivedName string `json:"derived_name"`
+}
+
+func (q *Queries) GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error) {
+	rows, err := q.db.Query(ctx, getItemsDerivedNames, itemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetItemsDerivedNamesRow
+	for rows.Next() {
+		var i GetItemsDerivedNamesRow
+		if err := rows.Scan(&i.ItemID, &i.DerivedName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItems = `-- name: ListItems :many
-SELECT id, created_at, consumption, type_id FROM items
-WHERE ($1::bigint IS NULL OR type_id = $1)
-  AND ($2::consumption_status[] IS NULL OR consumption = ANY($2::consumption_status[]))
-  AND ($3::timestamptz IS NULL OR created_at >= $3)
-  AND ($4::timestamptz IS NULL OR created_at <= $4)
+SELECT items.id, items.created_at, items.consumption, items.type_id FROM items
+JOIN item_types ON item_types.id = items.type_id
+WHERE ($1::bigint IS NULL OR items.type_id = $1)
+  AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
+  AND ($3::timestamptz IS NULL OR items.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR items.created_at <= $4)
+  AND (
+    $5::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($5::text) || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($5::text) || '%'
+    )
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
+  )
 ORDER BY
-  CASE WHEN $5::bool THEN created_at END ASC,
-  CASE WHEN $5::bool THEN id END ASC,
-  CASE WHEN NOT $5::bool THEN created_at END DESC,
-  CASE WHEN NOT $5::bool THEN id END DESC
-LIMIT $7 OFFSET $6
+  CASE WHEN $6::bool THEN items.created_at END ASC,
+  CASE WHEN $6::bool THEN items.id END ASC,
+  CASE WHEN NOT $6::bool THEN items.created_at END DESC,
+  CASE WHEN NOT $6::bool THEN items.id END DESC
+LIMIT $8 OFFSET $7
 `
 
 type ListItemsParams struct {
@@ -219,6 +279,7 @@ type ListItemsParams struct {
 	Consumption []ConsumptionStatus `json:"consumption"`
 	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
+	Search      string              `json:"search"`
 	OrderAsc    bool                `json:"order_asc"`
 	OffsetVal   int32               `json:"offset_val"`
 	LimitVal    int32               `json:"limit_val"`
@@ -230,6 +291,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.Search,
 		arg.OrderAsc,
 		arg.OffsetVal,
 		arg.LimitVal,

@@ -59,8 +59,8 @@ func GetPropertyOptions(ctx context.Context) ([]dto.PropertyOption, error) {
 	return propOptionsDTO, nil
 }
 
-func ListProperties(ctx context.Context, limit, offset int32) (dto.PropertiesPage, error) {
-	total, err := db.Queries.CountProperties(ctx)
+func ListProperties(ctx context.Context, limit, offset int32, search string) (dto.PropertiesPage, error) {
+	total, err := db.Queries.CountProperties(ctx, search)
 	if err != nil {
 		return dto.PropertiesPage{}, err
 	}
@@ -68,6 +68,7 @@ func ListProperties(ctx context.Context, limit, offset int32) (dto.PropertiesPag
 	properties, err := db.Queries.ListProperties(ctx, repository.ListPropertiesParams{
 		PageLimit:  limit,
 		PageOffset: offset,
+		Search:     search,
 	})
 	if err != nil {
 		return dto.PropertiesPage{}, err
