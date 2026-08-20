@@ -73,16 +73,16 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
   AND ($4::timestamptz IS NULL OR items.created_at <= $4)
   AND (
     $5::text = ''
-    OR item_types.derived_name_format ILIKE '%' || $5 || '%'
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($5::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
-        AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || $5 || '%'
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($5::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(trim($5), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
   )
 `
 
@@ -255,16 +255,16 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
   AND ($4::timestamptz IS NULL OR items.created_at <= $4)
   AND (
     $5::text = ''
-    OR item_types.derived_name_format ILIKE '%' || $5 || '%'
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($5::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
-        AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || $5 || '%'
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($5::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(trim($5), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
   )
 ORDER BY
   CASE WHEN $6::bool THEN items.created_at END ASC,

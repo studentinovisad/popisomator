@@ -41,10 +41,10 @@ func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypeProper
 
 const countItemTypes = `-- name: CountItemTypes :one
 SELECT count(*) FROM item_types
-WHERE name ILIKE '%' || $1 || '%'
+WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 `
 
-func (q *Queries) CountItemTypes(ctx context.Context, search pgtype.Text) (int64, error) {
+func (q *Queries) CountItemTypes(ctx context.Context, search string) (int64, error) {
 	row := q.db.QueryRow(ctx, countItemTypes, search)
 	var count int64
 	err := row.Scan(&count)
@@ -193,15 +193,15 @@ func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOption
 
 const listItemTypes = `-- name: ListItemTypes :many
 SELECT id, name, description, derived_name_format FROM item_types
-WHERE name ILIKE '%' || $1 || '%'
+WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 ORDER BY id
 LIMIT $3 OFFSET $2
 `
 
 type ListItemTypesParams struct {
-	Search    pgtype.Text `json:"search"`
-	OffsetVal int32       `json:"offset_val"`
-	LimitVal  int32       `json:"limit_val"`
+	Search    string `json:"search"`
+	OffsetVal int32  `json:"offset_val"`
+	LimitVal  int32  `json:"limit_val"`
 }
 
 func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error) {

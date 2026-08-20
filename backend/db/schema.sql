@@ -57,6 +57,14 @@ CREATE TABLE item_properties (
 
 CREATE INDEX idx_item_properties_property_id ON item_properties(property_id);
 
+CREATE FUNCTION escape_like_pattern(value TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT replace(replace(replace(value, '\', '\\'), '%', '\%'), '_', '\_');
+$$;
+
 CREATE FUNCTION render_item_derived_name(target_item_id BIGINT, derived_format TEXT)
 RETURNS TEXT
 LANGUAGE sql

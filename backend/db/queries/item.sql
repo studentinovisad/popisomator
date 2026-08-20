@@ -11,16 +11,16 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
   AND (
     sqlc.arg('search')::text = ''
-    OR item_types.derived_name_format ILIKE '%' || sqlc.arg('search') || '%'
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
-        AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || sqlc.arg('search') || '%'
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(trim(sqlc.arg('search')), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
   )
 ORDER BY
   CASE WHEN sqlc.arg('order_asc')::bool THEN items.created_at END ASC,
@@ -38,16 +38,16 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
   AND (
     sqlc.arg('search')::text = ''
-    OR item_types.derived_name_format ILIKE '%' || sqlc.arg('search') || '%'
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
-        AND item_types.derived_name_format LIKE '%{' || properties.name || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || sqlc.arg('search') || '%'
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(trim(sqlc.arg('search')), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
   );
 
 -- name: CreateItems :many

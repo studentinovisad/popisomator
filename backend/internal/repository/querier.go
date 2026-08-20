@@ -6,17 +6,15 @@ package repository
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	AddItemProperty(ctx context.Context, arg AddItemPropertyParams) (ItemProperty, error)
 	AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBulkParams) ([]ItemProperty, error)
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
-	CountItemTypes(ctx context.Context, search pgtype.Text) (int64, error)
+	CountItemTypes(ctx context.Context, search string) (int64, error)
 	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
-	CountProperties(ctx context.Context, search pgtype.Text) (int64, error)
+	CountProperties(ctx context.Context, search string) (int64, error)
 	CountUsers(ctx context.Context, arg CountUsersParams) (int64, error)
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
 	CreateItems(ctx context.Context, arg CreateItemsParams) ([]Item, error)
