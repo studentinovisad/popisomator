@@ -13,7 +13,7 @@
 	} = $props();
 </script>
 
-<ul class="divide-y divide-line md:hidden" aria-label="Korisnici">
+<ul class="divide-y divide-line lg:hidden" aria-label="Korisnici">
 	{#each users as user (user.id)}
 		<li class="px-4 py-3">
 			<div class="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-4">

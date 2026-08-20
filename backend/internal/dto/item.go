@@ -51,6 +51,7 @@ type ListItemsRequest struct {
 	Limit       int32
 	Offset      int32
 	Order       string `validate:"oneof=asc desc"`
+	Search      string `validate:"max=100"`
 }
 
 type ItemsPage struct {

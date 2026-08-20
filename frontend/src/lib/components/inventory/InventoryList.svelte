@@ -2,7 +2,7 @@
 	import Eye from '@lucide/svelte/icons/eye';
 	import { Select } from 'bits-ui';
 	import { resolve } from '$app/paths';
-	import type { ConsumptionStatus, Item, ItemTypeOption, PropertyOption, User } from '$lib/api';
+	import type { ConsumptionStatus, Item, ItemTypeOption, PropertyOption } from '$lib/api';
 	import {
 		consumptionClass,
 		consumptionLabel,
@@ -14,19 +14,16 @@
 		items,
 		itemTypes,
 		properties,
-		user,
 		onconsumptionchange
 	}: {
 		items: Item[];
 		itemTypes: ItemTypeOption[];
 		properties: PropertyOption[];
-		user: User;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
 	} = $props();
 
 	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
 	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
-	let canManage = $derived(user.role === 'admin' || user.role === 'manager');
 
 	function typeName(item: Item) {
 		return typeNames.get(item.type_id) ?? 'Nepoznat tip';
@@ -34,19 +31,19 @@
 </script>
 
 <div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-	<table class="hidden min-w-full table-fixed text-left text-sm md:table">
+	<table class="hidden min-w-full table-fixed text-left text-sm lg:table">
 		<colgroup>
 			<col class="w-64" />
 			<col />
 			<col class="w-48" />
-			{#if canManage}<col class="w-24" />{/if}
+			<col class="w-24" />
 		</colgroup>
 		<thead class="border-b border-line bg-soft text-muted">
 			<tr class="h-12">
 				<th class="px-4 py-3 font-medium">Stavka</th>
 				<th class="px-4 py-3 font-medium">Svojstva</th>
 				<th class="px-4 py-3 font-medium">Stanje</th>
-				{#if canManage}<th class="px-4 py-3 text-right font-medium">Radnje</th>{/if}
+				<th class="px-4 py-3 text-right font-medium">Detalji</th>
 			</tr>
 		</thead>
 		<tbody class="divide-y divide-line text-ink">
@@ -105,33 +102,29 @@
 							</Select.Portal>
 						</Select.Root>
 					</td>
-					{#if canManage}
-						<td class="px-4 py-3 text-right align-middle">
-							<div class="flex justify-end gap-1">
-								<a
-									class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
-									href={resolve(`/items/${item.id}`)}
-									aria-label={`Detalji stavke ${item.id}`}
-									title="Detalji"
-								>
-									<Eye class="size-4" aria-hidden="true" />
-								</a>
-							</div>
-						</td>
-					{/if}
+					<td class="px-4 py-3 text-right align-middle">
+						<div class="flex justify-end gap-1">
+							<a
+								class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
+								href={resolve(`/items/${item.id}`)}
+								aria-label={`Detalji stavke ${item.id}`}
+								title="Detalji"
+							>
+								<Eye class="size-4" aria-hidden="true" />
+							</a>
+						</div>
+					</td>
 				</tr>
 			{/each}
 			{#if items.length === 0}
 				<tr class="h-16">
-					<td class="px-4 py-3 align-middle text-muted" colspan={canManage ? 4 : 3}>
-						Nema stavki.
-					</td>
+					<td class="px-4 py-3 align-middle text-muted" colspan={4}> Nema stavki. </td>
 				</tr>
 			{/if}
 		</tbody>
 	</table>
 
-	<ul class="divide-y divide-line md:hidden" aria-label="Stavke">
+	<ul class="divide-y divide-line lg:hidden" aria-label="Stavke">
 		{#each items as item (item.id)}
 			{@const overviewProperties = item.properties.filter(
 				(property) => property.visibility === 'overview'
@@ -158,18 +151,16 @@
 							</p>
 						{/if}
 					</a>
-					{#if canManage}
-						<div class="flex shrink-0 gap-1">
-							<a
-								class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
-								href={resolve(`/items/${item.id}`)}
-								aria-label={`Detalji stavke ${item.id}`}
-								title="Detalji"
-							>
-								<Eye class="size-4" aria-hidden="true" />
-							</a>
-						</div>
-					{/if}
+					<div class="flex shrink-0 gap-1">
+						<a
+							class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
+							href={resolve(`/items/${item.id}`)}
+							aria-label={`Detalji stavke ${item.id}`}
+							title="Detalji"
+						>
+							<Eye class="size-4" aria-hidden="true" />
+						</a>
+					</div>
 				</div>
 				<div class="mt-3">
 					<Select.Root

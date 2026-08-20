@@ -792,6 +792,10 @@ paths:
         in: query
         name: offset
         type: integer
+      - description: Filter by name substring (max 100 chars)
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:
@@ -1100,6 +1104,10 @@ paths:
         in: query
         name: offset
         type: integer
+      - description: Filter by derived item name substring (max 100 chars)
+        in: query
+        name: search
+        type: string
       - description: Filter by item type ID
         in: query
         name: type_id
@@ -1478,6 +1486,10 @@ paths:
         in: query
         name: offset
         type: integer
+      - description: Filter by name substring (max 100 chars)
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:

@@ -13,10 +13,11 @@ import (
 
 const countProperties = `-- name: CountProperties :one
 SELECT count(*) FROM properties
+WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 `
 
-func (q *Queries) CountProperties(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countProperties)
+func (q *Queries) CountProperties(ctx context.Context, search string) (int64, error) {
+	row := q.db.QueryRow(ctx, countProperties, search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -113,17 +114,19 @@ func (q *Queries) GetPropertyByID(ctx context.Context, id int64) (Property, erro
 
 const listProperties = `-- name: ListProperties :many
 SELECT id, name, description, value_type, default_value FROM properties
+WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 ORDER BY id
-LIMIT $2 OFFSET $1
+LIMIT $3 OFFSET $2
 `
 
 type ListPropertiesParams struct {
-	PageOffset int32 `json:"page_offset"`
-	PageLimit  int32 `json:"page_limit"`
+	Search     string `json:"search"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
 }
 
 func (q *Queries) ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error) {
-	rows, err := q.db.Query(ctx, listProperties, arg.PageOffset, arg.PageLimit)
+	rows, err := q.db.Query(ctx, listProperties, arg.Search, arg.PageOffset, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"regexp"
 	"strings"
 
@@ -83,17 +82,6 @@ func derivedNameTokens(format string) ([]string, bool) {
 	return tokens, true
 }
 
-func renderDerivedName(format string, values map[string]string) string {
-	if _, valid := derivedNameTokens(format); !valid {
-		return ""
-	}
-
-	return strings.TrimSpace(derivedNameTokenPattern.ReplaceAllStringFunc(format, func(token string) string {
-		name := strings.TrimSpace(token[1 : len(token)-1])
-		return values[name]
-	}))
-}
-
 func derivedNameUsesProperty(format, propertyName string) bool {
 	for _, token := range derivedNameTokenPattern.FindAllStringSubmatch(format, -1) {
 		if strings.TrimSpace(token[1]) == propertyName {
@@ -103,36 +91,17 @@ func derivedNameUsesProperty(format, propertyName string) bool {
 	return false
 }
 
-func displayDerivedNameValue(rawValue string) string {
-	var value any
-	if err := json.Unmarshal([]byte(rawValue), &value); err != nil {
-		return rawValue
-	}
-
-	switch typedValue := value.(type) {
-	case string:
-		return typedValue
-	case nil:
-		return ""
-	default:
-		encoded, err := json.Marshal(typedValue)
-		if err != nil {
-			return rawValue
-		}
-		return string(encoded)
-	}
-}
-
-func populateItemDetails(items []dto.Item, rows []repository.GetItemPropertiesRow) {
+func populateItemDetails(
+	items []dto.Item,
+	propertyRows []repository.GetItemPropertiesRow,
+	derivedNameRows []repository.GetItemsDerivedNamesRow,
+) {
 	itemIndexes := make(map[int64]int, len(items))
-	propertyValues := make(map[int64]map[string]string, len(items))
-	formats := make(map[int64]string, len(items))
 	for index := range items {
 		itemIndexes[items[index].ID] = index
-		propertyValues[items[index].ID] = make(map[string]string)
 	}
 
-	for _, row := range rows {
+	for _, row := range propertyRows {
 		itemIndex, exists := itemIndexes[row.ItemProperty.ItemID]
 		if !exists {
 			continue
@@ -141,19 +110,14 @@ func populateItemDetails(items []dto.Item, rows []repository.GetItemPropertiesRo
 		property := dto.ToItemPropertyDTO(row.ItemProperty)
 		property.Visibility = string(row.Visibility)
 		items[itemIndex].Properties = append(items[itemIndex].Properties, property)
-		propertyValues[row.ItemProperty.ItemID][row.PropertyName] = displayDerivedNameValue(
-			row.ItemProperty.PropertyValue,
-		)
-
-		if row.DerivedNameFormat.Valid {
-			formats[row.ItemProperty.ItemID] = row.DerivedNameFormat.String
-		}
 	}
 
-	for index := range items {
-		items[index].DerivedName = renderDerivedName(
-			formats[items[index].ID],
-			propertyValues[items[index].ID],
-		)
+	for _, row := range derivedNameRows {
+		itemIndex, exists := itemIndexes[row.ItemID]
+		if !exists {
+			continue
+		}
+
+		items[itemIndex].DerivedName = row.DerivedName
 	}
 }

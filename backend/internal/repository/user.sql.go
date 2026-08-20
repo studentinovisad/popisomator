@@ -11,7 +11,7 @@ import (
 
 const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM users
-WHERE full_name ILIKE '%' || $1::text || '%'
+WHERE full_name ILIKE '%' || escape_like_pattern($1::text) || '%'
   AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
   AND status = COALESCE(NULLIF($3::text, '')::user_status, status)
 `
@@ -113,7 +113,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, password_hash, full_name, role, status FROM users
-WHERE full_name ILIKE '%' || $1::text || '%'
+WHERE full_name ILIKE '%' || escape_like_pattern($1::text) || '%'
   AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
   AND status = COALESCE(NULLIF($3::text, '')::user_status, status)
 ORDER BY id

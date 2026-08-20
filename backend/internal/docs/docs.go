@@ -538,6 +538,12 @@ const docTemplate = `{
                         "description": "Page offset (default 0)",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name substring (max 100 chars)",
+                        "name": "search",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1024,6 +1030,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page offset (default 0)",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by derived item name substring (max 100 chars)",
+                        "name": "search",
                         "in": "query"
                     },
                     {
@@ -1614,6 +1626,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page offset (default 0)",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name substring (max 100 chars)",
+                        "name": "search",
                         "in": "query"
                     }
                 ],

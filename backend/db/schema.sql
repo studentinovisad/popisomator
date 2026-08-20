@@ -57,6 +57,39 @@ CREATE TABLE item_properties (
 
 CREATE INDEX idx_item_properties_property_id ON item_properties(property_id);
 
+CREATE FUNCTION escape_like_pattern(value TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT replace(replace(replace(value, '\', '\\'), '%', '\%'), '_', '\_');
+$$;
+
+CREATE FUNCTION render_item_derived_name(target_item_id BIGINT, derived_format TEXT)
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT btrim(COALESCE((
+    SELECT string_agg(
+      CASE
+        WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
+        ELSE token.parts[2]
+      END,
+      '' ORDER BY token.position
+    )
+    FROM regexp_matches(
+      derived_format,
+      '\{([^{}]+)\}|([^{}]+)',
+      'g'
+    ) WITH ORDINALITY AS token(parts, position)
+    LEFT JOIN properties ON properties.name = btrim(token.parts[1])
+    LEFT JOIN item_properties AS item_property
+      ON item_property.item_id = target_item_id
+     AND item_property.property_id = properties.id
+  ), ''));
+$$;
+
 CREATE TYPE request_status AS ENUM ('requested', 'approved');
 CREATE TABLE item_requests (
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
@@ -71,5 +104,5 @@ CREATE INDEX idx_item_requests_user_id ON item_requests(user_id);
 CREATE INDEX idx_item_requests_item_id ON item_requests(item_id);
 
 CREATE UNIQUE INDEX idx_unique_approved_item_requests
-ON item_requests(item_id) 
+ON item_requests(item_id)
 WHERE status = 'approved';
