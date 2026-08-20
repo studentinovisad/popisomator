@@ -141,13 +141,37 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} dto.Item
 // @Failure 400 {object} response.Error "invalid request"
 // @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "not approved to consume item"
 // @Failure 404 {object} response.Error "not found"
 // @Router /items/{id}/consume [post]
 func ConsumeItem(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	itemID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid item id")
 		return
+	}
+
+	// Check for approval before consuming item
+	userID, ok := r.Context().Value("userID").(int64)
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
+		return
+	}
+
+	userDetails, err := service.GetUserDetails(r.Context(), userID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "error fetching role")
+		return
+	}
+	if userDetails.Role == "user" {
+		isApproved, err := service.CheckItemApproval(r.Context(), userID, itemID)
+		if err != nil {
+			response.WriteError(w, http.StatusInternalServerError, "error checking for approval")
+			return
+		} else if !isApproved {
+			response.WriteError(w, http.StatusForbidden, "not approved to consume item")
+			return
+		}
 	}
 
 	body := http.MaxBytesReader(w, r.Body, 1024)
@@ -158,7 +182,7 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cleanReq := dto.UpdateItemRequest{
-		ID:          id,
+		ID:          itemID,
 		Consumption: rawReq.Consumption,
 	}
 

@@ -10,6 +10,30 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
+func populateItemRequestInformation(ctx context.Context, items []dto.Item) error {
+	itemIndexes := make(map[int64]int, len(items))
+	itemIDs := make([]int64, 0, len(items))
+	for index, item := range items {
+		itemIndexes[item.ID] = index
+		itemIDs = append(itemIDs, item.ID)
+	}
+
+	itemRequests, err := db.Queries.CheckItemsForRequests(ctx, itemIDs)
+	if err != nil {
+		return err
+	}
+
+	for _, itemRequest := range itemRequests {
+		index := itemIndexes[itemRequest.ItemID]
+		items[index].Requests = append(items[index].Requests, dto.Item_RequestInformation{
+			UserID: itemRequest.UserID,
+			Status: itemRequest.Status,
+		})
+	}
+
+	return nil
+}
+
 func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, error) {
 	if err := dto.Validate(req); err != nil {
 		return nil, err
@@ -62,12 +86,14 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 	if err != nil {
 		return nil, err
 	}
-
 	derivedNameRows, err := queriesTx.GetItemsDerivedNames(ctx, itemIDs)
 	if err != nil {
 		return nil, err
 	}
 	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
+	if err := populateItemRequestInformation(ctx, itemsDTO); err != nil {
+		return nil, err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -133,12 +159,14 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		if err != nil {
 			return dto.ItemsPage{}, err
 		}
-
 		derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, itemIDs)
 		if err != nil {
 			return dto.ItemsPage{}, err
 		}
 		populateItemDetails(itemsDTO, propRows, derivedNameRows)
+		if err := populateItemRequestInformation(ctx, itemsDTO); err != nil {
+			return dto.ItemsPage{}, err
+		}
 	}
 
 	return dto.ItemsPage{
@@ -167,6 +195,9 @@ func GetItem(ctx context.Context, id int64) (dto.Item, error) {
 
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
 	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
+	if err := populateItemRequestInformation(ctx, itemsDTO); err != nil {
+		return dto.Item{}, err
+	}
 
 	return itemsDTO[0], nil
 }
@@ -224,6 +255,9 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
 	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
+	if err := populateItemRequestInformation(ctx, itemsDTO); err != nil {
+		return dto.Item{}, err
+	}
 
 	return itemsDTO[0], nil
 }

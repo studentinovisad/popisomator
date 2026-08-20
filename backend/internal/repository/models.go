@@ -97,6 +97,48 @@ func (ns NullPropertyVisibility) Value() (driver.Value, error) {
 	return string(ns.PropertyVisibility), nil
 }
 
+type RequestStatus string
+
+const (
+	RequestStatusRequested RequestStatus = "requested"
+	RequestStatusApproved  RequestStatus = "approved"
+)
+
+func (e *RequestStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RequestStatus(s)
+	case string:
+		*e = RequestStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RequestStatus: %T", src)
+	}
+	return nil
+}
+
+type NullRequestStatus struct {
+	RequestStatus RequestStatus `json:"request_status"`
+	Valid         bool          `json:"valid"` // Valid is true if RequestStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRequestStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.RequestStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RequestStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRequestStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RequestStatus), nil
+}
+
 type UserRole string
 
 const (
@@ -193,6 +235,14 @@ type ItemProperty struct {
 	ItemID        int64  `json:"item_id"`
 	PropertyID    int64  `json:"property_id"`
 	PropertyValue string `json:"property_value"`
+}
+
+type ItemRequest struct {
+	UserID    int64              `json:"user_id"`
+	ItemID    int64              `json:"item_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Status    RequestStatus      `json:"status"`
+	Reason    string             `json:"reason"`
 }
 
 type ItemType struct {
