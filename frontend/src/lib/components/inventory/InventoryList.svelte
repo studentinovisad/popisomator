@@ -10,17 +10,15 @@
 		itemTypes,
 		properties,
 		canManage,
-		currentUserID,
 		onconsumptionchange,
-		onrequested
+		onrequest
 	}: {
 		items: Item[];
 		itemTypes: ItemTypeOption[];
 		properties: PropertyOption[];
 		canManage: boolean;
-		currentUserID: number | undefined;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
-		onrequested: () => void;
+		onrequest: (itemID: number, reason: string) => Promise<void>;
 	} = $props();
 
 	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
@@ -73,11 +71,10 @@
 					<td class="px-4 py-3 align-middle">
 						<ItemConsumptionControl
 							{item}
-							{currentUserID}
 							{canManage}
 							class="h-8 w-44 px-2.5 text-xs font-medium"
 							{onconsumptionchange}
-							{onrequested}
+							{onrequest}
 						/>
 					</td>
 					<td class="px-4 py-3 text-right align-middle">
@@ -143,11 +140,10 @@
 				<div class="mt-3">
 					<ItemConsumptionControl
 						{item}
-						{currentUserID}
 						{canManage}
 						class="h-8 w-full px-2.5 text-xs font-medium"
 						{onconsumptionchange}
-						{onrequested}
+						{onrequest}
 					/>
 				</div>
 			</li>

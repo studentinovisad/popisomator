@@ -7,17 +7,12 @@ import (
 )
 
 type Item struct {
-	ID          int64                        `json:"id"`
-	Consumption repository.ConsumptionStatus `json:"consumption"`
-	Properties  []ItemProperty               `json:"properties"`
-	TypeID      int64                        `json:"type_id"`
-	DerivedName string                       `json:"derived_name,omitempty"`
-	Requests    []Item_RequestInformation    `json:"requests,omitempty"`
-}
-
-type Item_RequestInformation struct {
-	UserID int64                    `json:"user_id"`
-	Status repository.RequestStatus `json:"status"`
+	ID            int64                        `json:"id"`
+	Consumption   repository.ConsumptionStatus `json:"consumption"`
+	Properties    []ItemProperty               `json:"properties"`
+	TypeID        int64                        `json:"type_id"`
+	DerivedName   string                       `json:"derived_name,omitempty"`
+	RequestStatus *repository.RequestStatus    `json:"request_status,omitempty"`
 }
 
 func ToItemDTO(item repository.Item) Item {
@@ -52,6 +47,7 @@ type ListItemsRequest struct {
 	Offset      int32
 	Order       string `validate:"oneof=asc desc"`
 	Search      string `validate:"max=100"`
+	ViewerID    int64
 }
 
 type ItemsPage struct {

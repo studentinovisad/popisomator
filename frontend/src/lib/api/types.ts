@@ -59,18 +59,13 @@ export type ItemProperty = {
 
 export type ItemRequestStatus = 'requested' | 'approved';
 
-export type ItemRequestInfo = {
-	user_id: number;
-	status: ItemRequestStatus;
-};
-
 export type Item = {
 	id: number;
 	consumption: ConsumptionStatus;
 	properties: ItemProperty[];
 	type_id: number;
 	derived_name?: string;
-	requests?: ItemRequestInfo[];
+	request_status?: ItemRequestStatus;
 };
 
 export type ItemsPage = {
@@ -174,13 +169,20 @@ export type ItemRequest = {
 	created_at: string;
 	status: ItemRequestStatus;
 	reason: string;
+	user_name?: string;
+	item_name?: string;
 };
 
 export type ItemRequestsPage = {
-	items: ItemRequest[];
+	items: ItemRequestSummary[];
 	limit: number;
 	offset: number;
 	total: number;
+};
+
+export type ItemRequestSummary = ItemRequest & {
+	user_name: string;
+	item_name: string;
 };
 
 export type CreatePersonalItemRequest = {

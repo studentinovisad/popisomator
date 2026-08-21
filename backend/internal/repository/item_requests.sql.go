@@ -69,8 +69,8 @@ func (q *Queries) CheckItemsForRequests(ctx context.Context, itemIds []int64) ([
 
 const countItemRequests = `-- name: CountItemRequests :one
 SELECT count(*) FROM item_requests
-WHERE ($1::request_status IS NULL OR status = $1)
-  AND ($2::bigint IS NULL OR user_id = $2)
+WHERE ($1::request_status IS NULL OR item_requests.status = $1)
+  AND ($2::bigint IS NULL OR item_requests.user_id = $2)
 `
 
 type CountItemRequestsParams struct {
@@ -155,6 +155,37 @@ type GetItemRequestParams struct {
 	ItemID int64 `json:"item_id"`
 }
 
+const getUserItemRequests = `-- name: GetUserItemRequests :many
+SELECT user_id, item_id, created_at, status, reason FROM item_requests
+WHERE user_id = $1
+  AND item_id = ANY($2::bigint[])
+`
+
+type GetUserItemRequestsParams struct {
+	UserID  int64   `json:"user_id"`
+	ItemIds []int64 `json:"item_ids"`
+}
+
+func (q *Queries) GetUserItemRequests(ctx context.Context, arg GetUserItemRequestsParams) ([]ItemRequest, error) {
+	rows, err := q.db.Query(ctx, getUserItemRequests, arg.UserID, arg.ItemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ItemRequest
+	for rows.Next() {
+		var i ItemRequest
+		if err := rows.Scan(&i.UserID, &i.ItemID, &i.CreatedAt, &i.Status, &i.Reason); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) (ItemRequest, error) {
 	row := q.db.QueryRow(ctx, getItemRequest, arg.UserID, arg.ItemID)
 	var i ItemRequest
@@ -169,9 +200,20 @@ func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) 
 }
 
 const listItemRequests = `-- name: ListItemRequests :many
-SELECT user_id, item_id, created_at, status, reason FROM item_requests
-WHERE ($1::request_status IS NULL OR status = $1)
-  AND ($2::bigint IS NULL OR user_id = $2)
+SELECT
+  item_requests.user_id,
+  item_requests.item_id,
+  item_requests.created_at,
+  item_requests.status,
+  item_requests.reason,
+  users.full_name AS user_name,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS item_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+JOIN items ON items.id = item_requests.item_id
+JOIN item_types ON item_types.id = items.type_id
+WHERE ($1::request_status IS NULL OR item_requests.status = $1)
+  AND ($2::bigint IS NULL OR item_requests.user_id = $2)
 ORDER BY created_at DESC
 LIMIT $4 OFFSET $3
 `
@@ -183,7 +225,17 @@ type ListItemRequestsParams struct {
 	LimitVal  int32             `json:"limit_val"`
 }
 
-func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ItemRequest, error) {
+type ListItemRequestsRow struct {
+	UserID    int64              `json:"user_id"`
+	ItemID    int64              `json:"item_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Status    RequestStatus      `json:"status"`
+	Reason    string             `json:"reason"`
+	UserName  string             `json:"user_name"`
+	ItemName  string             `json:"item_name"`
+}
+
+func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error) {
 	rows, err := q.db.Query(ctx, listItemRequests,
 		arg.Status,
 		arg.UserID,
@@ -194,15 +246,17 @@ func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsPara
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ItemRequest
+	var items []ListItemRequestsRow
 	for rows.Next() {
-		var i ItemRequest
+		var i ListItemRequestsRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ItemID,
 			&i.CreatedAt,
 			&i.Status,
 			&i.Reason,
+			&i.UserName,
+			&i.ItemName,
 		); err != nil {
 			return nil, err
 		}

@@ -120,18 +120,9 @@ definitions:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
         type: array
-      requests:
-        items:
-          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item_RequestInformation'
-        type: array
-      type_id:
-        type: integer
-    type: object
-  github_com_studentinovisad_popisomator_backend_internal_dto.Item_RequestInformation:
-    properties:
-      status:
+      request_status:
         $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus'
-      user_id:
+      type_id:
         type: integer
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty:
@@ -152,12 +143,16 @@ definitions:
         type: string
       item_id:
         type: integer
+      item_name:
+        type: string
       reason:
         type: string
       status:
         type: string
       user_id:
         type: integer
+      user_name:
+        type: string
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreatePersonalRequest:
     properties:
@@ -190,12 +185,29 @@ definitions:
     - item_id
     - user_id
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestSummary:
+    properties:
+      created_at:
+        type: string
+      item_id:
+        type: integer
+      item_name:
+        type: string
+      reason:
+        type: string
+      status:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage:
     properties:
       items:
         description: ItemRequest page items
         items:
-          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestSummary'
         type: array
       limit:
         type: integer

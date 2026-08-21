@@ -2380,11 +2380,8 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty"
                     }
                 },
-                "requests": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item_RequestInformation"
-                    }
+                "request_status": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus"
                 },
                 "type_id": {
                     "type": "integer"
@@ -2418,6 +2415,9 @@ const docTemplate = `{
                 "item_id": {
                     "type": "integer"
                 },
+                "item_name": {
+                    "type": "string"
+                },
                 "reason": {
                     "type": "string"
                 },
@@ -2426,6 +2426,9 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                },
+                "user_name": {
+                    "type": "string"
                 }
             }
         },
@@ -2475,6 +2478,32 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestSummary": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "item_id": {
+                    "type": "integer"
+                },
+                "item_name": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "user_name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage": {
             "type": "object",
             "properties": {
@@ -2482,7 +2511,7 @@ const docTemplate = `{
                     "description": "ItemRequest page items",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestSummary"
                     }
                 },
                 "limit": {
@@ -2572,17 +2601,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_studentinovisad_popisomator_backend_internal_dto.Item_RequestInformation": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus"
-                },
-                "user_id": {
                     "type": "integer"
                 }
             }

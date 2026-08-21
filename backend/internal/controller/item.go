@@ -32,6 +32,11 @@ import (
 // @Failure 401 {object} response.Error "not logged in"
 // @Router /items [get]
 func ListItems(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(int64)
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
+		return
+	}
 	query := r.URL.Query()
 
 	limit, offset, err := pagination.GetLimitOffset(r)
@@ -46,10 +51,11 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := dto.ListItemsRequest{
-		Limit:  limit,
-		Offset: offset,
-		Order:  "desc",
-		Search: search,
+		Limit:    limit,
+		Offset:   offset,
+		Order:    "desc",
+		Search:   search,
+		ViewerID: userID,
 	}
 
 	if val := query.Get("type_id"); val != "" {
@@ -115,13 +121,18 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} response.Error "not found"
 // @Router /items/{id} [get]
 func GetItem(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(int64)
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
+		return
+	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid item id")
 		return
 	}
 
-	item, err := service.GetItem(r.Context(), id)
+	item, err := service.GetItem(r.Context(), id, userID)
 	if err != nil {
 		writeServiceError(w, err, "couldn't get item")
 		return

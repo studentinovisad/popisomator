@@ -12,14 +12,22 @@ type ItemRequest struct {
 	CreatedAt time.Time `json:"created_at"`
 	Status    string    `json:"status"`
 	Reason    string    `json:"reason"`
+	UserName  string    `json:"user_name,omitempty"`
+	ItemName  string    `json:"item_name,omitempty"`
 }
 
 type ItemRequestsPage struct {
 	// ItemRequest page items
-	Items  []ItemRequest `json:"items"`
-	Limit  int32         `json:"limit"`
-	Offset int32         `json:"offset"`
-	Total  int64         `json:"total"`
+	Items  []ItemRequestSummary `json:"items"`
+	Limit  int32                `json:"limit"`
+	Offset int32                `json:"offset"`
+	Total  int64                `json:"total"`
+}
+
+type ItemRequestSummary struct {
+	ItemRequest
+	UserName string `json:"user_name"`
+	ItemName string `json:"item_name"`
 }
 
 type ItemRequestCreateRequest struct {
@@ -52,5 +60,16 @@ func ToItemRequestDTO(request repository.ItemRequest) ItemRequest {
 		CreatedAt: request.CreatedAt.Time,
 		Status:    string(request.Status),
 		Reason:    request.Reason,
+	}
+}
+
+func ToItemRequestSummaryDTO(request repository.ListItemRequestsRow) ItemRequestSummary {
+	return ItemRequestSummary{
+		ItemRequest: ToItemRequestDTO(repository.ItemRequest{
+			UserID: request.UserID, ItemID: request.ItemID, CreatedAt: request.CreatedAt,
+			Status: request.Status, Reason: request.Reason,
+		}),
+		UserName: request.UserName,
+		ItemName: request.ItemName,
 	}
 }

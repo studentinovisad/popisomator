@@ -146,9 +146,9 @@ func ListItemRequests(ctx context.Context, req dto.ItemRequestsListRequest) (dto
 		return dto.ItemRequestsPage{}, err
 	}
 
-	requestsDTO := make([]dto.ItemRequest, len(requests))
+	requestsDTO := make([]dto.ItemRequestSummary, len(requests))
 	for i, request := range requests {
-		requestsDTO[i] = dto.ToItemRequestDTO(request)
+		requestsDTO[i] = dto.ToItemRequestSummaryDTO(request)
 	}
 
 	return dto.ItemRequestsPage{

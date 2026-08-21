@@ -1,9 +1,8 @@
 <script lang="ts">
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button, Select } from 'bits-ui';
-	import { SvelteMap } from 'svelte/reactivity';
 	import { page } from '$app/state';
-	import { api, ApiError, type Item, type ItemRequest, type User } from '$lib/api';
+	import { api, ApiError, type ItemRequestSummary } from '$lib/api';
 	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import {
@@ -15,16 +14,15 @@
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { getTableFilter, getTablePage, updateTableQuery } from '$lib/state/table-query';
 
-	const requestsPage = createServerPagination<ItemRequest, { status: ItemRequestStatusFilter }>({
+	const requestsPage = createServerPagination<
+		ItemRequestSummary,
+		{ status: ItemRequestStatusFilter }
+	>({
 		initialFilters: { status: 'requested' },
 		loadPage: ({ limit, offset, status }) =>
 			api.listItemRequests({ limit, offset, status: status === 'all' ? undefined : status }),
 		unavailableMessage: 'Zahtevi nisu učitani.'
 	});
-
-	const itemCache = new SvelteMap<number, Item>();
-	const userCache = new SvelteMap<number, User>();
-	let userDirectoryLoaded = $state(false);
 
 	$effect(() => {
 		const url = page.url;
@@ -36,50 +34,7 @@
 		requestsPage.sync({ page: getTablePage(url), filters: { status } });
 	});
 
-	$effect(() => {
-		void loadMissingItems(requestsPage.items.map((itemRequest) => itemRequest.item_id));
-	});
-
-	$effect(() => {
-		if (!userDirectoryLoaded) void loadUserDirectory();
-	});
-
-	async function loadMissingItems(itemIDs: number[]) {
-		const missing = [...new Set(itemIDs)].filter((id) => !itemCache.has(id));
-		if (missing.length === 0) return;
-
-		const fetched = await Promise.all(missing.map((id) => api.getItem(id).catch(() => null)));
-		for (const item of fetched) if (item) itemCache.set(item.id, item);
-	}
-
-	async function loadUserDirectory() {
-		userDirectoryLoaded = true;
-		let offset = 0;
-
-		for (let iteration = 0; iteration < 10; iteration++) {
-			let batch;
-			try {
-				batch = await api.listUsers({ limit: 50, offset });
-			} catch {
-				break;
-			}
-
-			for (const user of batch.items) userCache.set(user.id, user);
-			offset += batch.items.length;
-			if (batch.items.length === 0 || offset >= batch.total) break;
-		}
-	}
-
-	function itemName(itemID: number) {
-		return itemCache.get(itemID)?.derived_name || `Stavka #${itemID}`;
-	}
-
-	function userName(userID: number) {
-		const user = userCache.get(userID);
-		return user ? `${user.full_name}` : `Korisnik #${userID}`;
-	}
-
-	async function decide(itemRequest: ItemRequest, approve: boolean) {
+	async function decide(itemRequest: ItemRequestSummary, approve: boolean) {
 		requestsPage.error = '';
 
 		try {
@@ -166,10 +121,14 @@
 				{#each requestsPage.items as itemRequest (`${itemRequest.user_id}:${itemRequest.item_id}`)}
 					<tr class="h-16">
 						<td class="px-4 py-3 align-middle">
-							<span class="block truncate">{itemName(itemRequest.item_id)}</span>
+							<span class="block truncate"
+								>{itemRequest.item_name ?? `Stavka #${itemRequest.item_id}`}</span
+							>
 						</td>
 						<td class="px-4 py-3 align-middle">
-							<span class="block truncate">{userName(itemRequest.user_id)}</span>
+							<span class="block truncate"
+								>{itemRequest.user_name ?? `Korisnik #${itemRequest.user_id}`}</span
+							>
 						</td>
 						<td class="px-4 py-3 align-middle">
 							<span class="block truncate" title={itemRequest.reason}>{itemRequest.reason}</span>
@@ -209,7 +168,7 @@
 				<li class="px-4 py-3">
 					<div class="flex items-start justify-between gap-3">
 						<p class="min-w-0 truncate text-sm font-medium text-ink">
-							{itemName(itemRequest.item_id)}
+							{itemRequest.item_name ?? `Stavka #${itemRequest.item_id}`}
 						</p>
 						<span
 							class={`shrink-0 rounded px-2 py-1 text-xs font-medium ${itemRequestStatusClass(itemRequest.status)}`}
@@ -217,7 +176,9 @@
 							{itemRequestStatusLabel(itemRequest.status)}
 						</span>
 					</div>
-					<p class="mt-0.5 truncate text-sm text-muted">{userName(itemRequest.user_id)}</p>
+					<p class="mt-0.5 truncate text-sm text-muted">
+						{itemRequest.user_name ?? `Korisnik #${itemRequest.user_id}`}
+					</p>
 					<p class="mt-0.5 truncate text-sm text-muted" title={itemRequest.reason}>
 						{itemRequest.reason}
 					</p>

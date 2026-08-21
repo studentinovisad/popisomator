@@ -1,28 +1,25 @@
 <script lang="ts">
 	import { Button, Dialog, Label, Select } from 'bits-ui';
-	import { api, ApiError, type ConsumptionStatus, type Item } from '$lib/api';
+	import { ApiError, type ConsumptionStatus, type Item } from '$lib/api';
 	import { consumptionClass, consumptionLabel, consumptionOptions } from '$lib/domain/items';
 
 	let {
 		item,
-		currentUserID,
 		canManage,
 		disabled = false,
 		class: sizeClass = 'h-9 min-w-0 flex-1 px-3 text-sm font-medium sm:w-44 sm:flex-none',
 		onconsumptionchange,
-		onrequested
+		onrequest
 	}: {
 		item: Item;
-		currentUserID: number | undefined;
 		canManage: boolean;
 		disabled?: boolean;
 		class?: string;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
-		onrequested: () => void;
+		onrequest: (itemID: number, reason: string) => Promise<void>;
 	} = $props();
 
-	let myRequest = $derived(item.requests?.find((r) => r.user_id === currentUserID));
-	let canConsume = $derived(canManage || myRequest?.status === 'approved');
+	let canConsume = $derived(canManage || item.request_status === 'approved');
 	let isTerminal = $derived(
 		item.consumption === 'fully_consumed' || item.consumption === 'damaged'
 	);
@@ -38,10 +35,9 @@
 		error = '';
 
 		try {
-			await api.createPersonalItemRequest({ item_id: item.id, reason });
+			await onrequest(item.id, reason);
 			reason = '';
 			dialogOpen = false;
-			onrequested();
 		} catch (caught) {
 			error = caught instanceof ApiError ? caught.message : 'Zahtev nije poslat.';
 		} finally {
@@ -89,7 +85,7 @@
 	>
 		{consumptionLabel(item.consumption)}
 	</span>
-{:else if myRequest?.status === 'requested'}
+{:else if item.request_status === 'requested'}
 	<span class={`inline-flex items-center rounded-md ${sizeClass} bg-warning-soft text-warning`}>
 		Zahtev na čekanju
 	</span>

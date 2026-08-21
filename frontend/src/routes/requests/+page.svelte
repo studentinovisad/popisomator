@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import { page } from '$app/state';
-	import { api, type Item, type ItemRequest } from '$lib/api';
+	import { api, type ItemRequestSummary } from '$lib/api';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import {
@@ -16,34 +15,17 @@
 
 	const authPage = createAuthPage({ unavailableMessage: 'Zahtevi trenutno nisu dostupni.' });
 
-	const requestsPage = createServerPagination<ItemRequest>({
+	const requestsPage = createServerPagination<ItemRequestSummary>({
 		loadPage: ({ limit, offset }) => api.listPersonalItemRequests({ limit, offset }),
 		unavailableMessage: 'Zahtevi nisu učitani.'
 	});
 
-	const itemCache = new SvelteMap<number, Item>();
-
 	onMount(() => void authPage.load());
 
 	$effect(() => {
+		if (!authPage.state.authorized) return;
 		requestsPage.sync({ page: getTablePage(page.url) });
 	});
-
-	$effect(() => {
-		void loadMissingItems(requestsPage.items.map((r) => r.item_id));
-	});
-
-	async function loadMissingItems(itemIDs: number[]) {
-		const missing = [...new Set(itemIDs)].filter((id) => !itemCache.has(id));
-		if (missing.length === 0) return;
-
-		const fetched = await Promise.all(missing.map((id) => api.getItem(id).catch(() => null)));
-		for (const item of fetched) if (item) itemCache.set(item.id, item);
-	}
-
-	function itemName(itemID: number) {
-		return itemCache.get(itemID)?.derived_name || `Stavka #${itemID}`;
-	}
 
 	function goToPage(nextPage: number) {
 		updateTableQuery({ page: nextPage });
@@ -86,7 +68,9 @@
 					{#each requestsPage.items as itemRequest (itemRequest.item_id)}
 						<tr class="h-16">
 							<td class="px-4 py-3 align-middle">
-								<span class="block truncate">{itemName(itemRequest.item_id)}</span>
+								<span class="block truncate"
+									>{itemRequest.item_name ?? `Stavka #${itemRequest.item_id}`}</span
+								>
 							</td>
 							<td class="px-4 py-3 align-middle">
 								<span class="block truncate" title={itemRequest.reason}>{itemRequest.reason}</span>
@@ -113,7 +97,7 @@
 					<li class="px-4 py-3">
 						<div class="flex items-start justify-between gap-3">
 							<p class="min-w-0 truncate text-sm font-medium text-ink">
-								{itemName(itemRequest.item_id)}
+								{itemRequest.item_name ?? `Stavka #${itemRequest.item_id}`}
 							</p>
 							<span
 								class={`shrink-0 rounded px-2 py-1 text-xs font-medium ${itemRequestStatusClass(itemRequest.status)}`}

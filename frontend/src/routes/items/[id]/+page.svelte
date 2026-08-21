@@ -96,6 +96,11 @@
 		}
 	}
 
+	async function requestItemUsage(itemID: number, reason: string) {
+		await api.createPersonalItemRequest({ item_id: itemID, reason });
+		await refreshItem();
+	}
+
 	async function deleteItem() {
 		if (!item) return;
 
@@ -160,15 +165,10 @@
 					<div class="mt-3 flex min-w-0 items-center gap-2">
 						<ItemConsumptionControl
 							{item}
-							currentUserID={authPage.state.user?.id}
 							{canManage}
 							disabled={changingConsumption}
 							onconsumptionchange={(_, status) => void changeConsumption(status)}
-							onrequested={() =>
-								void refreshItem().catch((reason) => {
-									actionError =
-										reason instanceof ApiError ? reason.message : 'Stavka nije osvežena.';
-								})}
+							onrequest={requestItemUsage}
 						/>
 						{#if canManage}
 							<Button.Root

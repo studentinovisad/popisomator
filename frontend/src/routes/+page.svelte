@@ -162,6 +162,11 @@
 			Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0 ? requestedTypeID : undefined;
 		void loadInventory(itemOffset, derivedNameSearch, itemTypeID);
 	}
+
+	async function requestItemUsage(itemID: number, reason: string) {
+		await api.createPersonalItemRequest({ item_id: itemID, reason });
+		refreshInventory();
+	}
 </script>
 
 <svelte:head>
@@ -204,9 +209,8 @@
 			{itemTypes}
 			{properties}
 			{canManage}
-			currentUserID={authPage.state.user?.id}
 			onconsumptionchange={changeConsumption}
-			onrequested={refreshInventory}
+			onrequest={requestItemUsage}
 		/>
 		<PaginationFooter
 			total={itemsTotal}
