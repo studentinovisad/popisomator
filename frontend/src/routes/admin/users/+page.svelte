@@ -8,7 +8,7 @@
 	import { Dialog, Portal } from 'bits-ui';
 
 	const authPage = createAuthPage({
-		unavailableMessage: 'Administracija trenutno nije dostupna.',
+		unavailableMessage: 'Stranica Korisnici trenutno nije dostupna.',
 		requiredRole: 'admin'
 	});
 	let usersRefreshKey = $state(0);
@@ -25,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>Administracija | Popisomator</title>
+	<title>Korisnici | Popisomator</title>
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
