@@ -92,7 +92,7 @@
 {:else}
 	<Dialog.Root bind:open={dialogOpen}>
 		<Dialog.Trigger
-			class={`inline-flex items-center justify-center rounded-md ${sizeClass} bg-brand text-on-brand hover:bg-brand-strong`}
+			class={`inline-flex items-center justify-center rounded-md border border-line bg-surface ${sizeClass} text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand`}
 		>
 			Zatraži korišćenje
 		</Dialog.Trigger>
@@ -116,14 +116,13 @@
 				</div>
 				<form class="mt-6" onsubmit={submitRequest}>
 					<Label.Root class="text-sm font-medium text-ink" for={`item-request-reason-${item.id}`}>
-						Razlog
+						Razlog <span class="font-normal text-muted">(opciono)</span>
 					</Label.Root>
 					<textarea
 						id={`item-request-reason-${item.id}`}
 						class="mt-1 block min-h-20 w-full"
 						maxlength="400"
-						bind:value={reason}
-						required></textarea>
+						bind:value={reason}></textarea>
 					<Button.Root
 						class="mt-4 rounded-md bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
 						disabled={submitting}

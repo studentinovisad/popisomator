@@ -33,7 +33,7 @@ type ItemRequestSummary struct {
 type ItemRequestCreateRequest struct {
 	UserID int64  `json:"user_id" validate:"required,gt=0"`
 	ItemID int64  `json:"item_id" validate:"required,gt=0"`
-	Reason string `json:"reason" validate:"required,max=400"`
+	Reason string `json:"reason" validate:"max=400"`
 }
 
 type ItemRequestCreatePersonalRequest struct {
