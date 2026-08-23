@@ -24,6 +24,7 @@ import (
 const (
 	location                  = "Laboratorija A"
 	chemicalDerivedNameFormat = "{Naziv hemikalije} · {Proizvođač}"
+	testPassword              = "Test1234"
 )
 
 type chemicalRow struct {
@@ -87,16 +88,32 @@ func generateChemicalRows() []chemicalRow {
 
 type testUser struct {
 	Email    string
-	Password string
 	FullName string
 	Role     string
+	Status   string
 }
 
 var testUsers = []testUser{
-	{Email: "admin@popisomator.test", Password: "Test1234", FullName: "Admin Adminovic", Role: "admin"},
-	{Email: "manager@popisomator.test", Password: "Test1234", FullName: "Manja Menadzer", Role: "manager"},
-	{Email: "user1@popisomator.test", Password: "Test1234", FullName: "Pera Peric", Role: "user"},
-	{Email: "user2@popisomator.test", Password: "Test1234", FullName: "Mika Mikic", Role: "user"},
+	{Email: "admin@popisomator.test", FullName: "Admin Adminović", Role: "admin", Status: "active"},
+	{Email: "manager@popisomator.test", FullName: "Manja Menadžer", Role: "manager", Status: "active"},
+	{Email: "user1@popisomator.test", FullName: "Pera Perić", Role: "user", Status: "active"},
+	{Email: "user2@popisomator.test", FullName: "Mika Mikić", Role: "user", Status: "active"},
+	{Email: "jovana@popisomator.test", FullName: "Jovana Jovanović", Role: "user", Status: "requested"},
+	{Email: "nikola@popisomator.test", FullName: "Nikola Nikolić", Role: "user", Status: "requested"},
+}
+
+type itemRequestSeed struct {
+	Email     string
+	ItemIndex int
+	Reason    string
+	Approved  bool
+}
+
+var itemRequestSeeds = []itemRequestSeed{
+	{Email: "user1@popisomator.test", ItemIndex: 0, Reason: "Potreban mi je za pripremu rastvora."},
+	{Email: "user2@popisomator.test", ItemIndex: 1},
+	{Email: "user1@popisomator.test", ItemIndex: 2, Reason: "Za planirani eksperiment.", Approved: true},
+	{Email: "user2@popisomator.test", ItemIndex: 3, Reason: "Dopuna zaliha za vežbe."},
 }
 
 // propertyDef describes one of the "Hemikalija" item type's properties.
@@ -131,7 +148,8 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := seedUsers(ctx); err != nil {
+	users, err := seedUsers(ctx)
+	if err != nil {
 		log.Fatalf("unable to seed users: %v", err)
 	}
 
@@ -145,36 +163,46 @@ func main() {
 		log.Fatalf("unable to seed item type: %v", err)
 	}
 
-	if err := seedItems(ctx, typeID, propIDs); err != nil {
+	items, err := seedItems(ctx, typeID, propIDs)
+	if err != nil {
 		log.Fatalf("unable to seed items: %v", err)
+	}
+
+	if err := seedItemRequests(ctx, users, items); err != nil {
+		log.Fatalf("unable to seed item requests: %v", err)
 	}
 
 	fmt.Println("seeding complete")
 }
 
-func seedUsers(ctx context.Context) error {
+func seedUsers(ctx context.Context) (map[string]dto.User, error) {
+	users := make(map[string]dto.User, len(testUsers))
+
 	for _, testUser := range testUsers {
-		if _, err := service.GetUserByEmail(ctx, testUser.Email); err == nil {
+		existing, err := service.GetUserByEmail(ctx, testUser.Email)
+		if err == nil {
 			fmt.Printf("user %s already exists, skipping\n", testUser.Email)
+			users[testUser.Email] = existing
 			continue
 		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return err
+			return nil, err
 		}
 
 		created, err := service.CreateUser(ctx, dto.CreateUserRequest{
 			Email:    testUser.Email,
-			Password: testUser.Password,
+			Password: testPassword,
 			FullName: testUser.FullName,
 			Role:     testUser.Role,
-			Status:   "active",
+			Status:   testUser.Status,
 		})
 		if err != nil {
-			return fmt.Errorf("creating user %s: %w", testUser.Email, err)
+			return nil, fmt.Errorf("creating user %s: %w", testUser.Email, err)
 		}
-		fmt.Printf("created user %d (%s / %s)\n", created.ID, created.Email, testUser.Password)
+		fmt.Printf("created user %d (%s / %s)\n", created.ID, created.Email, testPassword)
+		users[testUser.Email] = created
 	}
 
-	return nil
+	return users, nil
 }
 
 func seedProperties(ctx context.Context) (map[string]int64, error) {
@@ -294,27 +322,66 @@ func ensureItemTypeProperties(ctx context.Context, itemType dto.ItemType, propID
 
 // seedItems creates one item per physical package rather than one item per spreadsheet row: a
 // each row becomes exactly one item.
-func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) error {
+func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]dto.Item, error) {
 	rows := generateChemicalRows()
+	items := make([]dto.Item, 0, len(rows))
 
 	created := 0
 	for _, row := range rows {
 		properties := propertyValues(row, propIDs)
 
-		items, err := service.CreateItem(ctx, dto.CreateItemRequest{
+		createdItems, err := service.CreateItem(ctx, dto.CreateItemRequest{
 			TypeID:     typeID,
 			Properties: properties,
 			Amount:     1,
 		})
 		if err != nil {
-			return fmt.Errorf("creating item %q: %w", row.Name, err)
+			return nil, fmt.Errorf("creating item %q: %w", row.Name, err)
 		}
-		itemCreated := items[0]
+		itemCreated := createdItems[0]
 		fmt.Printf("created item %d (%s)\n", itemCreated.ID, row.Name)
+		items = append(items, itemCreated)
 		created++
 	}
 
 	fmt.Printf("seeded %d items for location %q\n", created, location)
+	return items, nil
+}
+
+func seedItemRequests(ctx context.Context, users map[string]dto.User, items []dto.Item) error {
+	for _, seed := range itemRequestSeeds {
+		user, ok := users[seed.Email]
+		if !ok {
+			return fmt.Errorf("seed user %s was not created", seed.Email)
+		}
+		if seed.ItemIndex >= len(items) {
+			return fmt.Errorf("item request references missing item at index %d", seed.ItemIndex)
+		}
+
+		item := items[seed.ItemIndex]
+		itemRequest, err := service.CreateItemRequest(ctx, dto.ItemRequestCreateRequest{
+			UserID: user.ID,
+			ItemID: item.ID,
+			Reason: seed.Reason,
+		})
+		if err != nil {
+			return fmt.Errorf("creating request for item %d: %w", item.ID, err)
+		}
+
+		requestStatus := "pending"
+		if seed.Approved {
+			if _, err := service.ApproveItemRequest(ctx, dto.ItemRequestIdentifierRequest{
+				UserID: itemRequest.UserID,
+				ItemID: itemRequest.ItemID,
+			}); err != nil {
+				return fmt.Errorf("approving request for item %d: %w", item.ID, err)
+			}
+			requestStatus = "approved"
+		}
+
+		fmt.Printf("created %s request for item %d (%s)\n", requestStatus, item.ID, user.FullName)
+	}
+
 	return nil
 }
 
