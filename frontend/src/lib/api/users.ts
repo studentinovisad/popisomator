@@ -13,7 +13,7 @@ export const usersApi = {
 	login: (payload: LoginRequest) => request<void>('/auth/login', jsonRequest('POST', payload)),
 	logout: () => request<void>('/auth/logout', { method: 'POST' }),
 	currentUser: () => request<User>('/users/me'),
-	listUsers: ({ limit = 25, offset = 0, search = '', role, status }: ListUsersParams = {}) => {
+	listUsers: ({ limit = 20, offset = 0, search = '', role, status }: ListUsersParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		if (search) query.set('search', search);
 		if (role !== undefined) query.set('role', role);
