@@ -14,24 +14,35 @@ func CreateItemRequest(ctx context.Context, req dto.ItemRequestCreateRequest) (d
 		return dto.ItemRequest{}, err
 	}
 
-	otherItemRequests, err := db.Queries.CheckItemsForRequests(ctx, []int64{req.ItemID})
+	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		return dto.ItemRequest{}, err
 	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
 
-	for _, otherRequest := range otherItemRequests {
-		if otherRequest.Status == "approved" {
-			return dto.ItemRequest{}, ErrItemReservedByApproval
-		}
+	if _, err := queriesTx.LockItemForRequest(ctx, req.ItemID); err != nil {
+		return dto.ItemRequest{}, err
 	}
 
-	itemRequest, err := db.Queries.CreateItemRequest(ctx, repository.CreateItemRequestParams{
+	hasApprovedRequest, err := queriesTx.HasApprovedItemRequest(ctx, req.ItemID)
+	if err != nil {
+		return dto.ItemRequest{}, err
+	}
+	if hasApprovedRequest {
+		return dto.ItemRequest{}, ErrItemReservedByApproval
+	}
+
+	itemRequest, err := queriesTx.CreateItemRequest(ctx, repository.CreateItemRequestParams{
 		UserID: req.UserID,
 		ItemID: req.ItemID,
 		Status: repository.RequestStatusRequested,
 		Reason: req.Reason,
 	})
 	if err != nil {
+		return dto.ItemRequest{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return dto.ItemRequest{}, err
 	}
 
@@ -88,6 +99,10 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 	}
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
+
+	if _, err := queriesTx.LockItemForRequest(ctx, req.ItemID); err != nil {
+		return dto.ItemRequest{}, err
+	}
 
 	itemRequest, err := queriesTx.ApproveItemRequest(ctx, repository.ApproveItemRequestParams{
 		UserID: req.UserID,
@@ -164,7 +179,18 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 		return err
 	}
 
-	rowsAffected, err := db.Queries.DeleteItemRequest(ctx, repository.DeleteItemRequestParams{
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	if _, err := queriesTx.LockItemForRequest(ctx, req.ItemID); err != nil {
+		return err
+	}
+
+	rowsAffected, err := queriesTx.DeleteItemRequest(ctx, repository.DeleteItemRequestParams{
 		UserID: req.UserID,
 		ItemID: req.ItemID,
 	})
@@ -173,6 +199,9 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
 	}
 
 	return nil

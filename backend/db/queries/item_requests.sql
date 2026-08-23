@@ -1,7 +1,20 @@
 -- name: CreateItemRequest :one
-INSERT INTO item_requests(user_id, item_id, status, reason) 
-VALUES ($1, $2, $3, $4) 
+INSERT INTO item_requests(user_id, item_id, status, reason)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
+
+-- name: LockItemForRequest :one
+SELECT id
+FROM items
+WHERE id = $1
+FOR UPDATE;
+
+-- name: HasApprovedItemRequest :one
+SELECT EXISTS(
+  SELECT 1
+  FROM item_requests
+  WHERE item_id = $1 AND status = 'approved'
+);
 
 -- name: CountItemRequests :one
 SELECT count(*) FROM item_requests
@@ -23,11 +36,11 @@ ORDER BY created_at DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: GetItemRequest :one
-SELECT * FROM item_requests 
+SELECT * FROM item_requests
 WHERE user_id = $1 AND item_id = $2;
 
 -- name: CheckItemsForRequests :many
-SELECT * FROM item_requests 
+SELECT * FROM item_requests
 WHERE item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: GetUserItemRequests :many
@@ -36,9 +49,9 @@ WHERE user_id = sqlc.arg('user_id')
   AND item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: ApproveItemRequest :one
-UPDATE item_requests 
-SET status = 'approved' 
-WHERE user_id = $1 AND item_id = $2 AND status = 'requested' 
+UPDATE item_requests
+SET status = 'approved'
+WHERE user_id = $1 AND item_id = $2 AND status = 'requested'
 RETURNING *;
 
 -- name: DeleteItemRequest :execrows

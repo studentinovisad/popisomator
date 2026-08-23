@@ -12,9 +12,9 @@ import (
 )
 
 const approveItemRequest = `-- name: ApproveItemRequest :one
-UPDATE item_requests 
-SET status = 'approved' 
-WHERE user_id = $1 AND item_id = $2 AND status = 'requested' 
+UPDATE item_requests
+SET status = 'approved'
+WHERE user_id = $1 AND item_id = $2 AND status = 'requested'
 RETURNING user_id, item_id, created_at, status, reason
 `
 
@@ -37,7 +37,7 @@ func (q *Queries) ApproveItemRequest(ctx context.Context, arg ApproveItemRequest
 }
 
 const checkItemsForRequests = `-- name: CheckItemsForRequests :many
-SELECT user_id, item_id, created_at, status, reason FROM item_requests 
+SELECT user_id, item_id, created_at, status, reason FROM item_requests
 WHERE item_id = ANY($1::bigint[])
 `
 
@@ -86,8 +86,8 @@ func (q *Queries) CountItemRequests(ctx context.Context, arg CountItemRequestsPa
 }
 
 const createItemRequest = `-- name: CreateItemRequest :one
-INSERT INTO item_requests(user_id, item_id, status, reason) 
-VALUES ($1, $2, $3, $4) 
+INSERT INTO item_requests(user_id, item_id, status, reason)
+VALUES ($1, $2, $3, $4)
 RETURNING user_id, item_id, created_at, status, reason
 `
 
@@ -146,7 +146,7 @@ func (q *Queries) DeleteNonApprovedItemRequests(ctx context.Context, itemID int6
 }
 
 const getItemRequest = `-- name: GetItemRequest :one
-SELECT user_id, item_id, created_at, status, reason FROM item_requests 
+SELECT user_id, item_id, created_at, status, reason FROM item_requests
 WHERE user_id = $1 AND item_id = $2
 `
 
@@ -197,6 +197,21 @@ func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) 
 		&i.Reason,
 	)
 	return i, err
+}
+
+const hasApprovedItemRequest = `-- name: HasApprovedItemRequest :one
+SELECT EXISTS(
+  SELECT 1
+  FROM item_requests
+  WHERE item_id = $1 AND status = 'approved'
+)
+`
+
+func (q *Queries) HasApprovedItemRequest(ctx context.Context, itemID int64) (bool, error) {
+	row := q.db.QueryRow(ctx, hasApprovedItemRequest, itemID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listItemRequests = `-- name: ListItemRequests :many
@@ -266,4 +281,18 @@ func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockItemForRequest = `-- name: LockItemForRequest :one
+SELECT id
+FROM items
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockItemForRequest(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRow(ctx, lockItemForRequest, id)
+	var itemID int64
+	err := row.Scan(&itemID)
+	return itemID, err
 }
