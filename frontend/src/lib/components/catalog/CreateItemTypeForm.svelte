@@ -174,23 +174,28 @@
 			</p>
 		</div>
 		{#if selectedProperties.length}
-			<ScrollArea.Root class="mt-3 h-64 overflow-hidden rounded-md border border-line" type="auto">
+			<p class="mt-3 text-xs font-medium text-muted">Podrazumevane vrednosti</p>
+			<ScrollArea.Root class="mt-2 h-48 overflow-hidden rounded-md border border-line" type="auto">
 				<ScrollArea.Viewport class="h-full w-full">
 					<div class="divide-y divide-line">
 						{#each selectedProperties as property (property.id)}
-							<div class="px-3 py-2">
-								<p class="text-sm font-medium text-ink">{property.name}</p>
-								<p class="text-xs text-muted">{propertyValueTypeLabel(property.value_type)}</p>
+							<div class="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)] sm:items-center sm:gap-4">
+								<div class="min-w-0">
+									<p class="truncate text-sm font-medium text-ink">{property.name}</p>
+									<p class="text-xs text-muted">{propertyValueTypeLabel(property.value_type)}</p>
+								</div>
 								<Label.Root
-									class="mt-3 block text-xs font-medium text-muted"
+									class="sr-only"
 									for={`item-type-property-${property.id}`}
 								>
-									Podrazumevana vrednost
+									Podrazumevana vrednost za {property.name}
 								</Label.Root>
 								<ItemPropertyValueInput
 									id={`item-type-property-${property.id}`}
 									bind:value={defaultValues[property.id]}
 									{property}
+									className=""
+									compact
 									onvaluechange={() => markDefaultEdited(property.id)}
 								/>
 							</div>
