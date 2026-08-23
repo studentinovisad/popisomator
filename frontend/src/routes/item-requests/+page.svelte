@@ -5,15 +5,15 @@
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 
 	const authPage = createAuthPage({
-		unavailableMessage: 'Zahtevi za stavke trenutno nisu dostupni.',
-		requiredRole: 'admin'
+		unavailableMessage: 'Zahtevi trenutno nisu dostupni.',
+		requiredRoles: ['manager', 'admin']
 	});
 
 	onMount(() => void authPage.load());
 </script>
 
 <svelte:head>
-	<title>Zahtevi za stavke | Popisomator</title>
+	<title>Zahtevi | Popisomator</title>
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">

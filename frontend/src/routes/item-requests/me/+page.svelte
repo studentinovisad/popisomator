@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-	<title>Zahtevi | Popisomator</title>
+	<title>Moji zahtevi | Popisomator</title>
 </svelte:head>
 
 <main class="px-4 pt-4 pb-8 sm:px-6">

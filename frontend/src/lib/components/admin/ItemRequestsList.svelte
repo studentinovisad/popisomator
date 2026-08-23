@@ -18,7 +18,7 @@
 		ItemRequestSummary,
 		{ status: ItemRequestStatusFilter }
 	>({
-		initialFilters: { status: 'requested' },
+		initialFilters: { status: 'all' },
 		loadPage: ({ limit, offset, status }) =>
 			api.listItemRequests({ limit, offset, status: status === 'all' ? undefined : status }),
 		unavailableMessage: 'Zahtevi nisu učitani.'
@@ -29,7 +29,7 @@
 		const requestedStatus = getTableFilter(url, 'status');
 		const status = itemRequestStatusFilterOptions.some((option) => option.value === requestedStatus)
 			? (requestedStatus as ItemRequestStatusFilter)
-			: 'requested';
+			: 'all';
 
 		requestsPage.sync({ page: getTablePage(url), filters: { status } });
 	});
@@ -50,7 +50,7 @@
 	}
 
 	function filterByStatus(status: ItemRequestStatusFilter) {
-		updateTableQuery({ status: status === 'requested' ? undefined : status, page: 1 });
+		updateTableQuery({ status: status === 'all' ? undefined : status, page: 1 });
 	}
 
 	function goToPage(nextPage: number) {

@@ -153,7 +153,7 @@ const docTemplate = `{
                 "tags": [
                     "ItemRequests"
                 ],
-                "summary": "List item requests (admin only)",
+                "summary": "List item requests (manager/admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -258,7 +258,7 @@ const docTemplate = `{
                 "tags": [
                     "ItemRequests"
                 ],
-                "summary": "Delete an item request (admin only)",
+                "summary": "Delete an item request (manager/admin only)",
                 "parameters": [
                     {
                         "description": "Item request to delete",
@@ -317,7 +317,7 @@ const docTemplate = `{
                 "tags": [
                     "ItemRequests"
                 ],
-                "summary": "Approve an item request (admin only). Approving an item request deletes other unapproved requests for the same item.",
+                "summary": "Approve an item request (manager/admin only). Approving an item request deletes other unapproved requests for the same item.",
                 "parameters": [
                     {
                         "description": "Item request to approve",
@@ -2447,7 +2447,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "item_id",
-                "reason",
                 "user_id"
             ],
             "properties": {

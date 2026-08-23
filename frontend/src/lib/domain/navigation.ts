@@ -5,11 +5,11 @@ export type NavigationIconName = 'inventory' | 'catalog' | 'settings' | 'users' 
 export type AppPath =
 	| '/'
 	| '/items/new'
-	| '/requests'
+	| '/item-requests'
+	| '/item-requests/me'
 	| '/account'
 	| '/admin/users'
 	| '/admin/users/pending'
-	| '/admin/item-requests'
 	| '/catalog/item-types'
 	| '/catalog/properties'
 	| '/settings'
@@ -42,8 +42,8 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Nova stavka',
 		description: 'Dodajte stavku i njene početne vrednosti svojstava.'
 	},
-	'/requests': {
-		title: 'Zahtevi',
+	'/item-requests/me': {
+		title: 'Moji zahtevi',
 		description: 'Pratite status svojih zahteva za korišćenje stavki.'
 	},
 	'/account': {
@@ -58,8 +58,8 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Zahtevi za registraciju',
 		description: 'Odobrite ili odbijte zahteve za pristup sistemu.'
 	},
-	'/admin/item-requests': {
-		title: 'Zahtevi za stavke',
+	'/item-requests': {
+		title: 'Zahtevi',
 		description: 'Odobrite ili odbijte zahteve korisnika za korišćenje stavki.'
 	},
 	'/catalog/item-types': {
@@ -86,20 +86,20 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 
 export const primaryNavigation: NavigationItem[] = [
 	{ path: '/', label: 'Stavke', icon: 'inventory' },
-	{ path: '/requests', label: 'Zahtevi', icon: 'requests', requiredRoles: ['user'] },
+	{
+		path: '/item-requests',
+		label: 'Zahtevi',
+		icon: 'requests',
+		requiredRoles: ['manager', 'admin']
+	},
+	{ path: '/item-requests/me', label: 'Moji zahtevi', icon: 'requests', requiredRoles: ['user'] },
+	{ path: '/admin/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] },
 	{
 		path: '/catalog/item-types',
 		label: 'Katalog',
 		icon: 'catalog',
 		requiredRoles: ['admin']
-	},
-	{
-		path: '/admin/item-requests',
-		label: 'Zahtevi za stavke',
-		icon: 'requests',
-		requiredRoles: ['admin']
-	},
-	{ path: '/admin/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] }
+	}
 ];
 
 export const secondaryNavigation: NavigationItem[] = [

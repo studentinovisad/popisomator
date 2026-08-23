@@ -172,7 +172,6 @@ definitions:
         type: integer
     required:
     - item_id
-    - reason
     - user_id
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest:
@@ -588,7 +587,7 @@ paths:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
       security:
       - CookieAuth: []
-      summary: Delete an item request (admin only)
+      summary: Delete an item request (manager/admin only)
       tags:
       - ItemRequests
     get:
@@ -622,7 +621,7 @@ paths:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
       security:
       - CookieAuth: []
-      summary: List item requests (admin only)
+      summary: List item requests (manager/admin only)
       tags:
       - ItemRequests
     post:
@@ -691,8 +690,8 @@ paths:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
       security:
       - CookieAuth: []
-      summary: Approve an item request (admin only). Approving an item request deletes
-        other unapproved requests for the same item.
+      summary: Approve an item request (manager/admin only). Approving an item request
+        deletes other unapproved requests for the same item.
       tags:
       - ItemRequests
   /item-requests/me:

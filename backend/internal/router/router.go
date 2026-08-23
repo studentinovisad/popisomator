@@ -179,7 +179,7 @@ func New() *http.ServeMux {
 	))
 	mux.Handle("GET /item-requests", middleware.Chain(
 		middleware.RequireAuth,
-		middleware.RequireRoles("admin"),
+		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.ListItemRequests),
 	))
 	mux.Handle("POST /item-requests/me", middleware.Chain(
@@ -196,12 +196,12 @@ func New() *http.ServeMux {
 	))
 	mux.Handle("POST /item-requests/approve", middleware.Chain(
 		middleware.RequireAuth,
-		middleware.RequireRoles("admin"),
+		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.ApproveItemRequest),
 	))
 	mux.Handle("DELETE /item-requests", middleware.Chain(
 		middleware.RequireAuth,
-		middleware.RequireRoles("admin"),
+		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.DeleteItemRequest),
 	))
 

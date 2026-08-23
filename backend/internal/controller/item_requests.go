@@ -120,7 +120,7 @@ func GetPersonalItemRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApproveItemRequest godoc
-// @Summary Approve an item request (admin only). Approving an item request deletes other unapproved requests for the same item.
+// @Summary Approve an item request (manager/admin only). Approving an item request deletes other unapproved requests for the same item.
 // @Tags ItemRequests
 // @Accept json
 // @Produce json
@@ -150,7 +150,7 @@ func ApproveItemRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListItemRequests godoc
-// @Summary List item requests (admin only)
+// @Summary List item requests (manager/admin only)
 // @Tags ItemRequests
 // @Produce json
 // @Security CookieAuth
@@ -226,7 +226,7 @@ func ListPersonalItemRequests(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteItemRequest godoc
-// @Summary Delete an item request (admin only)
+// @Summary Delete an item request (manager/admin only)
 // @Tags ItemRequests
 // @Security CookieAuth
 // @Param body body dto.ItemRequestIdentifierRequest true "Item request to delete"
