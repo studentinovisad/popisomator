@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import X from '@lucide/svelte/icons/x';
+	import { tick } from 'svelte';
 	import { Combobox } from 'bits-ui';
 
 	type Option = {
@@ -25,8 +26,13 @@
 	} = $props();
 
 	let query = $state('');
+	let input = $state<HTMLInputElement | null>(null);
 	let filteredOptions = $derived(
-		options.filter((option) => option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+		options.filter(
+			(option) =>
+				!values.includes(String(option.id)) &&
+				option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+		)
 	);
 	let selectedOptions = $derived(options.filter((option) => values.includes(String(option.id))));
 	let items = $derived(options.map((option) => ({ value: String(option.id), label: option.name })));
@@ -35,8 +41,14 @@
 		query = (event.currentTarget as HTMLInputElement).value;
 	}
 
-	function handleValueChange(nextValues: string[]) {
-		onvaluechange?.(nextValues);
+	async function handleValueChange(nextValues: string[]) {
+	onvaluechange?.(nextValues);
+	await tick();
+	query = '';
+	if (input) {
+		input.value = '';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+	}
 	}
 
 	function removeOption(id: number) {
@@ -49,6 +61,7 @@
 	type="multiple"
 	bind:value={values}
 	{items}
+	inputValue={query}
 	{disabled}
 	onValueChange={handleValueChange}
 >
@@ -69,6 +82,7 @@
 			</span>
 		{/each}
 		<Combobox.Input
+			bind:ref={input}
 			class="min-w-24 grow bg-transparent px-1 py-0.5 text-sm text-ink outline-none placeholder:text-muted"
 			{placeholder}
 			oninput={handleInput}
