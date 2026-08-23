@@ -195,6 +195,7 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 	cleanReq := dto.UpdateItemRequest{
 		ID:          itemID,
 		Consumption: rawReq.Consumption,
+		ViewerID:    userID,
 	}
 
 	item, err := service.UpdateItem(r.Context(), cleanReq)
@@ -221,6 +222,11 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} response.Error "not found"
 // @Router /items/{id} [patch]
 func UpdateItem(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(int64)
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
+		return
+	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid item id")
@@ -239,6 +245,7 @@ func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	}
 	req.ID = id
 	req.Consumption = nil
+	req.ViewerID = userID
 
 	item, err := service.UpdateItem(r.Context(), req)
 	if err != nil {

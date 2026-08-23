@@ -252,6 +252,9 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
 	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
+	if err := populateItemRequestInformation(ctx, itemsDTO, req.ViewerID); err != nil {
+		return dto.Item{}, err
+	}
 	return itemsDTO[0], nil
 }
 
