@@ -57,12 +57,15 @@ export type ItemProperty = {
 	visibility?: PropertyVisibility;
 };
 
+export type ItemRequestStatus = 'requested' | 'approved';
+
 export type Item = {
 	id: number;
 	consumption: ConsumptionStatus;
 	properties: ItemProperty[];
 	type_id: number;
 	derived_name?: string;
+	request_status?: ItemRequestStatus;
 };
 
 export type ItemsPage = {
@@ -159,3 +162,36 @@ export type CreatePropertyRequest = {
 export type UpdatePropertyRequest = Partial<
 	Pick<CreatePropertyRequest, 'name' | 'description' | 'default_value'>
 >;
+
+export type ItemRequest = {
+	user_id: number;
+	item_id: number;
+	created_at: string;
+	status: ItemRequestStatus;
+	reason: string;
+	user_name?: string;
+	item_name?: string;
+};
+
+export type ItemRequestsPage = {
+	items: ItemRequestSummary[];
+	limit: number;
+	offset: number;
+	total: number;
+};
+
+export type ItemRequestSummary = ItemRequest & {
+	user_name: string;
+	item_name: string;
+};
+
+export type CreatePersonalItemRequest = {
+	item_id: number;
+	reason: string;
+};
+
+export type ListItemRequestsParams = {
+	limit?: number;
+	offset?: number;
+	status?: ItemRequestStatus;
+};

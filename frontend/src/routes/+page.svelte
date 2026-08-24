@@ -155,6 +155,18 @@
 	function filterByItemType(itemTypeID: number | undefined) {
 		updateTableQuery({ type_id: itemTypeID, page: 1 });
 	}
+
+	function refreshInventory() {
+		const requestedTypeID = Number.parseInt(getTableFilter(page.url, 'type_id'), 10);
+		const itemTypeID =
+			Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0 ? requestedTypeID : undefined;
+		void loadInventory(itemOffset, derivedNameSearch, itemTypeID);
+	}
+
+	async function requestItemUsage(itemID: number, reason: string) {
+		await api.createPersonalItemRequest({ item_id: itemID, reason });
+		refreshInventory();
+	}
 </script>
 
 <svelte:head>
@@ -192,7 +204,14 @@
 			onitemtypechange={filterByItemType}
 			onsearch={searchItems}
 		/>
-		<InventoryList {items} {itemTypes} {properties} onconsumptionchange={changeConsumption} />
+		<InventoryList
+			{items}
+			{itemTypes}
+			{properties}
+			{canManage}
+			onconsumptionchange={changeConsumption}
+			onrequest={requestItemUsage}
+		/>
 		<PaginationFooter
 			total={itemsTotal}
 			perPage={itemsPerPage}

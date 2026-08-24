@@ -120,6 +120,8 @@ definitions:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
         type: array
+      request_status:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus'
       type_id:
         type: integer
     type: object
@@ -134,6 +136,84 @@ definitions:
     required:
     - id
     - value
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest:
+    properties:
+      created_at:
+        type: string
+      item_id:
+        type: integer
+      item_name:
+        type: string
+      reason:
+        type: string
+      status:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreatePersonalRequest:
+    properties:
+      item_id:
+        type: integer
+      reason:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreateRequest:
+    properties:
+      item_id:
+        type: integer
+      reason:
+        maxLength: 400
+        type: string
+      user_id:
+        type: integer
+    required:
+    - item_id
+    - user_id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest:
+    properties:
+      item_id:
+        type: integer
+      user_id:
+        type: integer
+    required:
+    - item_id
+    - user_id
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestSummary:
+    properties:
+      created_at:
+        type: string
+      item_id:
+        type: integer
+      item_name:
+        type: string
+      reason:
+        type: string
+      status:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage:
+    properties:
+      items:
+        description: ItemRequest page items
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestSummary'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemType:
     properties:
@@ -359,6 +439,14 @@ definitions:
     x-enum-varnames:
     - PropertyVisibilityOverview
     - PropertyVisibilityDetails
+  github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus:
+    enum:
+    - requested
+    - approved
+    type: string
+    x-enum-varnames:
+    - RequestStatusRequested
+    - RequestStatusApproved
   github_com_studentinovisad_popisomator_backend_internal_repository.UserRole:
     enum:
     - admin
@@ -469,6 +557,241 @@ paths:
       summary: Readiness probe, verifies database connectivity
       tags:
       - Operational
+  /item-requests:
+    delete:
+      parameters:
+      - description: Item request to delete
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete an item request (manager/admin only)
+      tags:
+      - ItemRequests
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by item request status
+        in: query
+        name: status
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage'
+        "400":
+          description: invalid limit/offset
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List item requests (manager/admin only)
+      tags:
+      - ItemRequests
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item request to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Create an item request (admin only)
+      tags:
+      - ItemRequests
+  /item-requests/approve:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item request to approve
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Approve an item request (manager/admin only). Approving an item request
+        deletes other unapproved requests for the same item.
+      tags:
+      - ItemRequests
+  /item-requests/me:
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage'
+        "400":
+          description: invalid limit/offset
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List personal item requests (of logged in user)
+      tags:
+      - ItemRequests
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item request to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestCreatePersonalRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Create an item request on behalf of logged in user
+      tags:
+      - ItemRequests
+  /item-requests/me/{item_id}:
+    get:
+      parameters:
+      - description: Item ID
+        in: path
+        name: item_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
+        "400":
+          description: invalid item id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get personal item request (that the logged in user created) by item
+        ID
+      tags:
+      - ItemRequests
   /item-types:
     get:
       parameters:
@@ -1019,6 +1342,10 @@ paths:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
         "401":
           description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: not approved to consume item
           schema:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
         "404":
