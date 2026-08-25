@@ -23,6 +23,7 @@ import (
 // @Param offset query int false "Page offset (default 0)"
 // @Param search query string false "Filter by derived item name substring (max 100 chars)"
 // @Param type_id query int false "Filter by item type ID"
+// @Param property.{id} query string false "Exact value filter for an item-type property (max 100 chars)"
 // @Param consumption query []string false "Filter by consumption status (comma-separated)" collectionFormat(csv) Enums(not_consumed, partially_consumed, fully_consumed, damaged)
 // @Param created_from query string false "Filter by creation time, RFC3339"
 // @Param created_to query string false "Filter by creation time, RFC3339"
@@ -65,6 +66,23 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		req.TypeID = &typeID
+	}
+
+	for key, values := range query {
+		propertyIDText, ok := strings.CutPrefix(key, "property.")
+		if !ok {
+			continue
+		}
+
+		propertyID, err := strconv.ParseInt(propertyIDText, 10, 64)
+		if err != nil || propertyID < 1 || len(values) != 1 || len(values[0]) > 100 {
+			response.WriteError(w, http.StatusBadRequest, "invalid property filter")
+			return
+		}
+		if req.PropertyFilters == nil {
+			req.PropertyFilters = make(map[int64]string)
+		}
+		req.PropertyFilters[propertyID] = values[0]
 	}
 
 	if vals, ok := query["consumption"]; ok {

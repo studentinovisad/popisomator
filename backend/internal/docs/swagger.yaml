@@ -233,6 +233,13 @@ definitions:
     required:
     - derived_name_format
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeFilterableProperty:
+    properties:
+      property_id:
+        type: integer
+      value_count:
+        type: integer
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeOption:
     properties:
       id:
@@ -967,6 +974,36 @@ paths:
       summary: Update an item type (manager/admin only)
       tags:
       - ItemTypes
+  /item-types/{id}/filterable-properties:
+    get:
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeFilterableProperty'
+            type: array
+        "400":
+          description: invalid type id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List available filter value counts for an item type's properties
+      tags:
+      - ItemTypes
   /item-types/{id}/properties:
     post:
       consumes:
@@ -1084,6 +1121,49 @@ paths:
       summary: Update a property on an item type (manager/admin only)
       tags:
       - ItemTypes
+  /item-types/{id}/properties/{prop_id}/values:
+    get:
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Property ID
+        in: path
+        name: prop_id
+        required: true
+        type: integer
+      - description: Value substring (max 100 chars)
+        in: query
+        name: search
+        type: string
+      - description: Maximum results (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Search distinct values of an item type property for an item filter
+      tags:
+      - ItemTypes
   /item-types/options:
     get:
       produces:
@@ -1123,6 +1203,10 @@ paths:
         in: query
         name: type_id
         type: integer
+      - description: Exact value filter for an item-type property (max 100 chars)
+        in: query
+        name: property.{id}
+        type: string
       - collectionFormat: csv
         description: Filter by consumption status (comma-separated)
         in: query

@@ -145,6 +145,14 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetItemType),
 	))
+	mux.Handle("GET /item-types/{id}/filterable-properties", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ListItemTypeFilterableProperties),
+	))
+	mux.Handle("GET /item-types/{id}/properties/{prop_id}/values", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ListItemTypePropertyValues),
+	))
 	mux.Handle("PATCH /item-types/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),

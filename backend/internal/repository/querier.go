@@ -47,6 +47,8 @@ type Querier interface {
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
 	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
 	ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error)
+	ListItemTypeFilterableProperties(ctx context.Context, typeID int64) ([]ListItemTypeFilterablePropertiesRow, error)
+	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]string, error)
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error)

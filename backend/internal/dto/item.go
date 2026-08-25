@@ -39,15 +39,16 @@ func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
 }
 
 type ListItemsRequest struct {
-	TypeID      *int64
-	Consumption []repository.ConsumptionStatus `validate:"omitempty,dive,oneof=not_consumed partially_consumed fully_consumed damaged"`
-	CreatedFrom *time.Time
-	CreatedTo   *time.Time
-	Limit       int32
-	Offset      int32
-	Order       string `validate:"oneof=asc desc"`
-	Search      string `validate:"max=100"`
-	ViewerID    int64
+	TypeID          *int64
+	PropertyFilters map[int64]string
+	Consumption     []repository.ConsumptionStatus `validate:"omitempty,dive,oneof=not_consumed partially_consumed fully_consumed damaged"`
+	CreatedFrom     *time.Time
+	CreatedTo       *time.Time
+	Limit           int32
+	Offset          int32
+	Order           string `validate:"oneof=asc desc"`
+	Search          string `validate:"max=100"`
+	ViewerID        int64
 }
 
 type ItemsPage struct {

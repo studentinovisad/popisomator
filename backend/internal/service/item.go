@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -119,26 +120,40 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
+	propertyIDs := make([]int64, 0, len(req.PropertyFilters))
+	for propertyID := range req.PropertyFilters {
+		propertyIDs = append(propertyIDs, propertyID)
+	}
+	sort.Slice(propertyIDs, func(left, right int) bool { return propertyIDs[left] < propertyIDs[right] })
+	propertyValues := make([]string, 0, len(propertyIDs))
+	for _, propertyID := range propertyIDs {
+		propertyValues = append(propertyValues, req.PropertyFilters[propertyID])
+	}
+
 	totalItems, err := db.Queries.CountItems(ctx, repository.CountItemsParams{
-		TypeID:      typeID,
-		Consumption: req.Consumption,
-		CreatedFrom: createdFrom,
-		CreatedTo:   createdTo,
-		Search:      req.Search,
+		TypeID:         typeID,
+		Consumption:    req.Consumption,
+		CreatedFrom:    createdFrom,
+		CreatedTo:      createdTo,
+		Search:         req.Search,
+		PropertyIds:    propertyIDs,
+		PropertyValues: propertyValues,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
 	}
 
 	items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
-		TypeID:      typeID,
-		Consumption: req.Consumption,
-		CreatedFrom: createdFrom,
-		CreatedTo:   createdTo,
-		Search:      req.Search,
-		LimitVal:    req.Limit,
-		OffsetVal:   req.Offset,
-		OrderAsc:    req.Order == "asc",
+		TypeID:         typeID,
+		Consumption:    req.Consumption,
+		CreatedFrom:    createdFrom,
+		CreatedTo:      createdTo,
+		Search:         req.Search,
+		PropertyIds:    propertyIDs,
+		PropertyValues: propertyValues,
+		LimitVal:       req.Limit,
+		OffsetVal:      req.Offset,
+		OrderAsc:       req.Order == "asc",
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err

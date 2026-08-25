@@ -84,14 +84,27 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
     OR render_item_derived_name(items.id, item_types.derived_name_format)
       ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
   )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM unnest($6::bigint[], $7::text[]) AS filters(property_id, property_value)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM item_properties
+      WHERE item_properties.item_id = items.id
+        AND item_properties.property_id = filters.property_id
+        AND item_properties.property_value #>> '{}' = filters.property_value
+    )
+  )
 `
 
 type CountItemsParams struct {
-	TypeID      pgtype.Int8         `json:"type_id"`
-	Consumption []ConsumptionStatus `json:"consumption"`
-	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
-	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
-	Search      string              `json:"search"`
+	TypeID         pgtype.Int8         `json:"type_id"`
+	Consumption    []ConsumptionStatus `json:"consumption"`
+	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	Search         string              `json:"search"`
+	PropertyIds    []int64             `json:"property_ids"`
+	PropertyValues []string            `json:"property_values"`
 }
 
 func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, error) {
@@ -101,6 +114,8 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 		arg.CreatedFrom,
 		arg.CreatedTo,
 		arg.Search,
+		arg.PropertyIds,
+		arg.PropertyValues,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -246,6 +261,89 @@ func (q *Queries) GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]
 	return items, nil
 }
 
+const listItemTypeFilterableProperties = `-- name: ListItemTypeFilterableProperties :many
+SELECT
+  item_type_properties.property_id,
+  count(DISTINCT item_properties.property_value) AS value_count
+FROM item_type_properties
+LEFT JOIN items ON items.type_id = item_type_properties.type_id
+LEFT JOIN item_properties
+  ON item_properties.item_id = items.id
+  AND item_properties.property_id = item_type_properties.property_id
+WHERE item_type_properties.type_id = $1
+GROUP BY item_type_properties.property_id
+ORDER BY item_type_properties.property_id
+`
+
+type ListItemTypeFilterablePropertiesRow struct {
+	PropertyID int64 `json:"property_id"`
+	ValueCount int64 `json:"value_count"`
+}
+
+func (q *Queries) ListItemTypeFilterableProperties(ctx context.Context, typeID int64) ([]ListItemTypeFilterablePropertiesRow, error) {
+	rows, err := q.db.Query(ctx, listItemTypeFilterableProperties, typeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var properties []ListItemTypeFilterablePropertiesRow
+	for rows.Next() {
+		var property ListItemTypeFilterablePropertiesRow
+		if err := rows.Scan(&property.PropertyID, &property.ValueCount); err != nil {
+			return nil, err
+		}
+		properties = append(properties, property)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return properties, nil
+}
+
+const listItemTypePropertyValues = `-- name: ListItemTypePropertyValues :many
+SELECT DISTINCT item_properties.property_value #>> '{}' AS value
+FROM item_properties
+JOIN items ON items.id = item_properties.item_id
+JOIN item_type_properties
+  ON item_type_properties.type_id = items.type_id
+  AND item_type_properties.property_id = item_properties.property_id
+WHERE items.type_id = $1
+  AND item_properties.property_id = $2
+  AND item_properties.property_value #>> '{}'
+    ILIKE '%' || escape_like_pattern($3) || '%'
+ORDER BY value
+LIMIT $4
+`
+
+type ListItemTypePropertyValuesParams struct {
+	TypeID     int64  `json:"type_id"`
+	PropertyID int64  `json:"property_id"`
+	Search     string `json:"search"`
+	LimitVal   int32  `json:"limit_val"`
+}
+
+func (q *Queries) ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listItemTypePropertyValues, arg.TypeID, arg.PropertyID, arg.Search, arg.LimitVal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var values []string
+	for rows.Next() {
+		var value string
+		if err := rows.Scan(&value); err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
 const listItems = `-- name: ListItems :many
 SELECT items.id, items.created_at, items.consumption, items.type_id FROM items
 JOIN item_types ON item_types.id = items.type_id
@@ -266,23 +364,36 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
     OR render_item_derived_name(items.id, item_types.derived_name_format)
       ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
   )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM unnest($6::bigint[], $7::text[]) AS filters(property_id, property_value)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM item_properties
+      WHERE item_properties.item_id = items.id
+        AND item_properties.property_id = filters.property_id
+        AND item_properties.property_value #>> '{}' = filters.property_value
+    )
+  )
 ORDER BY
-  CASE WHEN $6::bool THEN items.created_at END ASC,
-  CASE WHEN $6::bool THEN items.id END ASC,
-  CASE WHEN NOT $6::bool THEN items.created_at END DESC,
-  CASE WHEN NOT $6::bool THEN items.id END DESC
-LIMIT $8 OFFSET $7
+  CASE WHEN $8::bool THEN items.created_at END ASC,
+  CASE WHEN $8::bool THEN items.id END ASC,
+  CASE WHEN NOT $8::bool THEN items.created_at END DESC,
+  CASE WHEN NOT $8::bool THEN items.id END DESC
+LIMIT $10 OFFSET $9
 `
 
 type ListItemsParams struct {
-	TypeID      pgtype.Int8         `json:"type_id"`
-	Consumption []ConsumptionStatus `json:"consumption"`
-	CreatedFrom pgtype.Timestamptz  `json:"created_from"`
-	CreatedTo   pgtype.Timestamptz  `json:"created_to"`
-	Search      string              `json:"search"`
-	OrderAsc    bool                `json:"order_asc"`
-	OffsetVal   int32               `json:"offset_val"`
-	LimitVal    int32               `json:"limit_val"`
+	TypeID         pgtype.Int8         `json:"type_id"`
+	Consumption    []ConsumptionStatus `json:"consumption"`
+	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	Search         string              `json:"search"`
+	PropertyIds    []int64             `json:"property_ids"`
+	PropertyValues []string            `json:"property_values"`
+	OrderAsc       bool                `json:"order_asc"`
+	OffsetVal      int32               `json:"offset_val"`
+	LimitVal       int32               `json:"limit_val"`
 }
 
 func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error) {
@@ -292,6 +403,8 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 		arg.CreatedFrom,
 		arg.CreatedTo,
 		arg.Search,
+		arg.PropertyIds,
+		arg.PropertyValues,
 		arg.OrderAsc,
 		arg.OffsetVal,
 		arg.LimitVal,
