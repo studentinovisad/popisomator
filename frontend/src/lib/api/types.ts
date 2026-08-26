@@ -211,6 +211,29 @@ export type ItemRequestUserOption = {
 	name: string;
 };
 
+export type ItemRequestPreparationReport = {
+	user: ItemRequestUserOption;
+	items: ItemRequestPreparationItem[];
+};
+
+export type ItemRequestPreparationItem = {
+	id: number;
+	name: string;
+	type_name: string;
+	derived_name_format: string;
+	consumption: ConsumptionStatus;
+	reason: string;
+	requested_at: string;
+	properties: ItemRequestPreparationProperty[];
+};
+
+export type ItemRequestPreparationProperty = {
+	name: string;
+	value: string;
+	visibility: PropertyVisibility;
+	position: number;
+};
+
 export type CreatePersonalItemRequest = {
 	item_id: number;
 	reason: string;

@@ -1,9 +1,16 @@
 <script lang="ts">
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Printer from '@lucide/svelte/icons/printer';
 	import { Button, Select } from 'bits-ui';
-	import { onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { api, ApiError, type ItemRequestSummary, type ItemRequestUserOption } from '$lib/api';
+	import {
+		api,
+		ApiError,
+		type ItemRequestPreparationReport,
+		type ItemRequestSummary,
+		type ItemRequestUserOption
+	} from '$lib/api';
 	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import {
@@ -13,7 +20,13 @@
 		type ItemRequestStatusFilter
 	} from '$lib/domain/item-requests';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
+	import {
+		preparationReportPrintContextKey,
+		type PreparationReportPrintContext
+	} from '$lib/state/preparation-report-print-context';
 	import { getTableFilter, getTablePage, updateTableQuery } from '$lib/state/table-query';
+
+	const printContext = getContext<PreparationReportPrintContext>(preparationReportPrintContextKey);
 
 	const requestsPage = createServerPagination<
 		ItemRequestSummary,
@@ -31,6 +44,9 @@
 	});
 
 	let requestUsers = $state<ItemRequestUserOption[]>([]);
+	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
+	let preparationLoading = $state(false);
+	let preparationRequestVersion = 0;
 	const userFilterOptions = $derived([
 		{ value: 'all', label: 'Svi korisnici' },
 		...requestUsers.map((user) => ({ value: String(user.id), label: user.name }))
@@ -39,6 +55,8 @@
 	onMount(() => {
 		void loadRequestUsers();
 	});
+
+	onDestroy(() => printContext.setPreparationReport(null));
 
 	$effect(() => {
 		const url = page.url;
@@ -53,11 +71,46 @@
 		requestsPage.sync({ page: getTablePage(url), filters: { status, userID } });
 	});
 
+	$effect(() => {
+		const userID =
+			requestsPage.filters.userID === 'all' ? undefined : Number(requestsPage.filters.userID);
+		refreshPreparationReport(userID);
+	});
+
+	function refreshPreparationReport(userID?: number) {
+		const version = ++preparationRequestVersion;
+		preparationReport = null;
+		printContext.setPreparationReport(null);
+		preparationLoading = false;
+
+		if (!userID) return;
+
+		preparationLoading = true;
+		void loadPreparationReport(userID, version);
+	}
+
 	async function loadRequestUsers() {
 		try {
 			requestUsers = await api.listItemRequestUsers();
 		} catch {
 			requestUsers = [];
+		}
+	}
+
+	async function loadPreparationReport(userID: number, version: number) {
+		try {
+			const report = await api.getItemRequestPreparationReport(userID);
+			if (version === preparationRequestVersion) {
+				preparationReport = report;
+				printContext.setPreparationReport(report);
+			}
+		} catch {
+			if (version === preparationRequestVersion) {
+				preparationReport = null;
+				printContext.setPreparationReport(null);
+			}
+		} finally {
+			if (version === preparationRequestVersion) preparationLoading = false;
 		}
 	}
 
@@ -71,6 +124,7 @@
 				await api.denyItemRequest(itemRequest.user_id, itemRequest.item_id);
 			}
 			requestsPage.reloadAfterDelete();
+			refreshPreparationReport(selectedUserID);
 		} catch (reason) {
 			requestsPage.error = reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.';
 		}
@@ -87,6 +141,10 @@
 	function goToPage(nextPage: number) {
 		updateTableQuery({ page: nextPage });
 	}
+
+	let selectedUserID = $derived(
+		requestsPage.filters.userID === 'all' ? undefined : Number(requestsPage.filters.userID)
+	);
 </script>
 
 <section aria-labelledby="item-requests-heading">
@@ -96,6 +154,21 @@
 			UKUPNO: {requestsPage.total}
 		</p>
 		<div class="flex items-center gap-2">
+			{#if selectedUserID}
+				<Button.Root
+					type="button"
+					class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft"
+					disabled={!preparationReport || preparationLoading}
+					onclick={() => printContext.print()}
+					aria-label="Štampaj pripremu"
+					title={preparationLoading ? 'Učitavanje pripreme…' : 'Štampaj pripremu'}
+				>
+					<Printer class="size-4" aria-hidden="true" />
+					<span class="max-sm:sr-only"
+						>{preparationLoading ? 'Učitavanje…' : 'Štampaj pripremu'}</span
+					>
+				</Button.Root>
+			{/if}
 			<Select.Root
 				type="single"
 				value={requestsPage.filters.userID}

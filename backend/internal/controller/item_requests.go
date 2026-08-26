@@ -215,6 +215,33 @@ func ListItemRequestUsers(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, users)
 }
 
+// GetItemRequestPreparationReport godoc
+// @Summary Get pending item requests to prepare for one user (manager/admin only)
+// @Tags ItemRequests
+// @Produce json
+// @Security CookieAuth
+// @Param user_id query int true "Requester ID"
+// @Success 200 {object} dto.ItemRequestPreparationReport
+// @Failure 400 {object} response.Error "invalid user_id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 404 {object} response.Error "user not found"
+// @Router /item-requests/preparation-report [get]
+func GetItemRequestPreparationReport(w http.ResponseWriter, r *http.Request) {
+	userID, err := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
+	if err != nil || userID < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid user_id")
+		return
+	}
+
+	report, err := service.GetItemRequestPreparationReport(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err, "couldn't get item request preparation report")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, report)
+}
+
 // ListPersonalItemRequests godoc
 // @Summary List personal item requests (of logged in user)
 // @Tags ItemRequests

@@ -2,6 +2,7 @@ import { jsonRequest, request } from '$lib/api/client';
 import type {
 	CreatePersonalItemRequest,
 	ItemRequest,
+	ItemRequestPreparationReport,
 	ItemRequestsPage,
 	ItemRequestUserOption,
 	ListItemRequestsParams
@@ -21,6 +22,8 @@ export const itemRequestsApi = {
 		return request<ItemRequestsPage>(`/item-requests?${query}`);
 	},
 	listItemRequestUsers: () => request<ItemRequestUserOption[]>('/item-requests/users'),
+	getItemRequestPreparationReport: (userID: number) =>
+		request<ItemRequestPreparationReport>(`/item-requests/preparation-report?user_id=${userID}`),
 	approveItemRequest: (userID: number, itemID: number) =>
 		request<ItemRequest>(
 			'/item-requests/approve',

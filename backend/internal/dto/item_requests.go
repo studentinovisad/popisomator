@@ -36,6 +36,29 @@ type ItemRequestUserOption struct {
 	Name string `json:"name"`
 }
 
+type ItemRequestPreparationReport struct {
+	User  ItemRequestUserOption        `json:"user"`
+	Items []ItemRequestPreparationItem `json:"items"`
+}
+
+type ItemRequestPreparationItem struct {
+	ID                int64                            `json:"id"`
+	Name              string                           `json:"name"`
+	TypeName          string                           `json:"type_name"`
+	DerivedNameFormat string                           `json:"derived_name_format"`
+	Consumption       repository.ConsumptionStatus     `json:"consumption"`
+	Reason            string                           `json:"reason"`
+	RequestedAt       time.Time                        `json:"requested_at"`
+	Properties        []ItemRequestPreparationProperty `json:"properties"`
+}
+
+type ItemRequestPreparationProperty struct {
+	Name       string                        `json:"name"`
+	Value      string                        `json:"value"`
+	Visibility repository.PropertyVisibility `json:"visibility"`
+	Position   int32                         `json:"position"`
+}
+
 type ItemRequestCreateRequest struct {
 	UserID int64  `json:"user_id" validate:"required,gt=0"`
 	ItemID int64  `json:"item_id" validate:"required,gt=0"`
