@@ -36,10 +36,21 @@ DELETE FROM item_types WHERE id = $1;
 
 -- name: GetItemTypeProperties :many
 SELECT * FROM item_type_properties
-WHERE type_id = ANY(sqlc.arg('type_ids')::bigint[]);
+WHERE type_id = ANY(sqlc.arg('type_ids')::bigint[])
+ORDER BY type_id, position;
 
 -- name: AddItemTypeProperty :one
-INSERT INTO item_type_properties (type_id, property_id, default_value, visibility) VALUES ($1, $2, $3, $4) RETURNING *;
+WITH locked_type AS (
+  SELECT id FROM item_types WHERE id = $1 FOR UPDATE
+), next_position AS (
+  SELECT COALESCE(max(position), -1) + 1 AS position
+  FROM item_type_properties
+  WHERE type_id = $1
+)
+INSERT INTO item_type_properties (type_id, property_id, default_value, visibility, position)
+SELECT $1, $2, $3, $4, next_position.position
+FROM locked_type CROSS JOIN next_position
+RETURNING *;
 
 -- name: UpdateItemTypeProperty_DefaultValue :one
 UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING *;

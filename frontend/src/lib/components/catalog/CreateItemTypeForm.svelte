@@ -29,7 +29,10 @@
 	let initializedItemTypeID = $state<number | undefined>(undefined);
 	let propertiesByID = $derived(new Map(properties.map((property) => [property.id, property])));
 	let selectedProperties = $derived(
-		properties.filter((property) => selectedPropertyIDs.includes(property.id))
+		selectedPropertyIDs.flatMap((propertyID) => {
+			const property = propertiesByID.get(propertyID);
+			return property ? [property] : [];
+		})
 	);
 	let originalProperties = $derived(
 		new Map(itemType?.properties.map((property) => [property.id, property]))
@@ -101,24 +104,23 @@
 			} else {
 				await api.updateItemType(itemType.id, { name, description });
 
-				const additionsAndDefaults: Promise<unknown>[] = [];
+				const defaultValueUpdates: Promise<unknown>[] = [];
 				for (const propertyID of selectedPropertyIDs) {
 					if (!originalProperties.has(propertyID)) {
-						additionsAndDefaults.push(
-							api.addItemTypeProperty(itemType.id, {
-								property_id: propertyID,
-								default_value: defaultValues[propertyID]
-							})
-						);
+						// Additions are intentionally sequential: their request order becomes their position.
+						await api.addItemTypeProperty(itemType.id, {
+							property_id: propertyID,
+							default_value: defaultValues[propertyID]
+						});
 					} else if (editedDefaultPropertyIDs.has(propertyID)) {
-						additionsAndDefaults.push(
+						defaultValueUpdates.push(
 							api.updateItemTypeProperty(itemType.id, propertyID, {
 								default_value: defaultValues[propertyID]
 							})
 						);
 					}
 				}
-				await Promise.all(additionsAndDefaults);
+				await Promise.all(defaultValueUpdates);
 				await api.updateItemType(itemType.id, { derived_name_format: derivedNameFormat });
 
 				const removals = itemType.properties
@@ -179,15 +181,14 @@
 				<ScrollArea.Viewport class="h-full w-full">
 					<div class="divide-y divide-line">
 						{#each selectedProperties as property (property.id)}
-							<div class="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)] sm:items-center sm:gap-4">
+							<div
+								class="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)] sm:items-center sm:gap-4"
+							>
 								<div class="min-w-0">
 									<p class="truncate text-sm font-medium text-ink">{property.name}</p>
 									<p class="text-xs text-muted">{propertyValueTypeLabel(property.value_type)}</p>
 								</div>
-								<Label.Root
-									class="sr-only"
-									for={`item-type-property-${property.id}`}
-								>
+								<Label.Root class="sr-only" for={`item-type-property-${property.id}`}>
 									Podrazumevana vrednost za {property.name}
 								</Label.Root>
 								<ItemPropertyValueInput

@@ -13,7 +13,17 @@ import (
 )
 
 const addItemTypeProperty = `-- name: AddItemTypeProperty :one
-INSERT INTO item_type_properties (type_id, property_id, default_value, visibility) VALUES ($1, $2, $3, $4) RETURNING type_id, property_id, default_value, visibility
+WITH locked_type AS (
+  SELECT id FROM item_types WHERE id = $1 FOR UPDATE
+), next_position AS (
+  SELECT COALESCE(max(position), -1) + 1 AS position
+  FROM item_type_properties
+  WHERE type_id = $1
+)
+INSERT INTO item_type_properties (type_id, property_id, default_value, visibility, position)
+SELECT $1, $2, $3, $4, next_position.position
+FROM locked_type CROSS JOIN next_position
+RETURNING type_id, property_id, default_value, visibility, position
 `
 
 type AddItemTypePropertyParams struct {
@@ -36,6 +46,7 @@ func (q *Queries) AddItemTypeProperty(ctx context.Context, arg AddItemTypeProper
 		&i.PropertyID,
 		&i.DefaultValue,
 		&i.Visibility,
+		&i.Position,
 	)
 	return i, err
 }
@@ -133,8 +144,9 @@ func (q *Queries) GetItemTypeByID(ctx context.Context, id int64) (ItemType, erro
 }
 
 const getItemTypeProperties = `-- name: GetItemTypeProperties :many
-SELECT type_id, property_id, default_value, visibility FROM item_type_properties
+SELECT type_id, property_id, default_value, visibility, position FROM item_type_properties
 WHERE type_id = ANY($1::bigint[])
+ORDER BY type_id, position
 `
 
 func (q *Queries) GetItemTypeProperties(ctx context.Context, typeIds []int64) ([]ItemTypeProperty, error) {
@@ -151,6 +163,7 @@ func (q *Queries) GetItemTypeProperties(ctx context.Context, typeIds []int64) ([
 			&i.PropertyID,
 			&i.DefaultValue,
 			&i.Visibility,
+			&i.Position,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +261,7 @@ func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemType
 }
 
 const updateItemTypeProperty_DefaultValue = `-- name: UpdateItemTypeProperty_DefaultValue :one
-UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value, visibility
+UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value, visibility, position
 `
 
 type UpdateItemTypeProperty_DefaultValueParams struct {
@@ -265,12 +278,13 @@ func (q *Queries) UpdateItemTypeProperty_DefaultValue(ctx context.Context, arg U
 		&i.PropertyID,
 		&i.DefaultValue,
 		&i.Visibility,
+		&i.Position,
 	)
 	return i, err
 }
 
 const updateItemTypeProperty_Visibility = `-- name: UpdateItemTypeProperty_Visibility :one
-UPDATE item_type_properties SET visibility = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value, visibility
+UPDATE item_type_properties SET visibility = $3 WHERE type_id = $1 AND property_id = $2 RETURNING type_id, property_id, default_value, visibility, position
 `
 
 type UpdateItemTypeProperty_VisibilityParams struct {
@@ -287,6 +301,7 @@ func (q *Queries) UpdateItemTypeProperty_Visibility(ctx context.Context, arg Upd
 		&i.PropertyID,
 		&i.DefaultValue,
 		&i.Visibility,
+		&i.Position,
 	)
 	return i, err
 }

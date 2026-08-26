@@ -33,10 +33,12 @@ CREATE TABLE item_type_properties (
     property_id BIGINT REFERENCES properties(id) ON DELETE CASCADE,
     default_value JSONB,
     visibility property_visibility NOT NULL DEFAULT 'overview',
+    position INTEGER NOT NULL,
     PRIMARY KEY (type_id, property_id)
 );
 
 CREATE INDEX idx_item_type_properties_property_id ON item_type_properties(property_id);
+CREATE UNIQUE INDEX idx_item_type_properties_type_position ON item_type_properties(type_id, position);
 
 CREATE TABLE items (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
