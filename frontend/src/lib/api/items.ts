@@ -10,10 +10,19 @@ import type {
 } from '$lib/api/types';
 
 export const itemsApi = {
-	listItems: ({ limit = 20, offset = 0, search = '', typeID }: ListItemsParams = {}) => {
+	listItems: ({
+		limit = 20,
+		offset = 0,
+		search = '',
+		typeID,
+		propertyFilters = {}
+	}: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		if (search) query.set('search', search);
 		if (typeID) query.set('type_id', String(typeID));
+		for (const [propertyID, value] of Object.entries(propertyFilters)) {
+			if (value) query.set(`property.${propertyID}`, value);
+		}
 		return request<ItemsPage>(`/items?${query}`);
 	},
 	getItem: (id: number) => request<Item>(`/items/${id}`),

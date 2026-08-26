@@ -77,6 +77,7 @@ export type ItemsPage = {
 
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
+	propertyFilters?: Record<number, string>;
 };
 
 export type UpdateItemRequest = {
@@ -95,6 +96,11 @@ export type ItemTypeProperty = {
 	default_value: string | null;
 	name?: string;
 	visibility: PropertyVisibility;
+};
+
+export type ItemTypeFilterableProperty = {
+	property_id: number;
+	value_count: number;
 };
 
 export type ItemTypeOption = {

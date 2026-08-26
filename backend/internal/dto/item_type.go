@@ -26,6 +26,12 @@ type ItemTypeOption struct {
 	Name string `json:"name"`
 }
 
+// ItemTypeFilterableProperty describes whether an item type property has enough values to filter by.
+type ItemTypeFilterableProperty struct {
+	PropertyID int64 `json:"property_id"`
+	ValueCount int64 `json:"value_count"`
+}
+
 // Property added to an item type
 type ItemTypeProperty struct {
 	ID           int64   `json:"id" validate:"required"`

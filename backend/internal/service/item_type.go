@@ -37,6 +37,45 @@ func GetItemTypeOptions(ctx context.Context) ([]dto.ItemTypeOption, error) {
 	return typeOptionsDTO, nil
 }
 
+func ListItemTypeFilterableProperties(ctx context.Context, itemTypeID int64) ([]dto.ItemTypeFilterableProperty, error) {
+	if _, err := db.Queries.GetItemTypeByID(ctx, itemTypeID); err != nil {
+		return nil, err
+	}
+
+	properties, err := db.Queries.ListItemTypeFilterableProperties(ctx, itemTypeID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.ItemTypeFilterableProperty, len(properties))
+	for index, property := range properties {
+		result[index] = dto.ItemTypeFilterableProperty{
+			PropertyID: property.PropertyID,
+			ValueCount: property.ValueCount,
+		}
+	}
+
+	return result, nil
+}
+
+func ListItemTypePropertyValues(
+	ctx context.Context,
+	itemTypeID, propertyID int64,
+	search string,
+	limit int32,
+) ([]string, error) {
+	if _, err := db.Queries.GetItemTypeByID(ctx, itemTypeID); err != nil {
+		return nil, err
+	}
+
+	return db.Queries.ListItemTypePropertyValues(ctx, repository.ListItemTypePropertyValuesParams{
+		TypeID:     itemTypeID,
+		PropertyID: propertyID,
+		Search:     search,
+		LimitVal:   limit,
+	})
+}
+
 func ListItemTypes(ctx context.Context, limit, offset int32, search string) (dto.ItemTypesPage, error) {
 	total, err := db.Queries.CountItemTypes(ctx, search)
 	if err != nil {

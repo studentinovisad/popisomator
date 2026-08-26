@@ -22,7 +22,7 @@ export function updateTableQuery(values: Record<string, TableQueryValue>) {
 	const nextURL = new URL(page.url);
 
 	for (const [key, value] of Object.entries(values)) {
-		if (value === undefined || value === null || value === '' || value === 1) {
+		if (value === undefined || value === null || value === '' || (key === 'page' && value === 1)) {
 			nextURL.searchParams.delete(key);
 		} else {
 			nextURL.searchParams.set(key, String(value));

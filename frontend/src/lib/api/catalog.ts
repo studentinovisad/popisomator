@@ -6,6 +6,7 @@ import type {
 	ItemType,
 	ItemTypeOption,
 	ItemTypeProperty,
+	ItemTypeFilterableProperty,
 	ItemTypesPage,
 	PageRequest,
 	PropertiesPage,
@@ -23,6 +24,18 @@ export const catalogApi = {
 	},
 	getItemTypeOptions: () => request<ItemTypeOption[]>('/item-types/options'),
 	getItemType: (id: number) => request<ItemType>(`/item-types/${id}`),
+	listItemTypeFilterableProperties: (id: number) =>
+		request<ItemTypeFilterableProperty[]>(`/item-types/${id}/filterable-properties`),
+	searchItemTypePropertyValues: (
+		itemTypeID: number,
+		propertyID: number,
+		search = '',
+		limit = 20
+	) => {
+		const query = new URLSearchParams({ limit: String(limit) });
+		if (search) query.set('search', search);
+		return request<string[]>(`/item-types/${itemTypeID}/properties/${propertyID}/values?${query}`);
+	},
 	createItemType: (payload: CreateItemTypeRequest) =>
 		request<ItemType>('/item-types', jsonRequest('POST', payload)),
 	updateItemType: (id: number, payload: UpdateItemTypeRequest) =>

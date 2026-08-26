@@ -8,13 +8,18 @@
 		ApiError,
 		type ConsumptionStatus,
 		type Item,
+		type ItemType,
 		type ItemTypeOption,
+		type ItemTypeFilterableProperty,
 		type PropertyOption
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import InventoryList from '$lib/components/inventory/InventoryList.svelte';
 	import InventoryToolbar from '$lib/components/inventory/InventoryToolbar.svelte';
+	import InventoryPropertyFilters, {
+		type PropertyFilter
+	} from '$lib/components/inventory/InventoryPropertyFilters.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { pagination } from '$lib/state/pagination.svelte';
 	import {
@@ -30,15 +35,19 @@
 	let items = $state<Item[]>([]);
 	let itemTypes = $state<ItemTypeOption[]>([]);
 	let properties = $state<PropertyOption[]>([]);
+	let selectedItemType = $state<ItemType | null>(null);
+	let itemTypeFilterableProperties = $state<ItemTypeFilterableProperty[]>([]);
+	let propertyFilterOptions = $state<Record<number, string[]>>({});
 	let loadingInventory = $state(false);
 	let loadingInventoryOptions = $state(false);
 	let inventoryLoaded = $state(false);
 	let inventoryOptionsLoaded = $state(false);
 	let inventoryError = $state('');
 	let derivedNameSearch = $state('');
-	let itemTypeFilter = $state('all');
 	let loadVersion = 0;
 	let inventoryQueryKey = '';
+	let itemTypeFiltersLoadVersion = 0;
+	let propertyFilterValueLoadVersions = new Map<string, number>();
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
 	let itemsTotal = $state(0);
@@ -48,6 +57,28 @@
 	let currentPage = $derived(Math.floor(itemOffset / itemsPerPage) + 1);
 	let hasPreviousPage = $derived(itemOffset > 0);
 	let hasNextPage = $derived(itemOffset + items.length < itemsTotal);
+	let selectedItemTypeID = $derived(getSelectedItemTypeID(page.url));
+	let itemTypeFilter = $derived(
+		selectedItemTypeID === undefined ? 'all' : String(selectedItemTypeID)
+	);
+	let propertyOptionsByID = $derived(new Map(properties.map((property) => [property.id, property])));
+	let propertyFilters = $derived.by((): PropertyFilter[] => {
+		if (!selectedItemType) return [];
+
+		const valueCounts = new Map(
+			itemTypeFilterableProperties.map((property) => [property.property_id, property.value_count])
+		);
+		const selectedFilters = getPropertyFilters(page.url);
+		return selectedItemType.properties.flatMap((itemTypeProperty) => {
+			const property = propertyOptionsByID.get(itemTypeProperty.id);
+			if (!property || (valueCounts.get(itemTypeProperty.id) ?? 0) < 2) return [];
+			return [{
+				id: property.id,
+				name: property.name,
+				value: selectedFilters[property.id] ?? ''
+			}];
+		});
+	});
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -62,21 +93,40 @@
 
 		const url = page.url;
 		const search = getTableSearch(url);
-		const requestedTypeID = Number.parseInt(getTableFilter(url, 'type_id'), 10);
-		const itemTypeID =
-			Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0 ? requestedTypeID : undefined;
+		const itemTypeID = getSelectedItemTypeID(url);
+		const selectedPropertyFilters = getPropertyFilters(url);
 		const currentPage = getTablePage(url);
-		const queryKey = JSON.stringify({ currentPage, search, itemTypeID, itemsPerPage });
+		const queryKey = JSON.stringify({ currentPage, search, itemTypeID, selectedPropertyFilters, itemsPerPage });
 
 		if (queryKey === inventoryQueryKey) return;
 
 		inventoryQueryKey = queryKey;
 		derivedNameSearch = search;
-		itemTypeFilter = itemTypeID === undefined ? 'all' : String(itemTypeID);
-		void loadInventory((currentPage - 1) * itemsPerPage, search, itemTypeID);
+		void loadInventory((currentPage - 1) * itemsPerPage, search, itemTypeID, selectedPropertyFilters);
 	});
 
-	async function loadInventory(offset: number, search: string, itemTypeID: number | undefined) {
+	$effect(() => {
+		if (!authPage.state.authorized || !inventoryOptionsLoaded) return;
+
+		const itemTypeID = getSelectedItemTypeID(page.url);
+		if (itemTypeID === undefined) {
+			itemTypeFiltersLoadVersion += 1;
+			selectedItemType = null;
+			itemTypeFilterableProperties = [];
+			propertyFilterOptions = {};
+			propertyFilterValueLoadVersions = new Map();
+			return;
+		}
+
+		void loadItemTypeFilters(itemTypeID);
+	});
+
+	async function loadInventory(
+		offset: number,
+		search: string,
+		itemTypeID: number | undefined,
+		selectedPropertyFilters: Record<number, string>
+	) {
 		const version = ++loadVersion;
 		loadingInventory = true;
 		inventoryError = '';
@@ -86,7 +136,8 @@
 				limit: itemsPerPage,
 				offset,
 				search,
-				typeID: itemTypeID
+				typeID: itemTypeID,
+				propertyFilters: selectedPropertyFilters
 			});
 			if (version !== loadVersion) return;
 
@@ -102,6 +153,29 @@
 		}
 	}
 
+	async function loadItemTypeFilters(itemTypeID: number) {
+		const version = ++itemTypeFiltersLoadVersion;
+		let itemTypeLoaded = false;
+		try {
+			const itemType = await api.getItemType(itemTypeID);
+			if (version !== itemTypeFiltersLoadVersion) return;
+			selectedItemType = itemType;
+			itemTypeLoaded = true;
+			const filterableProperties = await api.listItemTypeFilterableProperties(itemTypeID);
+			if (version !== itemTypeFiltersLoadVersion) return;
+			itemTypeFilterableProperties = filterableProperties;
+			propertyFilterOptions = {};
+			propertyFilterValueLoadVersions = new Map();
+		} catch (reason) {
+			if (version !== itemTypeFiltersLoadVersion) return;
+			if (!itemTypeLoaded) selectedItemType = null;
+			itemTypeFilterableProperties = [];
+			propertyFilterOptions = {};
+			inventoryError =
+				reason instanceof ApiError ? reason.message : 'Filteri svojstava nisu učitani.';
+		}
+	}
+
 	async function loadInventoryOptions() {
 		loadingInventoryOptions = true;
 		inventoryError = '';
@@ -113,10 +187,10 @@
 			]);
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
-			const requestedTypeID = Number.parseInt(getTableFilter(page.url, 'type_id'), 10);
+			const requestedTypeID = getSelectedItemTypeID(page.url);
 			if (
 				nextItemTypes.length === 1 &&
-				(!Number.isSafeInteger(requestedTypeID) || requestedTypeID <= 0)
+				requestedTypeID === undefined
 			) {
 				updateTableQuery({ type_id: nextItemTypes[0].id });
 			}
@@ -153,14 +227,64 @@
 	}
 
 	function filterByItemType(itemTypeID: number | undefined) {
-		updateTableQuery({ type_id: itemTypeID, page: 1 });
+		const propertyFilterUpdates: Record<string, string | null> = {};
+		for (const key of page.url.searchParams.keys()) {
+			if (key.startsWith('property.')) propertyFilterUpdates[key] = null;
+		}
+		updateTableQuery({ type_id: itemTypeID, page: 1, ...propertyFilterUpdates });
+	}
+
+	function filterByProperty(propertyID: number, value: string) {
+		updateTableQuery({ [`property.${propertyID}`]: value, page: 1 });
+	}
+
+	async function loadPropertyFilterValues(propertyID: number, search: string) {
+		const itemTypeID = selectedItemTypeID;
+		if (itemTypeID === undefined) return;
+
+		const key = `${itemTypeID}:${propertyID}`;
+		const version = (propertyFilterValueLoadVersions.get(key) ?? 0) + 1;
+		propertyFilterValueLoadVersions.set(key, version);
+
+		try {
+			const values = await api.searchItemTypePropertyValues(itemTypeID, propertyID, search);
+			if (
+				selectedItemTypeID !== itemTypeID ||
+				propertyFilterValueLoadVersions.get(key) !== version
+			)
+				return;
+			propertyFilterOptions = { ...propertyFilterOptions, [propertyID]: values };
+		} catch (reason) {
+			if (
+				selectedItemTypeID !== itemTypeID ||
+				propertyFilterValueLoadVersions.get(key) !== version
+			)
+				return;
+			inventoryError =
+				reason instanceof ApiError ? reason.message : 'Vrednosti filtera nisu učitane.';
+		}
 	}
 
 	function refreshInventory() {
-		const requestedTypeID = Number.parseInt(getTableFilter(page.url, 'type_id'), 10);
-		const itemTypeID =
-			Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0 ? requestedTypeID : undefined;
-		void loadInventory(itemOffset, derivedNameSearch, itemTypeID);
+		const itemTypeID = getSelectedItemTypeID(page.url);
+		void loadInventory(itemOffset, derivedNameSearch, itemTypeID, getPropertyFilters(page.url));
+	}
+
+	function getSelectedItemTypeID(url: URL) {
+		const requestedTypeID = Number.parseInt(getTableFilter(url, 'type_id'), 10);
+		return Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0
+			? requestedTypeID
+			: undefined;
+	}
+
+	function getPropertyFilters(url: URL): Record<number, string> {
+		const filters: Record<number, string> = {};
+		for (const [key, value] of url.searchParams) {
+			if (!key.startsWith('property.')) continue;
+			const propertyID = Number.parseInt(key.slice('property.'.length), 10);
+			if (Number.isSafeInteger(propertyID) && propertyID > 0 && value) filters[propertyID] = value;
+		}
+		return filters;
 	}
 
 	async function requestItemUsage(itemID: number, reason: string) {
@@ -204,6 +328,14 @@
 			onitemtypechange={filterByItemType}
 			onsearch={searchItems}
 		/>
+		{#if selectedItemType && selectedItemType.id === selectedItemTypeID}
+			<InventoryPropertyFilters
+				filters={propertyFilters}
+				filterOptions={propertyFilterOptions}
+				onfilterchange={filterByProperty}
+				onfiltervaluesearch={loadPropertyFilterValues}
+			/>
+		{/if}
 		<InventoryList
 			{items}
 			{itemTypes}

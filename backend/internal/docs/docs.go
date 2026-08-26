@@ -822,6 +822,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/item-types/{id}/filterable-properties": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemTypes"
+                ],
+                "summary": "List available filter value counts for an item type's properties",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeFilterableProperty"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid type id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/item-types/{id}/properties": {
             "post": {
                 "security": [
@@ -1005,6 +1053,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/item-types/{id}/properties/{prop_id}/values": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemTypes"
+                ],
+                "summary": "Search distinct values of an item type property for an item filter",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Property ID",
+                        "name": "prop_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Value substring (max 100 chars)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum results (default 20, max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/items": {
             "get": {
                 "security": [
@@ -1042,6 +1157,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Filter by item type ID",
                         "name": "type_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exact value filter for an item-type property (max 100 chars)",
+                        "name": "property.{id}",
                         "in": "query"
                     },
                     {
@@ -2548,6 +2669,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty"
                     }
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeFilterableProperty": {
+            "type": "object",
+            "properties": {
+                "property_id": {
+                    "type": "integer"
+                },
+                "value_count": {
+                    "type": "integer"
                 }
             }
         },

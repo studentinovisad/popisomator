@@ -35,7 +35,7 @@ func queryValue(request *http.Request, key string, fallback, minimum, maximum in
 }
 
 func GetLimitOffset(request *http.Request) (int32, int32, error) {
-	limit, err := queryValue(request, "limit", DefaultPageSize, MinimumPageSize, MaximumPageSize)
+	limit, err := GetLimit(request)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -46,6 +46,10 @@ func GetLimitOffset(request *http.Request) (int32, int32, error) {
 	}
 
 	return limit, offset, nil
+}
+
+func GetLimit(request *http.Request) (int32, error) {
+	return queryValue(request, "limit", DefaultPageSize, MinimumPageSize, MaximumPageSize)
 }
 
 func GetSearch(request *http.Request) (string, error) {

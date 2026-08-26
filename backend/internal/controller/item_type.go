@@ -90,6 +90,79 @@ func GetItemType(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemType)
 }
 
+// ListItemTypeFilterableProperties godoc
+// @Summary List available filter value counts for an item type's properties
+// @Tags ItemTypes
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item Type ID"
+// @Success 200 {array} dto.ItemTypeFilterableProperty
+// @Failure 400 {object} response.Error "invalid type id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /item-types/{id}/filterable-properties [get]
+func ListItemTypeFilterableProperties(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	properties, err := service.ListItemTypeFilterableProperties(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err, "couldn't list filterable properties")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, properties)
+}
+
+// ListItemTypePropertyValues godoc
+// @Summary Search distinct values of an item type property for an item filter
+// @Tags ItemTypes
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item Type ID"
+// @Param prop_id path int true "Property ID"
+// @Param search query string false "Value substring (max 100 chars)"
+// @Param limit query int false "Maximum results (default 20, max 50)"
+// @Success 200 {array} string
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /item-types/{id}/properties/{prop_id}/values [get]
+func ListItemTypePropertyValues(w http.ResponseWriter, r *http.Request) {
+	itemTypeID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || itemTypeID < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	propertyID, err := strconv.ParseInt(r.PathValue("prop_id"), 10, 64)
+	if err != nil || propertyID < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid property id")
+		return
+	}
+
+	search, err := pagination.GetSearch(r)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	limit, err := pagination.GetLimit(r)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid limit")
+		return
+	}
+
+	values, err := service.ListItemTypePropertyValues(r.Context(), itemTypeID, propertyID, search, limit)
+	if err != nil {
+		writeServiceError(w, err, "couldn't list property values")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, values)
+}
+
 // CreateItemType godoc
 // @Summary Create an item type (manager/admin only)
 // @Tags ItemTypes
