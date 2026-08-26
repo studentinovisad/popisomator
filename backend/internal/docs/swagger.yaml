@@ -217,6 +217,13 @@ definitions:
       user_name:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestUserOption:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestsPage:
     properties:
       items:
@@ -632,8 +639,15 @@ paths:
         name: offset
         type: integer
       - description: Filter by item request status
+        enum:
+        - requested
+        - approved
         in: query
         name: status
+        type: string
+      - description: Filter by requester ID
+        in: query
+        name: user_id
         type: integer
       produces:
       - application/json
@@ -821,6 +835,27 @@ paths:
       - CookieAuth: []
       summary: Get personal item request (that the logged in user created) by item
         ID
+      tags:
+      - ItemRequests
+  /item-requests/users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestUserOption'
+            type: array
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List requesters available for the item-request filter (manager/admin
+        only)
       tags:
       - ItemRequests
   /item-types:

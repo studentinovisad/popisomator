@@ -174,6 +174,20 @@ func ListItemRequests(ctx context.Context, req dto.ItemRequestsListRequest) (dto
 	}, nil
 }
 
+func ListItemRequestUsers(ctx context.Context) ([]dto.ItemRequestUserOption, error) {
+	users, err := db.Queries.ListItemRequestUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	options := make([]dto.ItemRequestUserOption, len(users))
+	for i, user := range users {
+		options[i] = dto.ItemRequestUserOption{ID: user.ID, Name: user.FullName}
+	}
+
+	return options, nil
+}
+
 func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) error {
 	if err := dto.Validate(req); err != nil {
 		return err

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button, Select } from 'bits-ui';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { api, ApiError, type ItemRequestSummary } from '$lib/api';
+	import { api, ApiError, type ItemRequestSummary, type ItemRequestUserOption } from '$lib/api';
 	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import {
@@ -16,12 +17,27 @@
 
 	const requestsPage = createServerPagination<
 		ItemRequestSummary,
-		{ status: ItemRequestStatusFilter }
+		{ status: ItemRequestStatusFilter; userID: string }
 	>({
-		initialFilters: { status: 'all' },
-		loadPage: ({ limit, offset, status }) =>
-			api.listItemRequests({ limit, offset, status: status === 'all' ? undefined : status }),
+		initialFilters: { status: 'all', userID: 'all' },
+		loadPage: ({ limit, offset, status, userID }) =>
+			api.listItemRequests({
+				limit,
+				offset,
+				status: status === 'all' ? undefined : status,
+				userID: userID === 'all' ? undefined : Number(userID)
+			}),
 		unavailableMessage: 'Zahtevi nisu učitani.'
+	});
+
+	let requestUsers = $state<ItemRequestUserOption[]>([]);
+	const userFilterOptions = $derived([
+		{ value: 'all', label: 'Svi korisnici' },
+		...requestUsers.map((user) => ({ value: String(user.id), label: user.name }))
+	]);
+
+	onMount(() => {
+		void loadRequestUsers();
 	});
 
 	$effect(() => {
@@ -30,9 +46,20 @@
 		const status = itemRequestStatusFilterOptions.some((option) => option.value === requestedStatus)
 			? (requestedStatus as ItemRequestStatusFilter)
 			: 'all';
+		const requestedUserID = getTableFilter(url, 'user_id');
+		const parsedUserID = Number(requestedUserID);
+		const userID = Number.isSafeInteger(parsedUserID) && parsedUserID > 0 ? requestedUserID : 'all';
 
-		requestsPage.sync({ page: getTablePage(url), filters: { status } });
+		requestsPage.sync({ page: getTablePage(url), filters: { status, userID } });
 	});
+
+	async function loadRequestUsers() {
+		try {
+			requestUsers = await api.listItemRequestUsers();
+		} catch {
+			requestUsers = [];
+		}
+	}
 
 	async function decide(itemRequest: ItemRequestSummary, approve: boolean) {
 		requestsPage.error = '';
@@ -53,6 +80,10 @@
 		updateTableQuery({ status: status === 'all' ? undefined : status, page: 1 });
 	}
 
+	function filterByUser(userID: string) {
+		updateTableQuery({ user_id: userID === 'all' ? undefined : userID, page: 1 });
+	}
+
 	function goToPage(nextPage: number) {
 		updateTableQuery({ page: nextPage });
 	}
@@ -64,37 +95,70 @@
 		<p class="font-mono text-xs font-medium tracking-wide text-muted">
 			UKUPNO: {requestsPage.total}
 		</p>
-		<Select.Root
-			type="single"
-			value={requestsPage.filters.status}
-			items={itemRequestStatusFilterOptions}
-			onValueChange={(value) => filterByStatus(value as ItemRequestStatusFilter)}
-		>
-			<Select.Trigger
-				class="flex h-9 w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
-				aria-label="Filtriraj zahteve po statusu"
+		<div class="flex items-center gap-2">
+			<Select.Root
+				type="single"
+				value={requestsPage.filters.userID}
+				items={userFilterOptions}
+				onValueChange={(value) => filterByUser(value)}
 			>
-				<Select.Value />
-			</Select.Trigger>
-			<Select.Portal>
-				<Select.Content
-					class="z-30 w-44 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-					sideOffset={4}
+				<Select.Trigger
+					class="flex h-9 w-44 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
+					aria-label="Filtriraj zahteve po korisniku"
 				>
-					<Select.Viewport>
-						{#each itemRequestStatusFilterOptions as option (option.value)}
-							<Select.Item
-								value={option.value}
-								label={option.label}
-								class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-							>
-								{option.label}
-							</Select.Item>
-						{/each}
-					</Select.Viewport>
-				</Select.Content>
-			</Select.Portal>
-		</Select.Root>
+					<Select.Value />
+				</Select.Trigger>
+				<Select.Portal>
+					<Select.Content
+						class="z-30 w-52 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
+						sideOffset={4}
+					>
+						<Select.Viewport>
+							{#each userFilterOptions as option (option.value)}
+								<Select.Item
+									value={option.value}
+									label={option.label}
+									class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
+								>
+									{option.label}
+								</Select.Item>
+							{/each}
+						</Select.Viewport>
+					</Select.Content>
+				</Select.Portal>
+			</Select.Root>
+			<Select.Root
+				type="single"
+				value={requestsPage.filters.status}
+				items={itemRequestStatusFilterOptions}
+				onValueChange={(value) => filterByStatus(value as ItemRequestStatusFilter)}
+			>
+				<Select.Trigger
+					class="flex h-9 w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
+					aria-label="Filtriraj zahteve po statusu"
+				>
+					<Select.Value />
+				</Select.Trigger>
+				<Select.Portal>
+					<Select.Content
+						class="z-30 w-44 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
+						sideOffset={4}
+					>
+						<Select.Viewport>
+							{#each itemRequestStatusFilterOptions as option (option.value)}
+								<Select.Item
+									value={option.value}
+									label={option.label}
+									class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
+								>
+									{option.label}
+								</Select.Item>
+							{/each}
+						</Select.Viewport>
+					</Select.Content>
+				</Select.Portal>
+			</Select.Root>
+		</div>
 	</div>
 	{#if requestsPage.error}
 		<p class="mt-3 text-sm text-danger" role="alert">{requestsPage.error}</p>

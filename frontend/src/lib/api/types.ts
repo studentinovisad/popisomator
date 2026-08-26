@@ -206,6 +206,11 @@ export type ItemRequestSummary = ItemRequest & {
 	item_name: string;
 };
 
+export type ItemRequestUserOption = {
+	id: number;
+	name: string;
+};
+
 export type CreatePersonalItemRequest = {
 	item_id: number;
 	reason: string;
@@ -215,4 +220,5 @@ export type ListItemRequestsParams = {
 	limit?: number;
 	offset?: number;
 	status?: ItemRequestStatus;
+	userID?: number;
 };

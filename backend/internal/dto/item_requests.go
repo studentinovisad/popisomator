@@ -30,6 +30,12 @@ type ItemRequestSummary struct {
 	ItemName string `json:"item_name"`
 }
 
+// ItemRequestUserOption is a requester available in the manager filter.
+type ItemRequestUserOption struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
 type ItemRequestCreateRequest struct {
 	UserID int64  `json:"user_id" validate:"required,gt=0"`
 	ItemID int64  `json:"item_id" validate:"required,gt=0"`

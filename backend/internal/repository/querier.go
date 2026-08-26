@@ -46,6 +46,7 @@ type Querier interface {
 	HasApprovedItemRequest(ctx context.Context, itemID int64) (bool, error)
 	Healthcheck(ctx context.Context) (int32, error)
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
+	ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error)
 	ListItemTypeFilterableProperties(ctx context.Context, typeID int64) ([]ListItemTypeFilterablePropertiesRow, error)
 	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
 	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]json.RawMessage, error)

@@ -285,6 +285,38 @@ func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsPara
 	return items, nil
 }
 
+const listItemRequestUsers = `-- name: ListItemRequestUsers :many
+SELECT DISTINCT users.id, users.full_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+ORDER BY users.full_name, users.id
+`
+
+type ListItemRequestUsersRow struct {
+	ID       int64  `json:"id"`
+	FullName string `json:"full_name"`
+}
+
+func (q *Queries) ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error) {
+	rows, err := q.db.Query(ctx, listItemRequestUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemRequestUsersRow
+	for rows.Next() {
+		var i ListItemRequestUsersRow
+		if err := rows.Scan(&i.ID, &i.FullName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockItemForRequest = `-- name: LockItemForRequest :one
 SELECT id
 FROM items

@@ -190,6 +190,11 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.ListItemRequests),
 	))
+	mux.Handle("GET /item-requests/users", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.ListItemRequestUsers),
+	))
 	mux.Handle("POST /item-requests/me", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.CreatePersonalItemRequest),
