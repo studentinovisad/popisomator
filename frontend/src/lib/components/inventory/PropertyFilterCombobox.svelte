@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import X from '@lucide/svelte/icons/x';
+	import { onDestroy } from 'svelte';
 	import { Combobox } from 'bits-ui';
 
 	let {
@@ -17,43 +18,57 @@
 		onsearchchange: (search: string) => void;
 	} = $props();
 
-	let query = $state('');
 	let open = $state(false);
-	let inputValue = $state('');
+	let inputText = $state('');
 	let searchTimeout: ReturnType<typeof setTimeout> | undefined;
+	let control: HTMLDivElement | null = null;
 	let filteredOptions = $derived(
-		options.filter((option) => option.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+		options.filter((option) => option.toLocaleLowerCase().includes(inputText.toLocaleLowerCase()))
 	);
 	let items = $derived(options.map((option) => ({ value: option, label: option })));
 
 	$effect(() => {
-		inputValue = value;
+		inputText = value;
+	});
+
+	onDestroy(() => {
+		if (searchTimeout) clearTimeout(searchTimeout);
 	});
 
 	function handleInput(event: Event) {
-		query = (event.currentTarget as HTMLInputElement).value;
+		inputText = (event.currentTarget as HTMLInputElement).value;
 		queueSearch();
 	}
 
 	function handleOpenChange(nextOpen: boolean) {
 		open = nextOpen;
-		if (nextOpen) onsearchchange(query);
+		if (nextOpen) onsearchchange(inputText);
 	}
 
 	function queueSearch() {
 		if (searchTimeout) clearTimeout(searchTimeout);
-		searchTimeout = setTimeout(() => onsearchchange(query), 200);
+		searchTimeout = setTimeout(() => onsearchchange(inputText), 200);
 	}
 
 	function handleValueChange(nextValue: string) {
-		query = nextValue;
-		inputValue = nextValue;
+		inputText = nextValue;
 		onvaluechange(nextValue);
 	}
 
+	function restoreActiveValue(event: FocusEvent) {
+		if (event.relatedTarget instanceof Node && control?.contains(event.relatedTarget)) return;
+
+		const input = event.currentTarget as HTMLInputElement;
+		if (input.value === '') {
+			clear();
+			return;
+		}
+
+		inputText = value;
+	}
+
 	function clear() {
-		query = '';
-		inputValue = '';
+		inputText = '';
 		onvaluechange('');
 	}
 </script>
@@ -62,18 +77,19 @@
 	type="single"
 	{items}
 	{value}
-	{inputValue}
+	inputValue={inputText}
 	{open}
 	allowDeselect={false}
 	onOpenChange={handleOpenChange}
 	onValueChange={handleValueChange}
 >
-	<div class="relative max-w-64 min-w-44">
+	<div bind:this={control} class="relative max-w-64 min-w-44">
 		<Combobox.Input
 			class="property-filter-input h-10 w-full py-0 pr-13 pl-3 text-sm"
 			placeholder={label}
 			aria-label={`Filtriraj po svojstvu: ${label}`}
 			oninput={handleInput}
+			onblur={restoreActiveValue}
 		/>
 		{#if value}
 			<button
