@@ -1,5 +1,5 @@
-// Command seed populates a database with test users and a made-up chemical inventory for a
-// single lab location. The inventory data is entirely fabricated (see generateChemicalRows) so
+// Command seed populates a database with test users and a made-up chemical inventory across sample
+// lab locations. The inventory data is entirely fabricated (see generateChemicalRows) so
 // no real inventory data ever needs to be committed to this repo. It is meant for local/dev
 // databases only — running it against a database that already has this data will create
 // duplicate items (properties, item types and users are reused if they already exist).
@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	location                  = "Laboratorija A"
 	chemicalDerivedNameFormat = "{Naziv hemikalije} · {Proizvođač}"
 	testPassword              = "Test1234"
 )
@@ -45,6 +44,8 @@ type chemicalRow struct {
 	PackageVolume  *measure
 	PersonInCharge string
 	NoteDate       string
+	Location       string
+	Cabinet        string
 	Box            string
 }
 
@@ -86,17 +87,30 @@ func generateChemicalRows() []chemicalRow {
 	volumePackages := []measure{{1.0, "L"}, {2.5, "L"}, {5.0, "L"}, {500, "mL"}, {250, "mL"}}
 	persons := []string{"A.B.", "C.D.", "M.N.", "J.K.", "T.R.", "S.P."}
 	noteDates := []string{"", "", "12.03.2023", "05.07.2024", "21.11.2022", ""}
-	boxes := []string{"", "", "Box 1", "Box 2", "Box 3", ""}
+	placements := []struct {
+		location string
+		cabinet  string
+		box      string
+	}{
+		{"Laboratorija A", "Ormar za rastvarače", "Kutija A-1"},
+		{"Laboratorija A", "Ormar za kiseline", "Kutija A-2"},
+		{"Laboratorija A", "Ormar za soli", ""},
+		{"Laboratorija B", "Polica 1", "Kutija B-1"},
+		{"Centralni magacin", "", ""},
+	}
 
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
+		placement := placements[i%len(placements)]
 		row := chemicalRow{
 			Name:           chemical.name,
 			Manufacturer:   manufacturers[i%len(manufacturers)],
 			Purity:         purities[i%len(purities)],
 			PersonInCharge: persons[i%len(persons)],
 			NoteDate:       noteDates[i%len(noteDates)],
-			Box:            boxes[i%len(boxes)],
+			Location:       placement.location,
+			Cabinet:        placement.cabinet,
+			Box:            placement.box,
 		}
 		if chemical.solid {
 			packageMass := massPackages[i%len(massPackages)]
@@ -158,6 +172,7 @@ var propertyDefs = []propertyDef{
 	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
 	{"person_in_charge", "Zadužena osoba", "string", repository.PropertyVisibilityDetails},
 	{"note_date", "Napomena/datum", "string", repository.PropertyVisibilityDetails},
+	{"cabinet", "Ormar", "string", repository.PropertyVisibilityOverview},
 	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
 	{"location", "Lokacija", "string", repository.PropertyVisibilityOverview},
 }
@@ -370,7 +385,7 @@ func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]d
 		created++
 	}
 
-	fmt.Printf("seeded %d items for location %q\n", created, location)
+	fmt.Printf("seeded %d items across sample locations\n", created)
 	return items, nil
 }
 
@@ -444,8 +459,9 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 	})
 	addString("person_in_charge", row.PersonInCharge)
 	addString("note_date", row.NoteDate)
+	addString("cabinet", row.Cabinet)
 	addString("box", row.Box)
-	addString("location", location)
+	addString("location", row.Location)
 
 	return properties
 }
