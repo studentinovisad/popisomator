@@ -42,7 +42,7 @@ type PropertiesPage struct {
 type CreatePropertyRequest struct {
 	Name         string  `json:"name" validate:"required"`
 	Description  string  `json:"description"`
-	ValueType    string  `json:"value_type" validate:"required,oneof=string number boolean"`
+	ValueType    string  `json:"value_type" validate:"required,oneof=string number boolean price"`
 	DefaultValue *string `json:"default_value"`
 }
 

@@ -25,22 +25,24 @@ func init() {
 	// the sibling ValueType field (one of "string", "number", "boolean").
 	validate.RegisterValidation("valuetype", func(fl validator.FieldLevel) bool {
 		valueType := fl.Parent().FieldByName("ValueType").String()
-
-		var v any
-		if err := json.Unmarshal([]byte(fl.Field().String()), &v); err != nil {
-			return false
-		}
+		fieldBytes := []byte(fl.Field().String())
 
 		switch valueType {
 		case "string":
-			_, ok := v.(string)
-			return ok
+			var v string
+			return json.Unmarshal(fieldBytes, &v) == nil
 		case "number":
-			_, ok := v.(float64)
-			return ok
+			var v float64
+			return json.Unmarshal(fieldBytes, &v) == nil
 		case "boolean":
-			_, ok := v.(bool)
-			return ok
+			var v bool
+			return json.Unmarshal(fieldBytes, &v) == nil
+		case "price":
+			var v PTPrice
+			if json.Unmarshal(fieldBytes, &v) != nil {
+				return false
+			}
+			return Validate(v) == nil
 		}
 		return false
 	})

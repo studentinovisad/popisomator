@@ -1,4 +1,5 @@
-import type { ConsumptionStatus, PropertyValueType } from '$lib/api';
+import { type ConsumptionStatus, type PropertyValueType, type PTPrice } from '$lib/api';
+import * as api from '$lib/api';
 
 export const consumptionOptions: { value: ConsumptionStatus; label: string }[] = [
 	{ value: 'not_consumed', label: 'Nije potrošeno' },
@@ -10,8 +11,11 @@ export const consumptionOptions: { value: ConsumptionStatus; label: string }[] =
 export const propertyValueTypeOptions: { value: PropertyValueType; label: string }[] = [
 	{ value: 'string', label: 'Tekst' },
 	{ value: 'number', label: 'Broj' },
-	{ value: 'boolean', label: 'Da / ne' }
+	{ value: 'boolean', label: 'Da / ne' },
+	{ value: 'price', label: 'Novčana vrednost' }
 ];
+
+export const PriceMultiplier: number = 10000;
 
 export function consumptionLabel(status: ConsumptionStatus) {
 	return consumptionOptions.find((option) => option.value === status)?.label ?? status;
@@ -28,12 +32,25 @@ export function propertyValueTypeLabel(valueType: PropertyValueType) {
 	return propertyValueTypeOptions.find((option) => option.value === valueType)?.label ?? valueType;
 }
 
-export function displayJson(value: string | null | undefined) {
+export function displayJson(
+	valueType: PropertyValueType | undefined,
+	value: string | null | undefined
+) {
 	if (value === null || value === undefined || value === '') return '—';
 
 	try {
 		const parsed = JSON.parse(value);
-		return typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+		if (valueType == 'price') {
+			let value = (parsed.amount / PriceMultiplier).toLocaleString('sr-RS', {
+				style: 'currency',
+				currency: parsed.currency,
+				minimumFractionDigits: 4,
+				maximumFractionDigits: 4
+			});
+			return `${value}`;
+		} else {
+			return typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+		}
 	} catch {
 		return value;
 	}
@@ -43,5 +60,6 @@ export function defaultJsonValue(valueType: PropertyValueType, value: string | n
 	if (value !== null) return value;
 	if (valueType === 'string') return '""';
 	if (valueType === 'number') return '0';
+	if (valueType === 'price') return JSON.stringify({ amount: 0, currency: 'RSD' });
 	return 'false';
 }

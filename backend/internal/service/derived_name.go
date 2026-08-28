@@ -109,6 +109,7 @@ func populateItemDetails(
 
 		property := dto.ToItemPropertyDTO(row.ItemProperty)
 		property.Visibility = string(row.Visibility)
+		property.ValueType = row.PropertyType
 		items[itemIndex].Properties = append(items[itemIndex].Properties, property)
 	}
 

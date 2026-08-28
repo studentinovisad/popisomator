@@ -174,7 +174,7 @@ func (q *Queries) GetItemByID(ctx context.Context, id int64) (Item, error) {
 }
 
 const getItemProperties = `-- name: GetItemProperties :many
-SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name FROM item_properties ip
+SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name, p.value_type AS property_type FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
 JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id
@@ -186,6 +186,7 @@ type GetItemPropertiesRow struct {
 	ItemProperty ItemProperty       `json:"item_property"`
 	Visibility   PropertyVisibility `json:"visibility"`
 	PropertyName string             `json:"property_name"`
+	PropertyType string             `json:"property_type"`
 }
 
 func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error) {
@@ -203,6 +204,7 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]Get
 			&i.ItemProperty.PropertyValue,
 			&i.Visibility,
 			&i.PropertyName,
+			&i.PropertyType,
 		); err != nil {
 			return nil, err
 		}

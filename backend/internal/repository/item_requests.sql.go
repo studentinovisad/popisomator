@@ -155,6 +155,19 @@ type GetItemRequestParams struct {
 	ItemID int64 `json:"item_id"`
 }
 
+func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) (ItemRequest, error) {
+	row := q.db.QueryRow(ctx, getItemRequest, arg.UserID, arg.ItemID)
+	var i ItemRequest
+	err := row.Scan(
+		&i.UserID,
+		&i.ItemID,
+		&i.CreatedAt,
+		&i.Status,
+		&i.Reason,
+	)
+	return i, err
+}
+
 const getUserItemRequests = `-- name: GetUserItemRequests :many
 SELECT user_id, item_id, created_at, status, reason FROM item_requests
 WHERE user_id = $1
@@ -175,7 +188,13 @@ func (q *Queries) GetUserItemRequests(ctx context.Context, arg GetUserItemReques
 	var items []ItemRequest
 	for rows.Next() {
 		var i ItemRequest
-		if err := rows.Scan(&i.UserID, &i.ItemID, &i.CreatedAt, &i.Status, &i.Reason); err != nil {
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ItemID,
+			&i.CreatedAt,
+			&i.Status,
+			&i.Reason,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -184,19 +203,6 @@ func (q *Queries) GetUserItemRequests(ctx context.Context, arg GetUserItemReques
 		return nil, err
 	}
 	return items, nil
-}
-
-func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) (ItemRequest, error) {
-	row := q.db.QueryRow(ctx, getItemRequest, arg.UserID, arg.ItemID)
-	var i ItemRequest
-	err := row.Scan(
-		&i.UserID,
-		&i.ItemID,
-		&i.CreatedAt,
-		&i.Status,
-		&i.Reason,
-	)
-	return i, err
 }
 
 const hasApprovedItemRequest = `-- name: HasApprovedItemRequest :one
@@ -216,11 +222,7 @@ func (q *Queries) HasApprovedItemRequest(ctx context.Context, itemID int64) (boo
 
 const listItemRequests = `-- name: ListItemRequests :many
 SELECT
-  item_requests.user_id,
-  item_requests.item_id,
-  item_requests.created_at,
-  item_requests.status,
-  item_requests.reason,
+  item_requests.user_id, item_requests.item_id, item_requests.created_at, item_requests.status, item_requests.reason,
   users.full_name AS user_name,
   render_item_derived_name(items.id, item_types.derived_name_format) AS item_name
 FROM item_requests
@@ -229,7 +231,7 @@ JOIN items ON items.id = item_requests.item_id
 JOIN item_types ON item_types.id = items.type_id
 WHERE ($1::request_status IS NULL OR item_requests.status = $1)
   AND ($2::bigint IS NULL OR item_requests.user_id = $2)
-ORDER BY created_at DESC
+ORDER BY item_requests.created_at DESC
 LIMIT $4 OFFSET $3
 `
 
@@ -292,7 +294,7 @@ FOR UPDATE
 
 func (q *Queries) LockItemForRequest(ctx context.Context, id int64) (int64, error) {
 	row := q.db.QueryRow(ctx, lockItemForRequest, id)
-	var itemID int64
-	err := row.Scan(&itemID)
-	return itemID, err
+	var id_2 int64
+	err := row.Scan(&id_2)
+	return id_2, err
 }

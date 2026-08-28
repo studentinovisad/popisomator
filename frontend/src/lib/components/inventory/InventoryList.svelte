@@ -60,6 +60,7 @@
 								{#if property.visibility === 'overview'}
 									<span class="rounded bg-soft px-2 py-1 text-xs text-muted">
 										{propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: {displayJson(
+											property.value_type,
 											property.value
 										)}
 									</span>
@@ -120,7 +121,7 @@
 								{overviewProperties
 									.map(
 										(property) =>
-											`${propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: ${displayJson(property.value)}`
+											`${propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: ${displayJson(property.value_type, property.value)}`
 									)
 									.join(' · ')}
 							</p>
