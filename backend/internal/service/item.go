@@ -270,21 +270,6 @@ func DeleteItem(ctx context.Context, id int64) error {
 	return nil
 }
 
-func GetItemProperties(ctx context.Context, id int64) ([]dto.ItemProperty, error) {
-	propsRows, err := db.Queries.GetItemProperties(ctx, []int64{id})
-	if err != nil {
-		return nil, err
-	}
-
-	itemPropsDTO := make([]dto.ItemProperty, len(propsRows))
-	for i, propRow := range propsRows {
-		itemPropsDTO[i] = dto.ToItemPropertyDTO(propRow.ItemProperty)
-		itemPropsDTO[i].Visibility = string(propRow.Visibility)
-	}
-
-	return itemPropsDTO, nil
-}
-
 func AddItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyRequest) (dto.ItemProperty, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.ItemProperty{}, err
