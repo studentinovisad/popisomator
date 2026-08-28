@@ -6,9 +6,10 @@
 		type Property,
 		type PropertyValueType
 	} from '$lib/api';
-	import { propertyValueTypeOptions } from '$lib/domain/items';
+	import { defaultJsonValue, propertyValueTypeOptions } from '$lib/domain/items';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 	import { Button, Label, Select, Separator } from 'bits-ui';
+	import ItemPropertyValueInput from '../inventory/ItemPropertyValueInput.svelte';
 
 	let {
 		property,
@@ -24,8 +25,7 @@
 	let description = $state('');
 	let valueType = $state<PropertyValueType>('string');
 	let hasDefaultValue = $state(false);
-	let scalarDefaultValue = $state('');
-	let booleanDefaultValue = $state(false);
+	let defaultValue = $state('');
 	let saving = $state(false);
 	let error = $state('');
 
@@ -34,32 +34,13 @@
 		description = property?.description ?? '';
 		valueType = property?.value_type ?? 'string';
 		hasDefaultValue = property?.default_value !== null && property?.default_value !== undefined;
-		setDefaultValue(property?.default_value ?? '');
+		defaultValue = property?.default_value ?? '';
 	});
-
-	function setDefaultValue(value: string) {
-		try {
-			const parsed = JSON.parse(value) as unknown;
-			scalarDefaultValue =
-				typeof parsed === 'string' || typeof parsed === 'number' ? String(parsed) : '';
-			booleanDefaultValue = parsed === true;
-		} catch {
-			scalarDefaultValue = value;
-			booleanDefaultValue = false;
-		}
-	}
 
 	function changeValueType(value: string) {
 		valueType = value as PropertyValueType;
 		hasDefaultValue = false;
-		scalarDefaultValue = '';
-		booleanDefaultValue = false;
-	}
-
-	function serializedDefaultValue() {
-		if (!hasDefaultValue) return null;
-		if (valueType === 'string' || valueType === 'number') return JSON.stringify(scalarDefaultValue);
-		return String(booleanDefaultValue);
+		defaultValue = defaultJsonValue(valueType, null);
 	}
 
 	async function save(event: SubmitEvent) {
@@ -68,27 +49,26 @@
 		error = '';
 
 		try {
-			const defaultValue = serializedDefaultValue();
+			const savedDefaultValue = hasDefaultValue ? defaultValue : null 
 			if (property) {
 				await api.updateProperty(property.id, {
 					name,
 					description,
-					default_value: defaultValue || null
+					default_value: savedDefaultValue
 				});
 			} else {
 				const payload: CreatePropertyRequest = {
 					name,
 					description,
 					value_type: valueType,
-					default_value: defaultValue || null
+					default_value: savedDefaultValue
 				};
 				await api.createProperty(payload);
 				name = '';
 				description = '';
 				valueType = 'string';
 				hasDefaultValue = false;
-				scalarDefaultValue = '';
-				booleanDefaultValue = false;
+				defaultValue = '';
 			}
 			onsaved();
 		} catch (reason) {
@@ -159,31 +139,11 @@
 			Podrazumevana vrednost
 		</label>
 		{#if hasDefaultValue}
-			{#if valueType === 'string'}
-				<Label.Root class="sr-only" for="property-default-value">Podrazumevani tekst</Label.Root>
-				<input
-					id="property-default-value"
-					class="mt-2 block w-full"
-					bind:value={scalarDefaultValue}
-					placeholder="npr. crno"
-				/>
-			{:else if valueType === 'number'}
-				<Label.Root class="sr-only" for="property-default-value">Podrazumevani broj</Label.Root>
-				<NumberInput
-					id="property-default-value"
-					bind:value={scalarDefaultValue}
-					ariaLabel="Podrazumevani broj"
-					className="mt-2"
-					required
-				/>
-			{:else if valueType === 'boolean'}
-				<label
-					class="mt-2 flex h-10 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink"
-				>
-					<input type="checkbox" bind:checked={booleanDefaultValue} />
-					{booleanDefaultValue ? 'Da' : 'Ne'}
-				</label>
-			{/if}
+			<ItemPropertyValueInput 
+				id="property-default-value"
+				property={{'id': 0, 'value_type': valueType, 'name': name, 'default_value': null}}
+				bind:value={defaultValue}
+			/>
 		{/if}
 	</div>
 	<Separator.Root class="h-px bg-line sm:col-span-2" decorative />
