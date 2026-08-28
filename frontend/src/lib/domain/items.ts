@@ -44,7 +44,7 @@ export function displayJson(
 			let value = (parsed.amount / PriceMultiplier).toLocaleString('sr-RS', {
 				style: 'currency',
 				currency: parsed.currency,
-				minimumFractionDigits: 4,
+				minimumFractionDigits: 2,
 				maximumFractionDigits: 4
 			});
 			return `${value}`;
