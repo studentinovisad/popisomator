@@ -28,6 +28,7 @@ func ToItemDTO(item repository.Item) Item {
 type ItemProperty struct {
 	ID         int64  `json:"id" validate:"required"`
 	Value      string `json:"value" validate:"required"`
+	ValueType  string `json:"value_type,omitempty"`
 	Visibility string `json:"visibility,omitempty"`
 }
 

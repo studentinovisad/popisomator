@@ -2441,7 +2441,8 @@ const docTemplate = `{
                     "enum": [
                         "string",
                         "number",
-                        "boolean"
+                        "boolean",
+                        "price"
                     ]
                 }
             }
@@ -2520,6 +2521,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "value": {
+                    "type": "string"
+                },
+                "value_type": {
                     "type": "string"
                 },
                 "visibility": {

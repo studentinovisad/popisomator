@@ -94,7 +94,7 @@ UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
 DELETE FROM items WHERE id = $1;
 
 -- name: GetItemProperties :many
-SELECT sqlc.embed(ip), itp.visibility, p.name AS property_name FROM item_properties ip
+SELECT sqlc.embed(ip), itp.visibility, p.name AS property_name, p.value_type AS property_type FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
 JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id

@@ -32,7 +32,7 @@ JOIN items ON items.id = item_requests.item_id
 JOIN item_types ON item_types.id = items.type_id
 WHERE (sqlc.narg('status')::request_status IS NULL OR item_requests.status = sqlc.narg('status'))
   AND (sqlc.narg('user_id')::bigint IS NULL OR item_requests.user_id = sqlc.narg('user_id'))
-ORDER BY created_at DESC
+ORDER BY item_requests.created_at DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: GetItemRequest :one

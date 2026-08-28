@@ -54,6 +54,7 @@ export type PropertyVisibility = 'overview' | 'details';
 export type ItemProperty = {
 	id: number;
 	value: string;
+	value_type?: PropertyValueType;
 	visibility?: PropertyVisibility;
 };
 
@@ -138,7 +139,12 @@ export type AddUpdateItemTypePropertyRequest = {
 	visibility?: string;
 };
 
-export type PropertyValueType = 'string' | 'number' | 'boolean';
+export type PropertyValueType = 'string' | 'number' | 'boolean' | 'price';
+
+export type PTPrice = {
+	amount: number;
+	currency: string;
+};
 
 export type PropertyOption = {
 	id: number;

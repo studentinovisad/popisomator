@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PropertyOption } from '$lib/api';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import PriceInput from './PriceInput.svelte';
 
 	let {
 		property,
@@ -24,6 +25,7 @@
 
 	let scalarValue = $state('');
 	let booleanValue = $state(false);
+	let objectValue = $state({});
 	let lastCommittedValue = '\u0000';
 
 	$effect(() => {
@@ -32,9 +34,11 @@
 		try {
 			const parsed = JSON.parse(value) as unknown;
 			scalarValue = typeof parsed === 'string' || typeof parsed === 'number' ? String(parsed) : '';
+			objectValue = typeof parsed === 'object' && parsed != null ? parsed : {};
 			booleanValue = parsed === true;
 		} catch {
 			scalarValue = value;
+			objectValue = value;
 			booleanValue = false;
 		}
 
@@ -50,6 +54,13 @@
 
 	function commitBoolean() {
 		const nextValue = String(booleanValue);
+		lastCommittedValue = nextValue;
+		value = nextValue;
+		onvaluechange?.();
+	}
+
+	function commitObject() {
+		const nextValue = JSON.stringify(objectValue);
 		lastCommittedValue = nextValue;
 		value = nextValue;
 		onvaluechange?.();
@@ -84,4 +95,15 @@
 		<input type="checkbox" bind:checked={booleanValue} onchange={commitBoolean} />
 		{booleanValue ? 'Da' : 'Ne'}
 	</label>
+{:else if property.value_type === 'price'}
+	<PriceInput
+		{id}
+		bind:value={objectValue}
+		ariaLabel={property.name}
+		{className}
+		{inputClassName}
+		{compact}
+		{required}
+		onvaluechange={commitObject}
+	/>
 {/if}

@@ -216,7 +216,7 @@
 										<dd
 											class="col-start-2 flex min-h-8 items-center rounded-md border border-transparent pl-3 text-sm break-words text-ink"
 										>
-											{displayJson(property.value)}
+											{displayJson(property.value_type, property.value)}
 										</dd>
 										<span class="col-start-3 size-8" aria-hidden="true"></span>
 									</div>

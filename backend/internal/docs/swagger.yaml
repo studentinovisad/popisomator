@@ -76,6 +76,7 @@ definitions:
         - string
         - number
         - boolean
+        - price
         type: string
     required:
     - name
@@ -130,6 +131,8 @@ definitions:
       id:
         type: integer
       value:
+        type: string
+      value_type:
         type: string
       visibility:
         type: string
