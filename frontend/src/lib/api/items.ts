@@ -21,7 +21,7 @@ export const itemsApi = {
 		if (search) query.set('search', search);
 		if (typeID) query.set('type_id', String(typeID));
 		for (const [propertyID, value] of Object.entries(propertyFilters)) {
-			if (value) query.set(`property.${propertyID}`, value);
+			if (value) query.set(`property.${propertyID}`, JSON.stringify(value));
 		}
 		return request<ItemsPage>(`/items?${query}`);
 	},

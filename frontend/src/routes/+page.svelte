@@ -37,7 +37,7 @@
 	let properties = $state<PropertyOption[]>([]);
 	let selectedItemType = $state<ItemType | null>(null);
 	let itemTypeFilterableProperties = $state<ItemTypeFilterableProperty[]>([]);
-	let propertyFilterOptions = $state<Record<number, string[]>>({});
+	let propertyFilterOptions = $state<Record<number, {}[]>>({});
 	let loadingInventory = $state(false);
 	let loadingInventoryOptions = $state(false);
 	let inventoryLoaded = $state(false);
@@ -75,7 +75,8 @@
 			return [{
 				id: property.id,
 				name: property.name,
-				value: selectedFilters[property.id] ?? ''
+				value: selectedFilters[property.id] ?? undefined,
+				value_type: property.value_type
 			}];
 		});
 	});
@@ -125,7 +126,7 @@
 		offset: number,
 		search: string,
 		itemTypeID: number | undefined,
-		selectedPropertyFilters: Record<number, string>
+		selectedPropertyFilters: Record<number, {}>
 	) {
 		const version = ++loadVersion;
 		loadingInventory = true;
@@ -234,8 +235,8 @@
 		updateTableQuery({ type_id: itemTypeID, page: 1, ...propertyFilterUpdates });
 	}
 
-	function filterByProperty(propertyID: number, value: string) {
-		updateTableQuery({ [`property.${propertyID}`]: value, page: 1 });
+	function filterByProperty(propertyID: number, value: {} | undefined) {
+		updateTableQuery({ [`property.${propertyID}`]: JSON.stringify(value), page: 1 });
 	}
 
 	async function loadPropertyFilterValues(propertyID: number, search: string) {
@@ -277,12 +278,12 @@
 			: undefined;
 	}
 
-	function getPropertyFilters(url: URL): Record<number, string> {
-		const filters: Record<number, string> = {};
+	function getPropertyFilters(url: URL): Record<number, {}> {
+		const filters: Record<number, {}> = {};
 		for (const [key, value] of url.searchParams) {
 			if (!key.startsWith('property.')) continue;
 			const propertyID = Number.parseInt(key.slice('property.'.length), 10);
-			if (Number.isSafeInteger(propertyID) && propertyID > 0 && value) filters[propertyID] = value;
+			if (Number.isSafeInteger(propertyID) && propertyID > 0 && value) filters[propertyID] = JSON.parse(value);
 		}
 		return filters;
 	}

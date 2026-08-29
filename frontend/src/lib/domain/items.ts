@@ -52,7 +52,7 @@ export function displayJson(
 			return typeof value === 'string' ? value : JSON.stringify(value);
 		}
 	} catch {
-		return value;
+		return "???";
 	}
 }
 

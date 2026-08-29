@@ -79,7 +79,7 @@ export type ItemsPage = {
 
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
-	propertyFilters?: Record<number, string>;
+	propertyFilters?: Record<number, {}>;
 };
 
 export type UpdateItemRequest = {
