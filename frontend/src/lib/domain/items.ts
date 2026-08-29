@@ -12,7 +12,8 @@ export const propertyValueTypeOptions: { value: PropertyValueType; label: string
 	{ value: 'string', label: 'Tekst' },
 	{ value: 'number', label: 'Broj' },
 	{ value: 'boolean', label: 'Da / ne' },
-	{ value: 'price', label: 'Novčana vrednost' }
+	{ value: 'price', label: 'Novčana vrednost' },
+	{ value: 'expiry', label: 'Datum isteka roka' }
 ];
 
 export const PriceMultiplier: number = 10000;
@@ -34,32 +35,36 @@ export function propertyValueTypeLabel(valueType: PropertyValueType) {
 
 export function displayJson(
 	valueType: PropertyValueType | undefined,
-	value: string | null | undefined
+	value: {} | null | undefined
 ) {
 	if (value === null || value === undefined || value === '') return '—';
 
 	try {
-		const parsed = JSON.parse(value);
 		if (valueType == 'price') {
-			let value = (parsed.amount / PriceMultiplier).toLocaleString('sr-RS', {
+			const price = value as PTPrice
+			return (price.amount / PriceMultiplier).toLocaleString('sr-RS', {
 				style: 'currency',
-				currency: parsed.currency,
-				minimumFractionDigits: 4,
+				currency: price.currency,
+				minimumFractionDigits: 2,
 				maximumFractionDigits: 4
 			});
-			return `${value}`;
 		} else {
-			return typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+			return typeof value === 'string' ? value : JSON.stringify(value);
 		}
 	} catch {
 		return value;
 	}
 }
 
-export function defaultJsonValue(valueType: PropertyValueType, value: string | null) {
+export function defaultJsonValue(valueType: PropertyValueType, value: {} | null) {
 	if (value !== null) return value;
-	if (valueType === 'string') return '""';
-	if (valueType === 'number') return '0';
-	if (valueType === 'price') return JSON.stringify({ amount: 0, currency: 'RSD' });
-	return 'false';
+	if (valueType === 'string') return "";
+	if (valueType === 'number') return 0;
+	if (valueType === 'price') return { amount: 0, currency: 'RSD' };
+	if (valueType === 'expiry') {
+		let sample_date = new Date();
+		sample_date.setDate(sample_date.getDate() + 7)
+		return sample_date.toISOString().split('T')[0];
+	}
+	return false;
 }

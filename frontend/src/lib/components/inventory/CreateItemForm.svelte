@@ -20,7 +20,7 @@
 
 	let selectedTypeID = $state('');
 	let amount = $state(1);
-	let propertyValues = $state<Record<number, string>>({});
+	let propertyValues = $state<Record<number, {}>>({});
 	let selectedPropertyIDs = $state<number[]>([]);
 	let error = $state('');
 	let creating = $state(false);

@@ -14,7 +14,7 @@ import (
 // validatePropertyValue looks up the property's declared value_type and checks that rawValue's
 // JSON shape matches it. Takes the generated Querier interface so it works identically whether
 // called with db.Queries or a transaction's db.Queries.WithTx(tx).
-func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID int64, rawValue string) error {
+func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID int64, rawValue []byte) error {
 	prop, err := q.GetPropertyByID(ctx, propertyID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

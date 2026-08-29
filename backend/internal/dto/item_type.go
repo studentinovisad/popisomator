@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/studentinovisad/popisomator/backend/internal/repository"
+import (
+	"encoding/json"
+
+	"github.com/studentinovisad/popisomator/backend/internal/repository"
+)
 
 type ItemType struct {
 	ID                int64              `json:"id"`
@@ -34,9 +38,9 @@ type ItemTypeFilterableProperty struct {
 
 // Property added to an item type
 type ItemTypeProperty struct {
-	ID           int64   `json:"id" validate:"required"`
-	DefaultValue *string `json:"default_value"`
-	Visibility   string  `json:"visibility" validate:"omitempty,oneof=overview details"`
+	ID           int64            `json:"id" validate:"required"`
+	DefaultValue *json.RawMessage `json:"default_value"`
+	Visibility   string           `json:"visibility" validate:"omitempty,oneof=overview details"`
 }
 
 func ToItemTypePropertyDTO(itemTypeProp repository.ItemTypeProperty) ItemTypeProperty {
@@ -72,6 +76,6 @@ type UpdateItemTypeRequest struct {
 type AddUpdateItemTypePropertyRequest struct {
 	TypeID       int64                          `json:"type_id" validate:"required"`
 	PropertyID   int64                          `json:"property_id" validate:"required"`
-	DefaultValue *string                        `json:"default_value"`
+	DefaultValue *json.RawMessage               `json:"default_value"`
 	Visibility   *repository.PropertyVisibility `json:"visibility" validate:"omitempty,oneof=overview details"`
 }

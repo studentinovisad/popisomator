@@ -394,13 +394,13 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 		if value == "" {
 			return
 		}
-		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: jsonString(value)})
+		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: json.RawMessage(fmt.Sprintf("\"%v\"", value))})
 	}
 	addNumber := func(key string, value *float64) {
 		if value == nil {
 			return
 		}
-		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: jsonNumber(*value)})
+		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: json.RawMessage(strconv.FormatFloat(*value, 'f', 4, 64))})
 	}
 
 	addString("name", row.Name)
@@ -425,14 +425,4 @@ func formatPurity(purity string) string {
 		return purity
 	}
 	return strconv.FormatFloat(fraction*100, 'f', -1, 64) + "%"
-}
-
-func jsonString(value string) string {
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
-}
-
-func jsonNumber(value float64) string {
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
 }

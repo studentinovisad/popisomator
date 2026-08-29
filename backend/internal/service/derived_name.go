@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
@@ -110,6 +113,29 @@ func populateItemDetails(
 		property := dto.ToItemPropertyDTO(row.ItemProperty)
 		property.Visibility = string(row.Visibility)
 		property.ValueType = row.PropertyType
+		switch property.ValueType {
+		case "expiry":
+			var propertyValue string
+			if err := json.Unmarshal(property.Value, &propertyValue); err != nil {
+				log.Printf("Couldn't unmarshal expiry date value %v. Error: %v", string(property.Value), err)
+				continue
+			}
+			expiryTime, err := time.Parse(time.DateOnly, propertyValue)
+			if err != nil {
+				log.Printf("Couldn't parse expiry date %v. Error: %v", propertyValue, err)
+				continue
+			}
+			currentTime := time.Now().UTC()
+			if currentTime.After(expiryTime) {
+				property.SmartData = "expired"
+			} else {
+				difference := expiryTime.Sub(currentTime)
+				days := difference.Hours() / 24
+				if days < 7 {
+					property.SmartData = "expiring_soon"
+				}
+			}
+		}
 		items[itemIndex].Properties = append(items[itemIndex].Properties, property)
 	}
 

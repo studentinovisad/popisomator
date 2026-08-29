@@ -6,6 +6,7 @@ package repository
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -232,9 +233,9 @@ type Item struct {
 }
 
 type ItemProperty struct {
-	ItemID        int64  `json:"item_id"`
-	PropertyID    int64  `json:"property_id"`
-	PropertyValue string `json:"property_value"`
+	ItemID        int64           `json:"item_id"`
+	PropertyID    int64           `json:"property_id"`
+	PropertyValue json.RawMessage `json:"property_value"`
 }
 
 type ItemRequest struct {
@@ -255,16 +256,16 @@ type ItemType struct {
 type ItemTypeProperty struct {
 	TypeID       int64              `json:"type_id"`
 	PropertyID   int64              `json:"property_id"`
-	DefaultValue *string            `json:"default_value"`
+	DefaultValue *json.RawMessage   `json:"default_value"`
 	Visibility   PropertyVisibility `json:"visibility"`
 }
 
 type Property struct {
-	ID           int64       `json:"id"`
-	Name         string      `json:"name"`
-	Description  pgtype.Text `json:"description"`
-	ValueType    string      `json:"value_type"`
-	DefaultValue *string     `json:"default_value"`
+	ID           int64            `json:"id"`
+	Name         string           `json:"name"`
+	Description  pgtype.Text      `json:"description"`
+	ValueType    string           `json:"value_type"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 type User struct {

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,9 +81,9 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if req.PropertyFilters == nil {
-			req.PropertyFilters = make(map[int64]string)
+			req.PropertyFilters = make(map[int64]json.RawMessage)
 		}
-		req.PropertyFilters[propertyID] = values[0]
+		req.PropertyFilters[propertyID] = json.RawMessage(fmt.Sprintf("\"%v\"", values[0]))
 	}
 
 	if vals, ok := query["consumption"]; ok {

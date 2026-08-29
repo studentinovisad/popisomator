@@ -2,9 +2,12 @@ package dto
 
 import (
 	"encoding/json"
+	"log"
 	"regexp"
+	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/studentinovisad/popisomator/backend/internal/config"
 )
 
 var validate = validator.New()
@@ -25,7 +28,11 @@ func init() {
 	// the sibling ValueType field (one of "string", "number", "boolean").
 	validate.RegisterValidation("valuetype", func(fl validator.FieldLevel) bool {
 		valueType := fl.Parent().FieldByName("ValueType").String()
-		fieldBytes := []byte(fl.Field().String())
+		fieldBytes := fl.Field().Bytes()
+
+		if config.CurrentConfig.DebugMode {
+			log.Printf("Property type validation; type %v; value %v", valueType, string(fieldBytes))
+		}
 
 		switch valueType {
 		case "string":
@@ -43,6 +50,13 @@ func init() {
 				return false
 			}
 			return Validate(v) == nil
+		case "expiry":
+			var v string
+			if json.Unmarshal(fieldBytes, &v) != nil {
+				return false
+			}
+			_, err := time.Parse(time.DateOnly, v)
+			return err == nil
 		}
 		return false
 	})

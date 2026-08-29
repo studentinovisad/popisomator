@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -63,7 +64,7 @@ func ListItemTypePropertyValues(
 	itemTypeID, propertyID int64,
 	search string,
 	limit int32,
-) ([]string, error) {
+) ([]json.RawMessage, error) {
 	if _, err := db.Queries.GetItemTypeByID(ctx, itemTypeID); err != nil {
 		return nil, err
 	}

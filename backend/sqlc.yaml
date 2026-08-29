@@ -13,9 +13,9 @@ sql:
         overrides:
           - db_type: "jsonb"
             nullable: false
-            go_type: "string"
+            go_type: "encoding/json.RawMessage"
           - db_type: "jsonb"
             nullable: true
             go_type:
-              type: "string"
+              type: "json.RawMessage"
               pointer: true

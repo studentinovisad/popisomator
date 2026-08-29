@@ -6,6 +6,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 )
 
 type Querier interface {
@@ -45,10 +46,10 @@ type Querier interface {
 	HasApprovedItemRequest(ctx context.Context, itemID int64) (bool, error)
 	Healthcheck(ctx context.Context) (int32, error)
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
-	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
-	ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error)
 	ListItemTypeFilterableProperties(ctx context.Context, typeID int64) ([]ListItemTypeFilterablePropertiesRow, error)
-	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]string, error)
+	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
+	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]json.RawMessage, error)
+	ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error)
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error)

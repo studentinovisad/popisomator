@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Eye from '@lucide/svelte/icons/eye';
 	import { resolve } from '$app/paths';
-	import type { ConsumptionStatus, Item, ItemTypeOption, PropertyOption } from '$lib/api';
+	import type { ConsumptionStatus, Item, ItemProperty, ItemTypeOption, PropertyOption } from '$lib/api';
 	import { displayJson } from '$lib/domain/items';
 	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
 
@@ -26,6 +26,15 @@
 
 	function typeName(item: Item) {
 		return typeNames.get(item.type_id) ?? 'Nepoznat tip';
+	}
+
+	function bgPropertyClass(property: ItemProperty) {
+		if (property.value_type === 'expiry') {
+			if (property.smart_data === 'expired') return 'bg-danger-soft text-danger';
+			else if (property.smart_data === 'expiring_soon') return 'bg-warning-soft text-warning';
+		}
+		
+		return 'bg-soft text-muted';
 	}
 </script>
 
@@ -58,7 +67,7 @@
 						<div class="flex flex-wrap gap-1.5">
 							{#each item.properties as property (property.id)}
 								{#if property.visibility === 'overview'}
-									<span class="rounded bg-soft px-2 py-1 text-xs text-muted">
+									<span class="rounded px-2 py-1 text-xs {bgPropertyClass(property)}">
 										{propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}: {displayJson(
 											property.value_type,
 											property.value

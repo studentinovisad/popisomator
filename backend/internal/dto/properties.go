@@ -7,11 +7,11 @@ import (
 )
 
 type Property struct {
-	ID           int64   `json:"id"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	ValueType    string  `json:"value_type"`
-	DefaultValue *string `json:"default_value"`
+	ID           int64            `json:"id"`
+	Name         string           `json:"name"`
+	Description  string           `json:"description"`
+	ValueType    string           `json:"value_type"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 func ToPropertyDTO(prop repository.Property) Property {
@@ -25,10 +25,10 @@ func ToPropertyDTO(prop repository.Property) Property {
 }
 
 type PropertyOption struct {
-	ID           int64   `json:"id"`
-	Name         string  `json:"name"`
-	ValueType    string  `json:"value_type"`
-	DefaultValue *string `json:"default_value"`
+	ID           int64            `json:"id"`
+	Name         string           `json:"name"`
+	ValueType    string           `json:"value_type"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 type PropertiesPage struct {
@@ -40,25 +40,25 @@ type PropertiesPage struct {
 }
 
 type CreatePropertyRequest struct {
-	Name         string  `json:"name" validate:"required"`
-	Description  string  `json:"description"`
-	ValueType    string  `json:"value_type" validate:"required,oneof=string number boolean price"`
-	DefaultValue *string `json:"default_value"`
+	Name         string           `json:"name" validate:"required"`
+	Description  string           `json:"description"`
+	ValueType    string           `json:"value_type" validate:"required,oneof=string number boolean price expiry"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 // PropertyValueCheck is an internal validation carrier (not a request/response DTO) used to
 // run a raw property value through the "valuetype" tag against a known ValueType.
 type PropertyValueCheck struct {
-	Value     string `validate:"required,valuetype"`
+	Value     json.RawMessage `validate:"required,valuetype"`
 	ValueType string
 }
 
 type UpdatePropertyRequest struct {
-	ID              int64   `json:"id" validate:"required"`
-	Name            *string `json:"name"`
-	Description     *string `json:"description"`
-	DefaultValue    *string `json:"default_value"`
-	DefaultValueSet bool    `json:"-"`
+	ID              int64            `json:"id" validate:"required"`
+	Name            *string          `json:"name"`
+	Description     *string          `json:"description"`
+	DefaultValue    *json.RawMessage `json:"default_value"`
+	DefaultValueSet bool             `json:"-"`
 }
 
 func (r *UpdatePropertyRequest) UnmarshalJSON(data []byte) error {
