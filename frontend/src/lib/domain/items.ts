@@ -40,16 +40,19 @@ export function displayJson(
 	if (value === null || value === undefined || value === '') return '—';
 
 	try {
-		if (valueType == 'price') {
-			const price = value as PTPrice
-			return (price.amount / PriceMultiplier).toLocaleString('sr-RS', {
-				style: 'currency',
-				currency: price.currency,
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 4
-			});
-		} else {
-			return typeof value === 'string' ? value : JSON.stringify(value);
+		switch (valueType) {
+			case "price":
+				const price = value as PTPrice
+				return (price.amount / PriceMultiplier).toLocaleString('sr-RS', {
+					style: 'currency',
+					currency: price.currency,
+					minimumFractionDigits: 2,
+					maximumFractionDigits: 4
+				});
+			case "boolean":
+				return value ? "Da" : "Ne";
+			default:
+				return typeof value === 'string' ? value : JSON.stringify(value);
 		}
 	} catch {
 		return "???";
