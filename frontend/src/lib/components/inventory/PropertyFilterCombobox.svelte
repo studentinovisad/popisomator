@@ -3,18 +3,22 @@
 	import X from '@lucide/svelte/icons/x';
 	import { onDestroy } from 'svelte';
 	import { Combobox } from 'bits-ui';
+	import type { PropertyValueType } from '$lib/api';
+	import { displayJson } from '$lib/domain/items';
 
 	let {
 		label,
 		options,
 		value,
+		value_type,
 		onvaluechange,
 		onsearchchange
 	}: {
 		label: string;
-		options: string[];
-		value: string;
-		onvaluechange: (value: string) => void;
+		options: {}[];
+		value: {};
+		value_type: PropertyValueType;
+		onvaluechange: (value: {} | undefined) => void;
 		onsearchchange: (search: string) => void;
 	} = $props();
 
@@ -23,12 +27,13 @@
 	let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 	let control: HTMLDivElement | null = null;
 	let filteredOptions = $derived(
-		options.filter((option) => option.toLocaleLowerCase().includes(inputText.toLocaleLowerCase()))
+		options.filter((option) => displayJson(value_type, option).toLocaleLowerCase().includes(inputText.toLocaleLowerCase()))
 	);
-	let items = $derived(options.map((option) => ({ value: option, label: option })));
+	let items = $derived(options.map((option) => ({ value: JSON.stringify(option), label: displayJson(value_type, option) })));
 
 	$effect(() => {
-		inputText = value;
+		console.log(value)
+		inputText = value != undefined ? displayJson(value_type, value) : "";
 	});
 
 	onDestroy(() => {
@@ -51,8 +56,9 @@
 	}
 
 	function handleValueChange(nextValue: string) {
+		console.log(nextValue)
 		inputText = nextValue;
-		onvaluechange(nextValue);
+		onvaluechange(JSON.parse(nextValue));
 	}
 
 	function restoreActiveValue(event: FocusEvent) {
@@ -64,19 +70,19 @@
 			return;
 		}
 
-		inputText = value;
+		inputText = value != undefined ? displayJson(value_type, value) : "";
 	}
 
 	function clear() {
 		inputText = '';
-		onvaluechange('');
+		onvaluechange(undefined);
 	}
 </script>
 
 <Combobox.Root
 	type="single"
 	{items}
-	{value}
+	value={JSON.stringify(value)}
 	inputValue={inputText}
 	{open}
 	allowDeselect={false}
@@ -119,11 +125,11 @@
 			<Combobox.Viewport>
 				{#each filteredOptions as option (option)}
 					<Combobox.Item
-						value={option}
-						label={option}
+						value={JSON.stringify(option)}
+						label={displayJson(value_type, option)}
 						class="cursor-pointer rounded px-3 py-2 text-sm text-ink outline-none data-highlighted:bg-brand-soft"
 					>
-						{option}
+						{displayJson(value_type, option)}
 					</Combobox.Item>
 				{/each}
 				{#if filteredOptions.length === 0}
