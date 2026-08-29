@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -26,10 +27,11 @@ func ToItemDTO(item repository.Item) Item {
 
 // Property added to an item
 type ItemProperty struct {
-	ID         int64  `json:"id" validate:"required"`
-	Value      string `json:"value" validate:"required"`
-	ValueType  string `json:"value_type,omitempty"`
-	Visibility string `json:"visibility,omitempty"`
+	ID         int64           `json:"id" validate:"required"`
+	Value      json.RawMessage `json:"value" validate:"required"`
+	ValueType  string          `json:"value_type,omitempty"`
+	Visibility string          `json:"visibility,omitempty"`
+	SmartData  string          `json:"smart_data,omitempty"`
 }
 
 func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
@@ -41,7 +43,7 @@ func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
 
 type ListItemsRequest struct {
 	TypeID          *int64
-	PropertyFilters map[int64]string
+	PropertyFilters map[int64]json.RawMessage
 	Consumption     []repository.ConsumptionStatus `validate:"omitempty,dive,oneof=not_consumed partially_consumed fully_consumed damaged"`
 	CreatedFrom     *time.Time
 	CreatedTo       *time.Time
@@ -74,7 +76,7 @@ type UpdateItemRequest struct {
 }
 
 type AddUpdateItemPropertyRequest struct {
-	ItemID     int64  `json:"item_id" validate:"required"`
-	PropertyID int64  `json:"property_id" validate:"required"`
-	Value      string `json:"value" validate:"required"`
+	ItemID     int64           `json:"item_id" validate:"required"`
+	PropertyID int64           `json:"property_id" validate:"required"`
+	Value      json.RawMessage `json:"value" validate:"required"`
 }

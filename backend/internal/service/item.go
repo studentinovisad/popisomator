@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 
@@ -125,7 +126,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		propertyIDs = append(propertyIDs, propertyID)
 	}
 	sort.Slice(propertyIDs, func(left, right int) bool { return propertyIDs[left] < propertyIDs[right] })
-	propertyValues := make([]string, 0, len(propertyIDs))
+	propertyValues := make([]json.RawMessage, 0, len(propertyIDs))
 	for _, propertyID := range propertyIDs {
 		propertyValues = append(propertyValues, req.PropertyFilters[propertyID])
 	}

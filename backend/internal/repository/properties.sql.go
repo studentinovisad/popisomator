@@ -7,6 +7,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -28,10 +29,10 @@ INSERT INTO properties (name, description, value_type, default_value) VALUES ($1
 `
 
 type CreatePropertyParams struct {
-	Name         string      `json:"name"`
-	Description  pgtype.Text `json:"description"`
-	ValueType    string      `json:"value_type"`
-	DefaultValue *string     `json:"default_value"`
+	Name         string           `json:"name"`
+	Description  pgtype.Text      `json:"description"`
+	ValueType    string           `json:"value_type"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 func (q *Queries) CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error) {
@@ -157,10 +158,10 @@ ORDER BY name
 `
 
 type ListPropertyOptionsRow struct {
-	ID           int64   `json:"id"`
-	Name         string  `json:"name"`
-	ValueType    string  `json:"value_type"`
-	DefaultValue *string `json:"default_value"`
+	ID           int64            `json:"id"`
+	Name         string           `json:"name"`
+	ValueType    string           `json:"value_type"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 func (q *Queries) ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error) {
@@ -193,8 +194,8 @@ UPDATE properties SET default_value = $2 WHERE id = $1
 `
 
 type UpdateProperty_DefaultValueParams struct {
-	ID           int64   `json:"id"`
-	DefaultValue *string `json:"default_value"`
+	ID           int64            `json:"id"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 func (q *Queries) UpdateProperty_DefaultValue(ctx context.Context, arg UpdateProperty_DefaultValueParams) error {

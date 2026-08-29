@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PropertyOption } from '$lib/api';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import { DateField } from 'bits-ui';
 	import PriceInput from './PriceInput.svelte';
 
 	let {
@@ -15,7 +16,7 @@
 	}: {
 		property: PropertyOption;
 		id: string;
-		value: string;
+		value: {};
 		className?: string;
 		inputClassName?: string;
 		compact?: boolean;
@@ -23,21 +24,23 @@
 		onvaluechange?: () => void;
 	} = $props();
 
-	let scalarValue = $state('');
+	let stringValue = $state('');
+	let numberValue = $state(0);
 	let booleanValue = $state(false);
 	let objectValue = $state({});
-	let lastCommittedValue = '\u0000';
+	let lastCommittedValue = {};
 
 	$effect(() => {
 		if (value === lastCommittedValue) return;
 
 		try {
-			const parsed = JSON.parse(value) as unknown;
-			scalarValue = typeof parsed === 'string' || typeof parsed === 'number' ? String(parsed) : '';
-			objectValue = typeof parsed === 'object' && parsed != null ? parsed : {};
-			booleanValue = parsed === true;
+			stringValue = typeof value === 'string' ? value : '';
+			numberValue = typeof value === 'number' ? value : 0;
+			objectValue = typeof value === 'object' && value != null ? value : {};
+			booleanValue = value === true;
 		} catch {
-			scalarValue = value;
+			stringValue = String(value);
+			numberValue = 0;
 			objectValue = value;
 			booleanValue = false;
 		}
@@ -45,25 +48,26 @@
 		lastCommittedValue = value;
 	});
 
-	function commitScalar() {
-		const nextValue = JSON.stringify(scalarValue);
+	function commitValue(nextValue: {}) {
 		lastCommittedValue = nextValue;
 		value = nextValue;
 		onvaluechange?.();
+	}
+
+	function commitString() {
+		commitValue(stringValue)
+	}
+
+	function commitNumber() {
+		commitValue(numberValue)
 	}
 
 	function commitBoolean() {
-		const nextValue = String(booleanValue);
-		lastCommittedValue = nextValue;
-		value = nextValue;
-		onvaluechange?.();
+		commitValue(booleanValue)
 	}
 
 	function commitObject() {
-		const nextValue = JSON.stringify(objectValue);
-		lastCommittedValue = nextValue;
-		value = nextValue;
-		onvaluechange?.();
+		commitValue(objectValue)
 	}
 </script>
 
@@ -71,22 +75,22 @@
 	<input
 		{id}
 		class={`${className} block w-full ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
-		bind:value={scalarValue}
-		oninput={commitScalar}
+		bind:value={stringValue}
+		oninput={commitString}
 		placeholder="Unesite tekst"
 		{required}
 	/>
 {:else if property.value_type === 'number'}
 	<NumberInput
 		{id}
-		bind:value={scalarValue}
+		bind:value={numberValue}
 		ariaLabel={`Vrednost za ${property.name}`}
 		{className}
 		{inputClassName}
 		{compact}
 		placeholder="Unesite broj"
 		{required}
-		onvaluechange={commitScalar}
+		onvaluechange={commitNumber}
 	/>
 {:else if property.value_type === 'boolean'}
 	<label
@@ -105,5 +109,15 @@
 		{compact}
 		{required}
 		onvaluechange={commitObject}
+	/>
+{:else if property.value_type === 'expiry'}
+	<input
+		type="date"
+		{id}
+		class={`${className} block w-full ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
+		bind:value={stringValue}
+		oninput={commitString}
+		placeholder="Unesite datum"
+		{required}
 	/>
 {/if}

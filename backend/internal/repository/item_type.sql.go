@@ -7,6 +7,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -18,7 +19,7 @@ INSERT INTO item_type_properties (type_id, property_id, default_value, visibilit
 type AddItemTypePropertyParams struct {
 	TypeID       int64              `json:"type_id"`
 	PropertyID   int64              `json:"property_id"`
-	DefaultValue *string            `json:"default_value"`
+	DefaultValue *json.RawMessage   `json:"default_value"`
 	Visibility   PropertyVisibility `json:"visibility"`
 }
 
@@ -251,9 +252,9 @@ UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND proper
 `
 
 type UpdateItemTypeProperty_DefaultValueParams struct {
-	TypeID       int64   `json:"type_id"`
-	PropertyID   int64   `json:"property_id"`
-	DefaultValue *string `json:"default_value"`
+	TypeID       int64            `json:"type_id"`
+	PropertyID   int64            `json:"property_id"`
+	DefaultValue *json.RawMessage `json:"default_value"`
 }
 
 func (q *Queries) UpdateItemTypeProperty_DefaultValue(ctx context.Context, arg UpdateItemTypeProperty_DefaultValueParams) (ItemTypeProperty, error) {

@@ -53,9 +53,10 @@ export type PropertyVisibility = 'overview' | 'details';
 
 export type ItemProperty = {
 	id: number;
-	value: string;
+	value: {};
 	value_type?: PropertyValueType;
 	visibility?: PropertyVisibility;
+	smart_data?: string;
 };
 
 export type ItemRequestStatus = 'requested' | 'approved';
@@ -94,7 +95,7 @@ export type CreateItemRequest = {
 
 export type ItemTypeProperty = {
 	id: number;
-	default_value: string | null;
+	default_value: {} | null;
 	name?: string;
 	visibility: PropertyVisibility;
 };
@@ -139,7 +140,7 @@ export type AddUpdateItemTypePropertyRequest = {
 	visibility?: string;
 };
 
-export type PropertyValueType = 'string' | 'number' | 'boolean' | 'price';
+export type PropertyValueType = 'string' | 'number' | 'boolean' | 'price' | 'expiry';
 
 export type PTPrice = {
 	amount: number;
@@ -150,7 +151,7 @@ export type PropertyOption = {
 	id: number;
 	name: string;
 	value_type: PropertyValueType;
-	default_value: string | null;
+	default_value: {} | null;
 };
 
 export type Property = PropertyOption & {
@@ -168,7 +169,7 @@ export type CreatePropertyRequest = {
 	name: string;
 	description: string;
 	value_type: PropertyValueType;
-	default_value: string | null;
+	default_value: {} | null;
 };
 
 export type UpdatePropertyRequest = Partial<

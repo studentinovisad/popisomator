@@ -24,16 +24,16 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   )
   AND NOT EXISTS (
     SELECT 1
-    FROM unnest(
-      sqlc.arg('property_ids')::bigint[],
-      sqlc.arg('property_values')::text[]
+    FROM ROWS FROM (
+      unnest(sqlc.arg('property_ids')::bigint[]),
+      unnest(sqlc.arg('property_values')::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
       FROM item_properties
       WHERE item_properties.item_id = items.id
         AND item_properties.property_id = filters.property_id
-        AND item_properties.property_value #>> '{}' = filters.property_value
+        AND item_properties.property_value = filters.property_value
     )
   )
 ORDER BY
@@ -65,16 +65,16 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   )
   AND NOT EXISTS (
     SELECT 1
-    FROM unnest(
-      sqlc.arg('property_ids')::bigint[],
-      sqlc.arg('property_values')::text[]
+    FROM ROWS FROM (
+      unnest(sqlc.arg('property_ids')::bigint[]),
+      unnest(sqlc.arg('property_values')::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
       FROM item_properties
       WHERE item_properties.item_id = items.id
         AND item_properties.property_id = filters.property_id
-        AND item_properties.property_value #>> '{}' = filters.property_value
+        AND item_properties.property_value = filters.property_value
     )
   );
 
@@ -115,7 +115,7 @@ GROUP BY item_type_properties.property_id
 ORDER BY item_type_properties.property_id;
 
 -- name: ListItemTypePropertyValues :many
-SELECT DISTINCT item_properties.property_value #>> '{}' AS value
+SELECT DISTINCT item_properties.property_value AS value
 FROM item_properties
 JOIN items ON items.id = item_properties.item_id
 JOIN item_type_properties
