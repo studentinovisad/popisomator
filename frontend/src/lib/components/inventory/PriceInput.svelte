@@ -31,9 +31,20 @@
     ];
     let amount = $derived(value.amount != undefined ? value.amount / PriceMultiplier : 0)
 
-	function onAmountInput() {
-		value.amount = Math.floor(amount * PriceMultiplier);
+	// Replace the bound object rather than mutating it in place. Callers seed their draft with the
+	// item's existing value, so an in-place edit would also rewrite the original they diff against
+	// and the change would look like no change at all.
+	function commit(changed: Partial<PTPrice>) {
+		value = { ...value, ...changed };
 		onvaluechange?.();
+	}
+
+	function onAmountInput() {
+		commit({ amount: Math.floor(amount * PriceMultiplier) });
+	}
+
+	function onCurrencyChange(currency: string) {
+		commit({ currency });
 	}
 </script>
 
@@ -51,9 +62,15 @@
 		{disabled}
 		oninput={onAmountInput}
 	/>
-	<Select.Root type="single" bind:value={value.currency} onValueChange={onvaluechange} {required} {disabled}>
+	<Select.Root
+		type="single"
+		value={value.currency ?? ''}
+		onValueChange={onCurrencyChange}
+		{required}
+		{disabled}
+	>
 		<Select.Trigger
-			class="flex ${compact ? 'h-8' : 'h-10'} w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 ${inputClassName}"
+			class={`flex ${compact ? 'h-8' : 'h-10'} w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 ${inputClassName}`}
 			aria-label="Valuta za {ariaLabel}"
 		>
 			<Select.Value />

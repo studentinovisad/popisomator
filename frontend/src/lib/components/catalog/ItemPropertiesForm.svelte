@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api, ApiError, type Item, type ItemType, type PropertyOption } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
-	import { defaultJsonValue } from '$lib/domain/items';
+	import { defaultJsonValue, samePropertyValue } from '$lib/domain/items';
 	import { Button, Label } from 'bits-ui';
 
 	let {
@@ -56,7 +56,13 @@
 				if (wasSelected && !isSelected) changes.push(api.removeItemProperty(item.id, propertyID));
 				if (!wasSelected && isSelected)
 					changes.push(api.addItemProperty(item.id, propertyID, values[propertyID]));
-				if (wasSelected && isSelected && originalValues.get(propertyID) !== values[propertyID])
+				// Structured property types (price, mass, volume) hold objects, so compare by content:
+				// a reference check reports "unchanged" for every edit and silently drops it.
+				if (
+					wasSelected &&
+					isSelected &&
+					!samePropertyValue(originalValues.get(propertyID), values[propertyID])
+				)
 					changes.push(api.updateItemProperty(item.id, propertyID, values[propertyID]));
 			}
 			await Promise.all(changes);
