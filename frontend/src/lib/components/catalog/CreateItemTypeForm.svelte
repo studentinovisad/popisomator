@@ -22,7 +22,7 @@
 	let derivedNameFormat = $state('');
 	let selectedPropertyValues = $state<string[]>([]);
 	let selectedPropertyIDs = $derived(selectedPropertyValues.map(Number));
-	let defaultValues = $state<Record<number, string>>({});
+	let defaultValues = $state<Record<number, {}>>({});
 	let editedDefaultPropertyIDs = $state<Set<number>>(new Set());
 	let creating = $state(false);
 	let error = $state('');

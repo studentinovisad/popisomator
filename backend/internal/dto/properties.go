@@ -42,7 +42,7 @@ type PropertiesPage struct {
 type CreatePropertyRequest struct {
 	Name         string           `json:"name" validate:"required"`
 	Description  string           `json:"description"`
-	ValueType    string           `json:"value_type" validate:"required,oneof=string number boolean price expiry"`
+	ValueType    string           `json:"value_type" validate:"required,oneof=string number boolean price expiry mass volume"`
 	DefaultValue *json.RawMessage `json:"default_value"`
 }
 

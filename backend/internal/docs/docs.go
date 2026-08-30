@@ -2340,7 +2340,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -2352,7 +2355,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "default_value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "property_id": {
                     "type": "integer"
@@ -2428,7 +2434,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "default_value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "description": {
                     "type": "string"
@@ -2442,7 +2451,10 @@ const docTemplate = `{
                         "string",
                         "number",
                         "boolean",
-                        "price"
+                        "price",
+                        "expiry",
+                        "mass",
+                        "volume"
                     ]
                 }
             }
@@ -2520,8 +2532,14 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "value": {
+                "smart_data": {
                     "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "value_type": {
                     "type": "string"
@@ -2705,7 +2723,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "default_value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "id": {
                     "type": "integer"
@@ -2797,7 +2818,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "default_value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "description": {
                     "type": "string"
@@ -2817,7 +2841,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "default_value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "id": {
                     "type": "integer"
@@ -2895,7 +2922,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "default_value": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "description": {
                     "type": "string"

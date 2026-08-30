@@ -25,7 +25,7 @@
 	let description = $state('');
 	let valueType = $state<PropertyValueType>('string');
 	let hasDefaultValue = $state(false);
-	let defaultValue = $state('');
+	let defaultValue = $state<{}>('');
 	let saving = $state(false);
 	let error = $state('');
 

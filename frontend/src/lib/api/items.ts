@@ -33,12 +33,12 @@ export const itemsApi = {
 	consumeItem: (id: number, status: ConsumptionStatus) =>
 		request<Item>(`/items/${id}/consume`, jsonRequest('POST', { consumption: status })),
 	deleteItem: (id: number) => request<void>(`/items/${id}`, { method: 'DELETE' }),
-	addItemProperty: (itemID: number, propertyID: number, value: string) =>
+	addItemProperty: (itemID: number, propertyID: number, value: {}) =>
 		request<ItemProperty>(
 			`/items/${itemID}/properties`,
 			jsonRequest('POST', { property_id: propertyID, value })
 		),
-	updateItemProperty: (itemID: number, propertyID: number, value: string) =>
+	updateItemProperty: (itemID: number, propertyID: number, value: {}) =>
 		request<ItemProperty>(
 			`/items/${itemID}/properties/${propertyID}`,
 			jsonRequest('PUT', { value })

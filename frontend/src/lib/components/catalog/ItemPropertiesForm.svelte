@@ -27,7 +27,7 @@
 		new Map(item.properties.map((property) => [property.id, property.value]))
 	);
 	let selectedPropertyIDs = $state<number[]>([]);
-	let values = $state<Record<number, string>>({});
+	let values = $state<Record<number, {}>>({});
 	let saving = $state(false);
 	let error = $state('');
 

@@ -24,8 +24,9 @@ func init() {
 		return hasUpper.MatchString(pw) && hasLower.MatchString(pw) && hasDigit.MatchString(pw)
 	})
 
-	// valuetype checks that the field's raw JSON text decodes to the scalar shape named by
-	// the sibling ValueType field (one of "string", "number", "boolean").
+	// valuetype checks that the field's raw JSON text decodes to the shape named by the sibling
+	// ValueType field, whether that's a scalar ("string", "number", "boolean", "expiry") or a
+	// structured property type ("price", "mass", "volume").
 	validate.RegisterValidation("valuetype", func(fl validator.FieldLevel) bool {
 		valueType := fl.Parent().FieldByName("ValueType").String()
 		fieldBytes := fl.Field().Bytes()
@@ -57,6 +58,18 @@ func init() {
 			}
 			_, err := time.Parse(time.DateOnly, v)
 			return err == nil
+		case "mass":
+			var mass PTMass
+			if json.Unmarshal(fieldBytes, &mass) != nil {
+				return false
+			}
+			return Validate(mass) == nil
+		case "volume":
+			var volume PTVolume
+			if json.Unmarshal(fieldBytes, &volume) != nil {
+				return false
+			}
+			return Validate(volume) == nil
 		}
 		return false
 	})
