@@ -136,15 +136,23 @@ export type UpdateItemTypeRequest = Partial<
 
 export type AddUpdateItemTypePropertyRequest = {
 	property_id?: number;
-	default_value?: string;
+	default_value?: {};
 	visibility?: string;
 };
 
-export type PropertyValueType = 'string' | 'number' | 'boolean' | 'price' | 'expiry';
+export type PropertyValueType =
+	'string' | 'number' | 'boolean' | 'price' | 'expiry' | 'mass' | 'volume';
 
 export type PTPrice = {
 	amount: number;
 	currency: string;
+};
+
+// Shape shared by the measured property types (mass, volume): an amount in the unit the user
+// picked, scaled by MeasureMultiplier.
+export type PTMeasure = {
+	amount: number;
+	unit: string;
 };
 
 export type PropertyOption = {

@@ -17,7 +17,8 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+        AND format_property_value(item_properties.property_value, properties.value_type)
+          ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
       ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
@@ -58,7 +59,8 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+        AND format_property_value(item_properties.property_value, properties.value_type)
+          ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
       ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
@@ -121,9 +123,10 @@ JOIN items ON items.id = item_properties.item_id
 JOIN item_type_properties
   ON item_type_properties.type_id = items.type_id
   AND item_type_properties.property_id = item_properties.property_id
+JOIN properties ON properties.id = item_properties.property_id
 WHERE items.type_id = sqlc.arg('type_id')
   AND item_properties.property_id = sqlc.arg('property_id')
-  AND item_properties.property_value #>> '{}'
+  AND format_property_value(item_properties.property_value, properties.value_type)
     ILIKE '%' || escape_like_pattern(sqlc.arg('search')) || '%'
 ORDER BY value
 LIMIT sqlc.arg('limit_val');

@@ -7,7 +7,9 @@ definitions:
       property_id:
         type: integer
       value:
-        type: string
+        items:
+          type: integer
+        type: array
     required:
     - item_id
     - property_id
@@ -16,7 +18,9 @@ definitions:
   github_com_studentinovisad_popisomator_backend_internal_dto.AddUpdateItemTypePropertyRequest:
     properties:
       default_value:
-        type: string
+        items:
+          type: integer
+        type: array
       property_id:
         type: integer
       type_id:
@@ -66,7 +70,9 @@ definitions:
   github_com_studentinovisad_popisomator_backend_internal_dto.CreatePropertyRequest:
     properties:
       default_value:
-        type: string
+        items:
+          type: integer
+        type: array
       description:
         type: string
       name:
@@ -77,6 +83,9 @@ definitions:
         - number
         - boolean
         - price
+        - expiry
+        - mass
+        - volume
         type: string
     required:
     - name
@@ -130,8 +139,12 @@ definitions:
     properties:
       id:
         type: integer
-      value:
+      smart_data:
         type: string
+      value:
+        items:
+          type: integer
+        type: array
       value_type:
         type: string
       visibility:
@@ -253,7 +266,9 @@ definitions:
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeProperty:
     properties:
       default_value:
-        type: string
+        items:
+          type: integer
+        type: array
       id:
         type: integer
       visibility:
@@ -316,7 +331,9 @@ definitions:
   github_com_studentinovisad_popisomator_backend_internal_dto.Property:
     properties:
       default_value:
-        type: string
+        items:
+          type: integer
+        type: array
       description:
         type: string
       id:
@@ -329,7 +346,9 @@ definitions:
   github_com_studentinovisad_popisomator_backend_internal_dto.PropertyOption:
     properties:
       default_value:
-        type: string
+        items:
+          type: integer
+        type: array
       id:
         type: integer
       name:
@@ -379,7 +398,9 @@ definitions:
   github_com_studentinovisad_popisomator_backend_internal_dto.UpdatePropertyRequest:
     properties:
       default_value:
-        type: string
+        items:
+          type: integer
+        type: array
       description:
         type: string
       id:

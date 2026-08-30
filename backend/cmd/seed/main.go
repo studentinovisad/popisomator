@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
@@ -27,12 +28,21 @@ const (
 	testPassword              = "Test1234"
 )
 
+// measure is a package size as it appears on the bottle: an amount in a named unit. It maps onto
+// the mass/volume property types, which store the amount scaled by dto.MeasureMultiplier.
+type measure struct {
+	Amount float64
+	Unit   string
+}
+
 type chemicalRow struct {
-	Name           string
-	Manufacturer   string
-	Purity         string
-	PackageAmount  *float64
-	PackageUnit    string
+	Name         string
+	Manufacturer string
+	Purity       string
+	// A package is stocked either by mass (solids) or by volume (liquids), never both, so exactly
+	// one of these is set.
+	PackageMass    *measure
+	PackageVolume  *measure
 	PersonInCharge string
 	NoteDate       string
 	Box            string
@@ -44,43 +54,59 @@ type chemicalRow struct {
 // real data is committed. Each row becomes exactly one item. Selection is index-based (no
 // randomness) so the output is stable across runs.
 func generateChemicalRows() []chemicalRow {
-	chemicalNames := []string{
-		"Acetone", "Methanol", "Ethanol", "Isopropanol", "Hexane", "Heptane", "Pentane",
-		"Cyclohexane", "Toluene", "Xylene", "Benzene", "Dichloromethane", "Chloroform",
-		"Diethyl ether", "Tetrahydrofuran", "Dimethyl sulfoxide", "Acetonitrile", "Ethyl acetate",
-		"Formaldehyde", "Glycerol", "Sulfuric acid", "Hydrochloric acid", "Nitric acid",
-		"Phosphoric acid", "Acetic acid", "Oxalic acid", "Citric acid", "Tartaric acid",
-		"Boric acid", "Sodium hydroxide", "Potassium hydroxide", "Ammonium hydroxide",
-		"Sodium chloride", "Potassium chloride", "Sodium carbonate", "Sodium bicarbonate",
-		"Sodium sulfate", "Sodium acetate", "Sodium thiosulfate", "Sodium hypochlorite",
-		"Ammonium chloride", "Ammonium nitrate", "Ammonium acetate", "Calcium chloride",
-		"Magnesium sulfate", "Barium chloride", "Zinc sulfate", "Copper sulfate",
-		"Iron(III) chloride", "Silver nitrate", "Potassium iodide", "Potassium permanganate",
-		"Hydrogen peroxide", "Iodine", "Bromine", "EDTA", "Phenolphthalein", "Methyl orange",
-		"Pyridine", "Triethylamine",
+	// solid marks reagents stocked as a powder or crystal, which a lab weighs out; everything else
+	// is a liquid stocked by volume. The split is what gives the seed both mass and volume data.
+	chemicals := []struct {
+		name  string
+		solid bool
+	}{
+		{"Acetone", false}, {"Methanol", false}, {"Ethanol", false}, {"Isopropanol", false},
+		{"Hexane", false}, {"Heptane", false}, {"Pentane", false}, {"Cyclohexane", false},
+		{"Toluene", false}, {"Xylene", false}, {"Benzene", false}, {"Dichloromethane", false},
+		{"Chloroform", false}, {"Diethyl ether", false}, {"Tetrahydrofuran", false},
+		{"Dimethyl sulfoxide", false}, {"Acetonitrile", false}, {"Ethyl acetate", false},
+		{"Formaldehyde", false}, {"Glycerol", false}, {"Sulfuric acid", false},
+		{"Hydrochloric acid", false}, {"Nitric acid", false}, {"Phosphoric acid", false},
+		{"Acetic acid", false}, {"Oxalic acid", true}, {"Citric acid", true},
+		{"Tartaric acid", true}, {"Boric acid", true}, {"Sodium hydroxide", true},
+		{"Potassium hydroxide", true}, {"Ammonium hydroxide", false}, {"Sodium chloride", true},
+		{"Potassium chloride", true}, {"Sodium carbonate", true}, {"Sodium bicarbonate", true},
+		{"Sodium sulfate", true}, {"Sodium acetate", true}, {"Sodium thiosulfate", true},
+		{"Sodium hypochlorite", false}, {"Ammonium chloride", true}, {"Ammonium nitrate", true},
+		{"Ammonium acetate", true}, {"Calcium chloride", true}, {"Magnesium sulfate", true},
+		{"Barium chloride", true}, {"Zinc sulfate", true}, {"Copper sulfate", true},
+		{"Iron(III) chloride", true}, {"Silver nitrate", true}, {"Potassium iodide", true},
+		{"Potassium permanganate", true}, {"Hydrogen peroxide", false}, {"Iodine", true},
+		{"Bromine", false}, {"EDTA", true}, {"Phenolphthalein", true}, {"Methyl orange", true},
+		{"Pyridine", false}, {"Triethylamine", false},
 	}
 	manufacturers := []string{"NovaChem", "Solvex Labs", "Ferronova", "BluePeak Reagents", "Cryotech Supply", "Meridian Chemicals", "Vertex Labs", "Arcadia Chemical", "Lumen Scientific", "Pinegrove Labs"}
 	purities := []string{"PA", "HPLC", "GC", "ultrapure", "technical", "0.99", "0.995", "0.997", "ACS"}
-	packageAmounts := []float64{1.0, 2.5, 5.0}
+	massPackages := []measure{{1.0, "kg"}, {2.5, "kg"}, {500, "g"}, {100, "g"}, {25, "g"}}
+	volumePackages := []measure{{1.0, "L"}, {2.5, "L"}, {5.0, "L"}, {500, "mL"}, {250, "mL"}}
 	persons := []string{"A.B.", "C.D.", "M.N.", "J.K.", "T.R.", "S.P."}
 	noteDates := []string{"", "", "12.03.2023", "05.07.2024", "21.11.2022", ""}
 	boxes := []string{"", "", "Box 1", "Box 2", "Box 3", ""}
 
-	rowCount := len(chemicalNames)
-	rows := make([]chemicalRow, 0, rowCount)
-	for i := 0; i < rowCount; i++ {
-		packageAmount := packageAmounts[i%len(packageAmounts)]
-
-		rows = append(rows, chemicalRow{
-			Name:           chemicalNames[i],
+	rows := make([]chemicalRow, 0, len(chemicals))
+	for i, chemical := range chemicals {
+		row := chemicalRow{
+			Name:           chemical.name,
 			Manufacturer:   manufacturers[i%len(manufacturers)],
 			Purity:         purities[i%len(purities)],
-			PackageAmount:  &packageAmount,
-			PackageUnit:    "L",
 			PersonInCharge: persons[i%len(persons)],
 			NoteDate:       noteDates[i%len(noteDates)],
 			Box:            boxes[i%len(boxes)],
-		})
+		}
+		if chemical.solid {
+			packageMass := massPackages[i%len(massPackages)]
+			row.PackageMass = &packageMass
+		} else {
+			packageVolume := volumePackages[i%len(volumePackages)]
+			row.PackageVolume = &packageVolume
+		}
+
+		rows = append(rows, row)
 	}
 
 	return rows
@@ -128,8 +154,8 @@ var propertyDefs = []propertyDef{
 	{"name", "Naziv hemikalije", "string", repository.PropertyVisibilityDetails},
 	{"manufacturer", "Proizvođač", "string", repository.PropertyVisibilityDetails},
 	{"purity", "Čistoća", "string", repository.PropertyVisibilityOverview},
-	{"total_amount", "Zapremina", "number", repository.PropertyVisibilityOverview},
-	{"total_unit", "Jedinica mere", "string", repository.PropertyVisibilityOverview},
+	{"mass", "Masa", "mass", repository.PropertyVisibilityOverview},
+	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
 	{"person_in_charge", "Zadužena osoba", "string", repository.PropertyVisibilityDetails},
 	{"note_date", "Napomena/datum", "string", repository.PropertyVisibilityDetails},
 	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
@@ -396,24 +422,38 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 		}
 		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: json.RawMessage(fmt.Sprintf("\"%v\"", value))})
 	}
-	addNumber := func(key string, value *float64) {
+	addMeasure := func(key string, value *measure, encode func(measure) any) {
 		if value == nil {
 			return
 		}
-		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: json.RawMessage(strconv.FormatFloat(*value, 'f', 4, 64))})
+		raw, err := json.Marshal(encode(*value))
+		if err != nil {
+			return
+		}
+		properties = append(properties, dto.ItemProperty{ID: propIDs[key], Value: raw})
 	}
 
 	addString("name", row.Name)
 	addString("manufacturer", row.Manufacturer)
 	addString("purity", formatPurity(row.Purity))
-	addNumber("total_amount", row.PackageAmount)
-	addString("total_unit", row.PackageUnit)
+	addMeasure("mass", row.PackageMass, func(packageMass measure) any {
+		return dto.PTMass{Amount: scaleMeasureAmount(packageMass.Amount), Unit: packageMass.Unit}
+	})
+	addMeasure("volume", row.PackageVolume, func(packageVolume measure) any {
+		return dto.PTVolume{Amount: scaleMeasureAmount(packageVolume.Amount), Unit: packageVolume.Unit}
+	})
 	addString("person_in_charge", row.PersonInCharge)
 	addString("note_date", row.NoteDate)
 	addString("box", row.Box)
 	addString("location", location)
 
 	return properties
+}
+
+// scaleMeasureAmount converts a package size as written on the bottle into the integer amount the
+// mass/volume property types store, i.e. scaled by dto.MeasureMultiplier.
+func scaleMeasureAmount(amount float64) int64 {
+	return int64(math.Round(amount * dto.MeasureMultiplier))
 }
 
 // formatPurity turns a bare decimal fraction (e.g. "0.995", as some rows record purity) into a

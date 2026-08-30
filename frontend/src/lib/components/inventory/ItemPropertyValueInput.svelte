@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { PropertyOption } from '$lib/api';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import { measureUnits } from '$lib/domain/items';
 	import { DateField } from 'bits-ui';
+	import MeasureInput from './MeasureInput.svelte';
 	import PriceInput from './PriceInput.svelte';
 
 	let {
@@ -119,5 +121,17 @@
 		oninput={commitString}
 		placeholder="Unesite datum"
 		{required}
+	/>
+{:else if property.value_type === 'mass' || property.value_type === 'volume'}
+	<MeasureInput
+		{id}
+		bind:value={objectValue}
+		units={measureUnits(property.value_type)}
+		ariaLabel={property.name}
+		{className}
+		{inputClassName}
+		{compact}
+		{required}
+		onvaluechange={commitObject}
 	/>
 {/if}
