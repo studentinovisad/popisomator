@@ -57,6 +57,22 @@ export function propertyValueTypeLabel(valueType: PropertyValueType) {
 	return propertyValueTypeOptions.find((option) => option.value === valueType)?.label ?? valueType;
 }
 
+// Compares two property values by content. The structured types (price, mass, volume) are objects,
+// so `===` only ever reports reference identity - which is how an edit to one of them can look
+// unchanged and get dropped. Keys are sorted so that a value round-tripped through the API compares
+// equal to one built locally regardless of key order.
+export function samePropertyValue(left: {} | null | undefined, right: {} | null | undefined) {
+	return stableStringify(left) === stableStringify(right);
+}
+
+function stableStringify(value: unknown): string {
+	return JSON.stringify(value, (_key, nested) =>
+		nested && typeof nested === 'object' && !Array.isArray(nested)
+			? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => a.localeCompare(b)))
+			: nested
+	);
+}
+
 export function displayJson(
 	valueType: PropertyValueType | undefined,
 	value: {} | null | undefined

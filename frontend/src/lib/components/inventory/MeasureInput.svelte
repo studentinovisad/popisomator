@@ -29,9 +29,20 @@
 
 	let amount = $derived(value.amount != undefined ? value.amount / MeasureMultiplier : 0);
 
-	function onAmountInput() {
-		value.amount = Math.floor(amount * MeasureMultiplier);
+	// Replace the bound object rather than mutating it in place. Callers seed their draft with the
+	// item's existing value, so an in-place edit would also rewrite the original they diff against
+	// and the change would look like no change at all.
+	function commit(changed: Partial<PTMeasure>) {
+		value = { ...value, ...changed };
 		onvaluechange?.();
+	}
+
+	function onAmountInput() {
+		commit({ amount: Math.floor(amount * MeasureMultiplier) });
+	}
+
+	function onUnitChange(unit: string) {
+		commit({ unit });
 	}
 </script>
 
@@ -51,8 +62,8 @@
 	/>
 	<Select.Root
 		type="single"
-		bind:value={value.unit}
-		onValueChange={onvaluechange}
+		value={value.unit ?? ''}
+		onValueChange={onUnitChange}
 		{required}
 		{disabled}
 	>
