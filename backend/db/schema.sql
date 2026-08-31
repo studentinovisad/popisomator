@@ -65,26 +65,6 @@ AS $$
   SELECT replace(replace(replace(value, '\', '\\'), '%', '\%'), '_', '\_');
 $$;
 
--- Renders a property value as the text a human would read, so that structured property types
--- (price, mass, volume) don't leak raw JSON into derived names and text search. Scalar types keep
--- the plain #>> '{}' extraction they always had.
-CREATE FUNCTION format_property_value(property_value JSONB, value_type TEXT)
-RETURNS TEXT
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE
-    WHEN property_value IS NULL THEN ''
-    WHEN value_type IN ('mass', 'volume') THEN
-      trim_scale((property_value->>'amount')::NUMERIC / 10000)::TEXT
-        || ' ' || (property_value->>'unit')
-    WHEN value_type = 'price' THEN
-      trim_scale((property_value->>'amount')::NUMERIC / 10000)::TEXT
-        || ' ' || (property_value->>'currency')
-    ELSE COALESCE(property_value #>> '{}', '')
-  END;
-$$;
-
 CREATE FUNCTION render_item_derived_name(target_item_id BIGINT, derived_format TEXT)
 RETURNS TEXT
 LANGUAGE sql
@@ -93,8 +73,7 @@ AS $$
   SELECT btrim(COALESCE((
     SELECT string_agg(
       CASE
-        WHEN token.parts[1] IS NOT NULL
-          THEN format_property_value(item_property.property_value, properties.value_type)
+        WHEN token.parts[1] IS NOT NULL THEN COALESCE(item_property.property_value #>> '{}', '')
         ELSE token.parts[2]
       END,
       '' ORDER BY token.position
