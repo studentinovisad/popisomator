@@ -95,7 +95,7 @@ export function displayJson(
 				const amount = (measure.amount / MeasureMultiplier).toLocaleString('sr-RS', {
 					maximumFractionDigits: 4
 				});
-				return `${amount} ${measure.unit}`;
+				return `${amount}${measure.unit}`;
 			}
 			case "boolean":
 				return value ? "Da" : "Ne";
