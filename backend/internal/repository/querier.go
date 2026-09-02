@@ -57,6 +57,12 @@ type Querier interface {
 	LockItemForRequest(ctx context.Context, id int64) (int64, error)
 	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error)
 	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error)
+	// Sums every structured property (price, mass, volume) over the same set of items CountItems
+	// counts, so the WHERE block below has to stay identical to it. Mass and volume are summed in
+	// their dimension's base unit: the unit factors arrive as three parallel arrays instead of being
+	// hardcoded here, so dto.MassUnitFactors / dto.VolumeUnitFactors stay the only definition of them.
+	// Values whose unit has no factor are dropped rather than counted as base units.
+	SumItemProperties(ctx context.Context, arg SumItemPropertiesParams) ([]SumItemPropertiesRow, error)
 	UpdateItemProperty(ctx context.Context, arg UpdateItemPropertyParams) (ItemProperty, error)
 	UpdateItemTypeProperty_DefaultValue(ctx context.Context, arg UpdateItemTypeProperty_DefaultValueParams) (ItemTypeProperty, error)
 	UpdateItemTypeProperty_Visibility(ctx context.Context, arg UpdateItemTypeProperty_VisibilityParams) (ItemTypeProperty, error)

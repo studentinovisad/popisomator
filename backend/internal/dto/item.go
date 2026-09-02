@@ -60,6 +60,22 @@ type ItemsPage struct {
 	Limit  int32  `json:"limit"`
 	Offset int32  `json:"offset"`
 	Total  int64  `json:"total"`
+	// Totals sums the structured properties of every item matching the filters, not just the ones
+	// on this page.
+	Totals []ItemPropertyTotal `json:"totals"`
+}
+
+// ItemPropertyTotal is the sum of one structured property (price, mass, volume) across every item
+// matching a filter. Value carries the sum in the same JSON shape as the property itself - a
+// PTPrice, PTMass or PTVolume - so the frontend renders it with the formatter it already has.
+// Prices are reported per currency, so one property can appear more than once.
+type ItemPropertyTotal struct {
+	PropertyID int64           `json:"property_id"`
+	ValueType  string          `json:"value_type"`
+	Value      json.RawMessage `json:"value"`
+	// ValueCount is how many of the matched items carried the property. Compare it with
+	// ItemsPage.Total to see whether the sum covers all of them.
+	ValueCount int64 `json:"value_count"`
 }
 
 type CreateItemRequest struct {
