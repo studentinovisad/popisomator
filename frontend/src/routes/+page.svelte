@@ -8,6 +8,7 @@
 		ApiError,
 		type ConsumptionStatus,
 		type Item,
+		type ItemPropertyTotal,
 		type ItemType,
 		type ItemTypeOption,
 		type ItemTypeFilterableProperty,
@@ -51,6 +52,7 @@
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
 	let itemsTotal = $state(0);
+	let itemPropertyTotals = $state<ItemPropertyTotal[]>([]);
 	let canManage = $derived(
 		authPage.state.user?.role === 'admin' || authPage.state.user?.role === 'manager'
 	);
@@ -145,6 +147,7 @@
 			items = nextItems.items;
 			itemOffset = nextItems.offset;
 			itemsTotal = nextItems.total;
+			itemPropertyTotals = nextItems.totals ?? [];
 			inventoryLoaded = true;
 		} catch (reason) {
 			if (version !== loadVersion) return;
@@ -322,6 +325,8 @@
 		{#if inventoryError}<p class="mt-3 text-sm text-danger" role="alert">{inventoryError}</p>{/if}
 		<InventoryToolbar
 			total={itemsTotal}
+			totals={itemPropertyTotals}
+			{properties}
 			{itemTypes}
 			typeFilter={itemTypeFilter}
 			bind:search={derivedNameSearch}

@@ -78,6 +78,67 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
     )
   );
 
+-- Sums every structured property (price, mass, volume) over the same set of items CountItems
+-- counts, so the WHERE block below has to stay identical to it. Mass and volume are summed in
+-- their dimension's base unit: the unit factors arrive as three parallel arrays instead of being
+-- hardcoded here, so dto.MassUnitFactors / dto.VolumeUnitFactors stay the only definition of them.
+-- Values whose unit has no factor are dropped rather than counted as base units.
+-- name: SumItemProperties :many
+SELECT
+  properties.id AS property_id,
+  properties.value_type,
+  COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
+  trim_scale(sum(
+    (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+  ))::text AS total_amount,
+  count(*) AS value_count
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+JOIN item_properties AS item_property ON item_property.item_id = items.id
+JOIN properties ON properties.id = item_property.property_id
+LEFT JOIN ROWS FROM (
+  unnest(sqlc.arg('unit_value_types')::text[]),
+  unnest(sqlc.arg('unit_names')::text[]),
+  unnest(sqlc.arg('unit_factors')::bigint[])
+) AS unit_factor(value_type, unit_name, factor)
+  ON unit_factor.value_type = properties.value_type
+ AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+WHERE properties.value_type IN ('price', 'mass', 'volume')
+  AND (properties.value_type = 'price' OR unit_factor.factor IS NOT NULL)
+  AND (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+  AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (
+    sqlc.arg('search')::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+    )
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM ROWS FROM (
+      unnest(sqlc.arg('property_ids')::bigint[]),
+      unnest(sqlc.arg('property_values')::jsonb[])
+    ) AS filters(property_id, property_value)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM item_properties
+      WHERE item_properties.item_id = items.id
+        AND item_properties.property_id = filters.property_id
+        AND item_properties.property_value = filters.property_value
+    )
+  )
+GROUP BY properties.id, properties.value_type, currency
+ORDER BY properties.id, currency;
+
 -- name: CreateItems :many
 INSERT INTO items (type_id) 
 SELECT ($1) 

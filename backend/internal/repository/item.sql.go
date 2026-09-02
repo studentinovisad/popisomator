@@ -464,6 +464,126 @@ func (q *Queries) RemoveItemProperty(ctx context.Context, arg RemoveItemProperty
 	return result.RowsAffected(), nil
 }
 
+const sumItemProperties = `-- name: SumItemProperties :many
+SELECT
+  properties.id AS property_id,
+  properties.value_type,
+  COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
+  trim_scale(sum(
+    (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+  ))::text AS total_amount,
+  count(*) AS value_count
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+JOIN item_properties AS item_property ON item_property.item_id = items.id
+JOIN properties ON properties.id = item_property.property_id
+LEFT JOIN ROWS FROM (
+  unnest($1::text[]),
+  unnest($2::text[]),
+  unnest($3::bigint[])
+) AS unit_factor(value_type, unit_name, factor)
+  ON unit_factor.value_type = properties.value_type
+ AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+WHERE properties.value_type IN ('price', 'mass', 'volume')
+  AND (properties.value_type = 'price' OR unit_factor.factor IS NOT NULL)
+  AND ($4::bigint IS NULL OR items.type_id = $4)
+  AND ($5::consumption_status[] IS NULL OR items.consumption = ANY($5::consumption_status[]))
+  AND ($6::timestamptz IS NULL OR items.created_at >= $6)
+  AND ($7::timestamptz IS NULL OR items.created_at <= $7)
+  AND (
+    $8::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($8::text) || '%'
+    OR EXISTS (
+      SELECT 1 FROM item_properties
+      JOIN properties ON properties.id = item_properties.property_id
+      WHERE item_properties.item_id = items.id
+        AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($8::text) || '%'
+    )
+    OR render_item_derived_name(items.id, item_types.derived_name_format)
+      ILIKE '%' || replace(escape_like_pattern(trim($8::text)), ' ', '%') || '%'
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM ROWS FROM (
+      unnest($9::bigint[]),
+      unnest($10::jsonb[])
+    ) AS filters(property_id, property_value)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM item_properties
+      WHERE item_properties.item_id = items.id
+        AND item_properties.property_id = filters.property_id
+        AND item_properties.property_value = filters.property_value
+    )
+  )
+GROUP BY properties.id, properties.value_type, currency
+ORDER BY properties.id, currency
+`
+
+type SumItemPropertiesParams struct {
+	UnitValueTypes []string            `json:"unit_value_types"`
+	UnitNames      []string            `json:"unit_names"`
+	UnitFactors    []int64             `json:"unit_factors"`
+	TypeID         pgtype.Int8         `json:"type_id"`
+	Consumption    []ConsumptionStatus `json:"consumption"`
+	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	Search         string              `json:"search"`
+	PropertyIds    []int64             `json:"property_ids"`
+	PropertyValues []json.RawMessage   `json:"property_values"`
+}
+
+type SumItemPropertiesRow struct {
+	PropertyID  int64  `json:"property_id"`
+	ValueType   string `json:"value_type"`
+	Currency    string `json:"currency"`
+	TotalAmount string `json:"total_amount"`
+	ValueCount  int64  `json:"value_count"`
+}
+
+// Sums every structured property (price, mass, volume) over the same set of items CountItems
+// counts, so the WHERE block below has to stay identical to it. Mass and volume are summed in
+// their dimension's base unit: the unit factors arrive as three parallel arrays instead of being
+// hardcoded here, so dto.MassUnitFactors / dto.VolumeUnitFactors stay the only definition of them.
+// Values whose unit has no factor are dropped rather than counted as base units.
+func (q *Queries) SumItemProperties(ctx context.Context, arg SumItemPropertiesParams) ([]SumItemPropertiesRow, error) {
+	rows, err := q.db.Query(ctx, sumItemProperties,
+		arg.UnitValueTypes,
+		arg.UnitNames,
+		arg.UnitFactors,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.Search,
+		arg.PropertyIds,
+		arg.PropertyValues,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumItemPropertiesRow
+	for rows.Next() {
+		var i SumItemPropertiesRow
+		if err := rows.Scan(
+			&i.PropertyID,
+			&i.ValueType,
+			&i.Currency,
+			&i.TotalAmount,
+			&i.ValueCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateItemProperty = `-- name: UpdateItemProperty :one
 UPDATE item_properties SET property_value = $3 WHERE item_id = $1 AND property_id = $2 RETURNING item_id, property_id, property_value
 `

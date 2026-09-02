@@ -153,6 +153,22 @@ definitions:
     - id
     - value
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal:
+    properties:
+      property_id:
+        type: integer
+      value:
+        items:
+          type: integer
+        type: array
+      value_count:
+        description: |-
+          ValueCount is how many of the matched items carried the property. Compare it with
+          ItemsPage.Total to see whether the sum covers all of them.
+        type: integer
+      value_type:
+        type: string
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest:
     properties:
       created_at:
@@ -358,6 +374,13 @@ definitions:
         type: integer
       total:
         type: integer
+      totals:
+        description: |-
+          Totals sums the structured properties of every item matching the filters, not just the ones
+          on this page.
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.LoginRequest:
     properties:

@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { Select } from 'bits-ui';
-	import type { ItemTypeOption } from '$lib/api';
+	import type { ItemPropertyTotal, ItemTypeOption, PropertyOption } from '$lib/api';
 	import TableSearch from '$lib/components/shared/TableSearch.svelte';
+	import { displayJson } from '$lib/domain/items';
 
 	let {
 		total,
+		totals = [],
+		properties = [],
 		itemTypes,
 		typeFilter,
 		search = $bindable(),
@@ -13,6 +16,8 @@
 		onsearch
 	}: {
 		total: number;
+		totals?: ItemPropertyTotal[];
+		properties?: PropertyOption[];
 		itemTypes: ItemTypeOption[];
 		typeFilter: string;
 		search: string;
@@ -21,6 +26,18 @@
 		onsearch: (search: string) => void;
 	} = $props();
 
+	// The totals cover every item matching the current filters, not just this page, so they belong
+	// beside the item count rather than in the list below.
+	let propertyNamesByID = $derived(
+		new Map(properties.map((property) => [property.id, property.name]))
+	);
+	let summedProperties = $derived(
+		totals.map((totalled) => ({
+			name: propertyNamesByID.get(totalled.property_id) ?? '',
+			amount: displayJson(totalled.value_type, totalled.value)
+		}))
+	);
+
 	let itemTypeOptions = $derived([
 		{ value: 'all', label: 'Svi tipovi' },
 		...itemTypes.map((itemType) => ({ value: String(itemType.id), label: itemType.name }))
@@ -28,7 +45,12 @@
 </script>
 
 <div class="flex items-center justify-between gap-4">
-	<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">UKUPNO: {total}</p>
+	<p
+		class="min-w-0 font-mono text-xs leading-relaxed font-medium tracking-wide text-balance text-muted"
+	>
+		UKUPNO: {total}{#each summedProperties as summed (summed.name + summed.amount)}
+			<span class="px-1.5 text-line">·</span>{summed.name}: {summed.amount}{/each}
+	</p>
 	{#if itemTypes.length > 1}
 		<Select.Root
 			type="single"

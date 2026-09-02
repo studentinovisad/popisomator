@@ -2643,6 +2643,27 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal": {
+            "type": "object",
+            "properties": {
+                "property_id": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "value_count": {
+                    "description": "ValueCount is how many of the matched items carried the property. Compare it with\nItemsPage.Total to see whether the sum covers all of them.",
+                    "type": "integer"
+                },
+                "value_type": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest": {
             "type": "object",
             "properties": {
@@ -2953,6 +2974,13 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                },
+                "totals": {
+                    "description": "Totals sums the structured properties of every item matching the filters, not just the ones\non this page.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
                 }
             }
         },

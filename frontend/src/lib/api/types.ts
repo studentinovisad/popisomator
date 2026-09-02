@@ -75,6 +75,20 @@ export type ItemsPage = {
 	limit: number;
 	offset: number;
 	total: number;
+	// Sums of the structured properties across every item matching the filters, not just this page.
+	totals: ItemPropertyTotal[];
+};
+
+// Sum of one structured property (price, mass, volume) across every item matching a filter. `value`
+// has the same shape as the property itself - a PTPrice, or a PTMeasure already converted to a
+// readable unit - so displayJson renders it like any other value. Prices are reported per currency,
+// so one property can appear more than once.
+export type ItemPropertyTotal = {
+	property_id: number;
+	value_type: PropertyValueType;
+	value: {};
+	// How many of the matched items carried the property; compare with ItemsPage.total.
+	value_count: number;
 };
 
 export type ListItemsParams = PageRequest & {

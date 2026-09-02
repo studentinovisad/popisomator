@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"sort"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -182,12 +184,75 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		}
 	}
 
+	unitValueTypes, unitNames, unitFactors := dto.MeasureUnitFactorRows()
+	totalRows, err := db.Queries.SumItemProperties(ctx, repository.SumItemPropertiesParams{
+		TypeID:         typeID,
+		Consumption:    req.Consumption,
+		CreatedFrom:    createdFrom,
+		CreatedTo:      createdTo,
+		Search:         req.Search,
+		PropertyIds:    propertyIDs,
+		PropertyValues: propertyValues,
+		UnitValueTypes: unitValueTypes,
+		UnitNames:      unitNames,
+		UnitFactors:    unitFactors,
+	})
+	if err != nil {
+		return dto.ItemsPage{}, err
+	}
+
 	return dto.ItemsPage{
 		Items:  itemsDTO,
 		Limit:  req.Limit,
 		Offset: req.Offset,
 		Total:  totalItems,
+		Totals: toItemPropertyTotals(totalRows),
 	}, nil
+}
+
+// toItemPropertyTotals turns the summed rows into the JSON shape the property itself uses, so the
+// frontend renders a total the same way it renders a single value. Mass and volume arrive summed in
+// their base unit and get scaled up to something readable; prices are already per currency.
+func toItemPropertyTotals(rows []repository.SumItemPropertiesRow) []dto.ItemPropertyTotal {
+	totals := make([]dto.ItemPropertyTotal, 0, len(rows))
+
+	for _, row := range rows {
+		summedAmount, err := strconv.ParseInt(row.TotalAmount, 10, 64)
+		if err != nil {
+			log.Printf("Couldn't parse %v total %v for property %v. Error: %v",
+				row.ValueType, row.TotalAmount, row.PropertyID, err)
+			continue
+		}
+
+		var value any
+		switch row.ValueType {
+		case "price":
+			value = dto.PTPrice{Amount: summedAmount, Currency: row.Currency}
+		case "mass":
+			amount, unit := dto.ScaleMeasureToLargestUnit(summedAmount, dto.MassUnitFactors)
+			value = dto.PTMass{Amount: amount, Unit: unit}
+		case "volume":
+			amount, unit := dto.ScaleMeasureToLargestUnit(summedAmount, dto.VolumeUnitFactors)
+			value = dto.PTVolume{Amount: amount, Unit: unit}
+		default:
+			continue
+		}
+
+		encodedValue, err := json.Marshal(value)
+		if err != nil {
+			log.Printf("Couldn't marshal %v total for property %v. Error: %v", row.ValueType, row.PropertyID, err)
+			continue
+		}
+
+		totals = append(totals, dto.ItemPropertyTotal{
+			PropertyID: row.PropertyID,
+			ValueType:  row.ValueType,
+			Value:      encodedValue,
+			ValueCount: row.ValueCount,
+		})
+	}
+
+	return totals
 }
 
 func GetItem(ctx context.Context, id, viewerID int64) (dto.Item, error) {
