@@ -26,12 +26,11 @@ services:
       target: migrations
     command:
       [
-        "migrate",
-        "apply",
-        "--dir",
-        "file:///migrations",
-        "--url",
+        "-database",
         "postgres://${POSTGRES_ADMIN_USER:-popisomator_admin}:${POSTGRES_ADMIN_PASSWORD:-popisomator_admin}@postgres:5432/${POSTGRES_DB:-popisomator}?sslmode=disable",
+        "-path",
+        "/migrations",
+        "up"
       ]
     depends_on:
       postgres:
