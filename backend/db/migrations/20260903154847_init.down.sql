@@ -1,0 +1,14 @@
+DROP FUNCTION IF EXISTS render_item_derived_name(BIGINT, TEXT);
+DROP FUNCTION IF EXISTS escape_like_pattern(TEXT);
+DROP TABLE IF EXISTS item_requests;
+DROP TABLE IF EXISTS item_properties;
+DROP TABLE IF EXISTS items;
+DROP TABLE IF EXISTS item_type_properties;
+DROP TABLE IF EXISTS item_types;
+DROP TABLE IF EXISTS properties;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS request_status;
+DROP TYPE IF EXISTS property_visibility;
+DROP TYPE IF EXISTS consumption_status;
+DROP TYPE IF EXISTS user_status;
+DROP TYPE IF EXISTS user_role;

@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /server ./cmd/server
 
-FROM docker.io/arigaio/atlas:latest AS migrations
+FROM docker.io/migrate/migrate:latest AS migrations
 
 COPY db/migrations /migrations
 

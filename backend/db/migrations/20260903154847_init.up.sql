@@ -2,7 +2,7 @@ CREATE TYPE user_role AS ENUM ('admin', 'manager', 'user');
 CREATE TYPE user_status AS ENUM ('requested', 'active');
 
 CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     full_name TEXT NOT NULL,
