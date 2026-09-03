@@ -2756,6 +2756,12 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "value_type": {
                     "type": "string"
                 },
                 "visibility": {

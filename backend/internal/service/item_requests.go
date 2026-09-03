@@ -228,6 +228,7 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 			items[itemIndex].Properties = append(items[itemIndex].Properties, dto.ItemRequestPreparationProperty{
 				Name:       property.PropertyName,
 				Value:      property.ItemProperty.PropertyValue,
+				ValueType:  property.PropertyType,
 				Visibility: property.Visibility,
 				Position:   property.Position,
 			})

@@ -55,7 +55,7 @@
 
 	function storageValue(item: PreparationItem, propertyName: string) {
 		const property = item.properties.find((entry) => entry.name === propertyName);
-		return property ? displayJson(property.value) : '';
+		return property ? displayJson(property.value_type, property.value) : '';
 	}
 
 	function groupItems(items: PreparationItem[]) {
@@ -150,7 +150,7 @@
 															class="max-w-full rounded-full border border-line bg-soft px-2 py-1 text-xs text-ink"
 														>
 															<span class="font-medium">{property.name}:</span>
-															{displayJson(property.value)}
+															{displayJson(property.value_type, property.value)}
 														</li>
 													{/each}
 												</ul>
@@ -167,7 +167,7 @@
 														class="max-w-full rounded-full border border-line bg-soft px-2 py-1 text-xs text-ink"
 													>
 														<span class="font-medium">{property.name}:</span>
-														{displayJson(property.value)}
+														{displayJson(property.value_type, property.value)}
 													</li>
 												{/each}
 											</ul>
@@ -178,7 +178,7 @@
 															class="max-w-full rounded-full border border-line px-2 py-1 text-xs text-ink"
 														>
 															<span class="font-medium">{property.name}:</span>
-															{displayJson(property.value)}
+															{displayJson(property.value_type, property.value)}
 														</li>
 													{/each}
 												</ul>

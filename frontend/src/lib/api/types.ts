@@ -229,7 +229,8 @@ export type ItemRequestPreparationItem = {
 
 export type ItemRequestPreparationProperty = {
 	name: string;
-	value: string;
+	value: {};
+	value_type: PropertyValueType;
 	visibility: PropertyVisibility;
 	position: number;
 };

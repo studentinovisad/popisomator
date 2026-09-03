@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -54,7 +55,8 @@ type ItemRequestPreparationItem struct {
 
 type ItemRequestPreparationProperty struct {
 	Name       string                        `json:"name"`
-	Value      string                        `json:"value"`
+	Value      json.RawMessage               `json:"value"`
+	ValueType  string                        `json:"value_type"`
 	Visibility repository.PropertyVisibility `json:"visibility"`
 	Position   int32                         `json:"position"`
 }

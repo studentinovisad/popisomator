@@ -228,6 +228,10 @@ definitions:
       position:
         type: integer
       value:
+        items:
+          type: integer
+        type: array
+      value_type:
         type: string
       visibility:
         $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.PropertyVisibility'
