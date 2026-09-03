@@ -174,6 +174,74 @@ func ListItemRequests(ctx context.Context, req dto.ItemRequestsListRequest) (dto
 	}, nil
 }
 
+func ListItemRequestUsers(ctx context.Context) ([]dto.ItemRequestUserOption, error) {
+	users, err := db.Queries.ListItemRequestUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	options := make([]dto.ItemRequestUserOption, len(users))
+	for i, user := range users {
+		options[i] = dto.ItemRequestUserOption{ID: user.ID, Name: user.FullName}
+	}
+
+	return options, nil
+}
+
+func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.ItemRequestPreparationReport, error) {
+	user, err := db.Queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return dto.ItemRequestPreparationReport{}, err
+	}
+
+	requests, err := db.Queries.ListItemPreparationRequests(ctx, userID)
+	if err != nil {
+		return dto.ItemRequestPreparationReport{}, err
+	}
+
+	items := make([]dto.ItemRequestPreparationItem, len(requests))
+	itemIndexes := make(map[int64]int, len(requests))
+	itemIDs := make([]int64, len(requests))
+	for index, request := range requests {
+		items[index] = dto.ItemRequestPreparationItem{
+			ID:                request.ItemID,
+			Name:              request.ItemName,
+			TypeName:          request.ItemTypeName,
+			DerivedNameFormat: request.DerivedNameFormat.String,
+			Consumption:       request.Consumption,
+			Reason:            request.Reason,
+			RequestedAt:       request.CreatedAt.Time,
+			Properties:        make([]dto.ItemRequestPreparationProperty, 0),
+		}
+		itemIndexes[request.ItemID] = index
+		itemIDs[index] = request.ItemID
+	}
+
+	if len(itemIDs) > 0 {
+		properties, err := db.Queries.GetItemProperties(ctx, itemIDs)
+		if err != nil {
+			return dto.ItemRequestPreparationReport{}, err
+		}
+
+		for _, property := range properties {
+			itemIndex := itemIndexes[property.ItemProperty.ItemID]
+			items[itemIndex].Properties = append(items[itemIndex].Properties, dto.ItemRequestPreparationProperty{
+				Name:       property.PropertyName,
+				Value:      property.ItemProperty.PropertyValue,
+				ValueType:  property.PropertyType,
+				Visibility: property.Visibility,
+				Position:   property.Position,
+			})
+		}
+
+	}
+
+	return dto.ItemRequestPreparationReport{
+		User:  dto.ItemRequestUserOption{ID: user.ID, Name: user.FullName},
+		Items: items,
+	}, nil
+}
+
 func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) error {
 	if err := dto.Validate(req); err != nil {
 		return err

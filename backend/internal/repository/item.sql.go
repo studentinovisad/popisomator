@@ -193,17 +193,19 @@ func (q *Queries) GetItemByID(ctx context.Context, id int64) (Item, error) {
 }
 
 const getItemProperties = `-- name: GetItemProperties :many
-SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, p.name AS property_name, p.value_type AS property_type FROM item_properties ip
+SELECT ip.item_id, ip.property_id, ip.property_value, itp.visibility, itp.position, p.name AS property_name, p.value_type AS property_type FROM item_properties ip
 JOIN items i ON ip.item_id = i.id
 JOIN item_type_properties itp ON i.type_id = itp.type_id AND ip.property_id = itp.property_id
 JOIN item_types it ON i.type_id = it.id
 JOIN properties p ON ip.property_id = p.id
 WHERE ip.item_id = ANY($1::bigint[])
+ORDER BY ip.item_id, itp.position
 `
 
 type GetItemPropertiesRow struct {
 	ItemProperty ItemProperty       `json:"item_property"`
 	Visibility   PropertyVisibility `json:"visibility"`
+	Position     int32              `json:"position"`
 	PropertyName string             `json:"property_name"`
 	PropertyType string             `json:"property_type"`
 }
@@ -222,6 +224,7 @@ func (q *Queries) GetItemProperties(ctx context.Context, itemIds []int64) ([]Get
 			&i.ItemProperty.PropertyID,
 			&i.ItemProperty.PropertyValue,
 			&i.Visibility,
+			&i.Position,
 			&i.PropertyName,
 			&i.PropertyType,
 		); err != nil {

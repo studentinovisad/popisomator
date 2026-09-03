@@ -156,7 +156,8 @@ func ApproveItemRequest(w http.ResponseWriter, r *http.Request) {
 // @Security CookieAuth
 // @Param limit query int false "Page size (default 20, max 50)"
 // @Param offset query int false "Page offset (default 0)"
-// @Param status query int false "Filter by item request status"
+// @Param status query string false "Filter by item request status" Enums(requested, approved)
+// @Param user_id query int false "Filter by requester ID"
 // @Success 200 {object} dto.ItemRequestsPage
 // @Failure 400 {object} response.Error "invalid limit/offset"
 // @Failure 401 {object} response.Error "not logged in"
@@ -178,6 +179,14 @@ func ListItemRequests(w http.ResponseWriter, r *http.Request) {
 	if val := query.Get("status"); val != "" {
 		listRequest.Status = &val
 	}
+	if val := query.Get("user_id"); val != "" {
+		userID, err := strconv.ParseInt(val, 10, 64)
+		if err != nil || userID <= 0 {
+			response.WriteError(w, http.StatusBadRequest, "invalid user_id")
+			return
+		}
+		listRequest.UserID = &userID
+	}
 
 	itemRequests, err := service.ListItemRequests(r.Context(), listRequest)
 	if err != nil {
@@ -186,6 +195,51 @@ func ListItemRequests(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, itemRequests)
+}
+
+// ListItemRequestUsers godoc
+// @Summary List requesters available for the item-request filter (manager/admin only)
+// @Tags ItemRequests
+// @Produce json
+// @Security CookieAuth
+// @Success 200 {array} dto.ItemRequestUserOption
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /item-requests/users [get]
+func ListItemRequestUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := service.ListItemRequestUsers(r.Context())
+	if err != nil {
+		writeServiceError(w, err, "couldn't list item-request users")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, users)
+}
+
+// GetItemRequestPreparationReport godoc
+// @Summary Get pending item requests to prepare for one user (manager/admin only)
+// @Tags ItemRequests
+// @Produce json
+// @Security CookieAuth
+// @Param user_id query int true "Requester ID"
+// @Success 200 {object} dto.ItemRequestPreparationReport
+// @Failure 400 {object} response.Error "invalid user_id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 404 {object} response.Error "user not found"
+// @Router /item-requests/preparation-report [get]
+func GetItemRequestPreparationReport(w http.ResponseWriter, r *http.Request) {
+	userID, err := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
+	if err != nil || userID < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid user_id")
+		return
+	}
+
+	report, err := service.GetItemRequestPreparationReport(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err, "couldn't get item request preparation report")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, report)
 }
 
 // ListPersonalItemRequests godoc

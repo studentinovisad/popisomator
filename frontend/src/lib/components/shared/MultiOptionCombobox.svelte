@@ -34,7 +34,12 @@
 				option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
 		)
 	);
-	let selectedOptions = $derived(options.filter((option) => values.includes(String(option.id))));
+	let selectedOptions = $derived(
+		values.flatMap((value) => {
+			const option = options.find((candidate) => candidate.id === Number(value));
+			return option ? [option] : [];
+		})
+	);
 	let items = $derived(options.map((option) => ({ value: String(option.id), label: option.name })));
 
 	function handleInput(event: Event) {
@@ -42,13 +47,13 @@
 	}
 
 	async function handleValueChange(nextValues: string[]) {
-	onvaluechange?.(nextValues);
-	await tick();
-	query = '';
-	if (input) {
-		input.value = '';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-	}
+		onvaluechange?.(nextValues);
+		await tick();
+		query = '';
+		if (input) {
+			input.value = '';
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		}
 	}
 
 	function removeOption(id: number) {

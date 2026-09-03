@@ -35,6 +35,28 @@ WHERE (sqlc.narg('status')::request_status IS NULL OR item_requests.status = sql
 ORDER BY item_requests.created_at DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
+-- name: ListItemRequestUsers :many
+SELECT DISTINCT users.id, users.full_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+ORDER BY users.full_name, users.id;
+
+-- name: ListItemPreparationRequests :many
+SELECT
+  item_requests.*,
+  users.full_name AS user_name,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS item_name,
+  item_types.name AS item_type_name,
+  item_types.derived_name_format,
+  items.consumption
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+JOIN items ON items.id = item_requests.item_id
+JOIN item_types ON item_types.id = items.type_id
+WHERE item_requests.user_id = $1
+  AND item_requests.status = 'requested'
+ORDER BY item_requests.created_at, item_requests.item_id;
+
 -- name: GetItemRequest :one
 SELECT * FROM item_requests
 WHERE user_id = $1 AND item_id = $2;

@@ -258,6 +258,7 @@ type ItemTypeProperty struct {
 	PropertyID   int64              `json:"property_id"`
 	DefaultValue *json.RawMessage   `json:"default_value"`
 	Visibility   PropertyVisibility `json:"visibility"`
+	Position     int32              `json:"position"`
 }
 
 type Property struct {

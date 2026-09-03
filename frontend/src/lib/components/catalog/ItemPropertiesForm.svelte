@@ -17,10 +17,12 @@
 	} = $props();
 
 	let editablePropertyIDs = $derived([
-		...new Set([
-			...item.properties.map((property) => property.id),
-			...itemType.properties.map((property) => property.id)
-		])
+		...itemType.properties.map((property) => property.id),
+		...item.properties
+			.filter(
+				(property) => !itemType.properties.some((typeProperty) => typeProperty.id === property.id)
+			)
+			.map((property) => property.id)
 	]);
 	let propertyByID = $derived(new Map(properties.map((property) => [property.id, property])));
 	let originalValues = $derived(

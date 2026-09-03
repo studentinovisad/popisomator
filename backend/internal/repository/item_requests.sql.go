@@ -285,6 +285,104 @@ func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsPara
 	return items, nil
 }
 
+const listItemRequestUsers = `-- name: ListItemRequestUsers :many
+SELECT DISTINCT users.id, users.full_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+ORDER BY users.full_name, users.id
+`
+
+type ListItemRequestUsersRow struct {
+	ID       int64  `json:"id"`
+	FullName string `json:"full_name"`
+}
+
+func (q *Queries) ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error) {
+	rows, err := q.db.Query(ctx, listItemRequestUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemRequestUsersRow
+	for rows.Next() {
+		var i ListItemRequestUsersRow
+		if err := rows.Scan(&i.ID, &i.FullName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listItemPreparationRequests = `-- name: ListItemPreparationRequests :many
+SELECT
+  item_requests.user_id,
+  item_requests.item_id,
+  item_requests.created_at,
+  item_requests.status,
+  item_requests.reason,
+  users.full_name AS user_name,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS item_name,
+  item_types.name AS item_type_name,
+  item_types.derived_name_format,
+  items.consumption
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+JOIN items ON items.id = item_requests.item_id
+JOIN item_types ON item_types.id = items.type_id
+WHERE item_requests.user_id = $1
+  AND item_requests.status = 'requested'
+ORDER BY item_requests.created_at, item_requests.item_id
+`
+
+type ListItemPreparationRequestsRow struct {
+	UserID            int64              `json:"user_id"`
+	ItemID            int64              `json:"item_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	Status            RequestStatus      `json:"status"`
+	Reason            string             `json:"reason"`
+	UserName          string             `json:"user_name"`
+	ItemName          string             `json:"item_name"`
+	ItemTypeName      string             `json:"item_type_name"`
+	DerivedNameFormat pgtype.Text        `json:"derived_name_format"`
+	Consumption       ConsumptionStatus  `json:"consumption"`
+}
+
+func (q *Queries) ListItemPreparationRequests(ctx context.Context, userID int64) ([]ListItemPreparationRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listItemPreparationRequests, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []ListItemPreparationRequestsRow
+	for rows.Next() {
+		var i ListItemPreparationRequestsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ItemID,
+			&i.CreatedAt,
+			&i.Status,
+			&i.Reason,
+			&i.UserName,
+			&i.ItemName,
+			&i.ItemTypeName,
+			&i.DerivedNameFormat,
+			&i.Consumption,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockItemForRequest = `-- name: LockItemForRequest :one
 SELECT id
 FROM items

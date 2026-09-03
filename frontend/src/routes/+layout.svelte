@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -9,12 +9,17 @@
 	import Info from '@lucide/svelte/icons/info';
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import LogOut from '@lucide/svelte/icons/log-out';
-	import { api } from '$lib/api';
+	import { api, type ItemRequestPreparationReport } from '$lib/api';
 	import AccountLink from '$lib/components/app/AccountLink.svelte';
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
 	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
+	import PreparationReport from '$lib/components/admin/ItemRequestPreparationReport.svelte';
 	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/domain/navigation';
 	import { session } from '$lib/state/session.svelte';
+	import {
+		preparationReportPrintContextKey,
+		type PreparationReportPrintContext
+	} from '$lib/state/preparation-report-print-context';
 	import { theme } from '$lib/state/theme.svelte';
 	import { Button, Collapsible, Popover, ScrollArea } from 'bits-ui';
 	import '../app.css';
@@ -26,6 +31,7 @@
 	let sidebarExpanded = $state(true);
 	let sessionHydrated = $state(false);
 	let currentUser = $derived(sessionHydrated ? session.user : data.currentUser);
+	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
 
 	// svelte-ignore state_referenced_locally
 	if (!data.sidebarExpanded) {
@@ -33,6 +39,13 @@
 	}
 
 	let activePage = $derived(getPageMetadata(page.url.pathname));
+
+	setContext<PreparationReportPrintContext>(preparationReportPrintContextKey, {
+		setPreparationReport: (report) => {
+			preparationReport = report;
+		},
+		print: () => window.print()
+	});
 
 	onMount(() => {
 		if (data.currentUser) {
@@ -99,12 +112,12 @@
 </svelte:head>
 
 <div
-	class="flex h-svh overflow-hidden pb-16 text-ink max-sm:pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
+	class="app-shell flex h-svh overflow-hidden pb-16 text-ink max-sm:pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
 >
 	<Collapsible.Root
 		open={sidebarExpanded}
 		onOpenChange={setSidebarExpanded}
-		class={`hidden h-full shrink-0 transition-[width] duration-200 ease-out lg:block ${
+		class={`app-sidebar hidden h-full shrink-0 transition-[width] duration-200 ease-out lg:block ${
 			sidebarExpanded ? 'w-60' : 'w-16'
 		}`}
 	>
@@ -307,3 +320,7 @@
 		/>
 	</nav>
 </div>
+
+{#if preparationReport}
+	<PreparationReport report={preparationReport} />
+{/if}

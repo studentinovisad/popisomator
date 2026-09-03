@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -28,6 +29,36 @@ type ItemRequestSummary struct {
 	ItemRequest
 	UserName string `json:"user_name"`
 	ItemName string `json:"item_name"`
+}
+
+// ItemRequestUserOption is a requester available in the manager filter.
+type ItemRequestUserOption struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type ItemRequestPreparationReport struct {
+	User  ItemRequestUserOption        `json:"user"`
+	Items []ItemRequestPreparationItem `json:"items"`
+}
+
+type ItemRequestPreparationItem struct {
+	ID                int64                            `json:"id"`
+	Name              string                           `json:"name"`
+	TypeName          string                           `json:"type_name"`
+	DerivedNameFormat string                           `json:"derived_name_format"`
+	Consumption       repository.ConsumptionStatus     `json:"consumption"`
+	Reason            string                           `json:"reason"`
+	RequestedAt       time.Time                        `json:"requested_at"`
+	Properties        []ItemRequestPreparationProperty `json:"properties"`
+}
+
+type ItemRequestPreparationProperty struct {
+	Name       string                        `json:"name"`
+	Value      json.RawMessage               `json:"value"`
+	ValueType  string                        `json:"value_type"`
+	Visibility repository.PropertyVisibility `json:"visibility"`
+	Position   int32                         `json:"position"`
 }
 
 type ItemRequestCreateRequest struct {

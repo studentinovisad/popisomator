@@ -1,8 +1,16 @@
 <script lang="ts">
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Printer from '@lucide/svelte/icons/printer';
 	import { Button, Select } from 'bits-ui';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { api, ApiError, type ItemRequestSummary } from '$lib/api';
+	import {
+		api,
+		ApiError,
+		type ItemRequestPreparationReport,
+		type ItemRequestSummary,
+		type ItemRequestUserOption
+	} from '$lib/api';
 	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import {
@@ -12,17 +20,43 @@
 		type ItemRequestStatusFilter
 	} from '$lib/domain/item-requests';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
+	import {
+		preparationReportPrintContextKey,
+		type PreparationReportPrintContext
+	} from '$lib/state/preparation-report-print-context';
 	import { getTableFilter, getTablePage, updateTableQuery } from '$lib/state/table-query';
+
+	const printContext = getContext<PreparationReportPrintContext>(preparationReportPrintContextKey);
 
 	const requestsPage = createServerPagination<
 		ItemRequestSummary,
-		{ status: ItemRequestStatusFilter }
+		{ status: ItemRequestStatusFilter; userID: string }
 	>({
-		initialFilters: { status: 'all' },
-		loadPage: ({ limit, offset, status }) =>
-			api.listItemRequests({ limit, offset, status: status === 'all' ? undefined : status }),
+		initialFilters: { status: 'all', userID: 'all' },
+		loadPage: ({ limit, offset, status, userID }) =>
+			api.listItemRequests({
+				limit,
+				offset,
+				status: status === 'all' ? undefined : status,
+				userID: userID === 'all' ? undefined : Number(userID)
+			}),
 		unavailableMessage: 'Zahtevi nisu učitani.'
 	});
+
+	let requestUsers = $state<ItemRequestUserOption[]>([]);
+	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
+	let preparationLoading = $state(false);
+	let preparationRequestVersion = 0;
+	const userFilterOptions = $derived([
+		{ value: 'all', label: 'Svi korisnici' },
+		...requestUsers.map((user) => ({ value: String(user.id), label: user.name }))
+	]);
+
+	onMount(() => {
+		void loadRequestUsers();
+	});
+
+	onDestroy(() => printContext.setPreparationReport(null));
 
 	$effect(() => {
 		const url = page.url;
@@ -30,9 +64,55 @@
 		const status = itemRequestStatusFilterOptions.some((option) => option.value === requestedStatus)
 			? (requestedStatus as ItemRequestStatusFilter)
 			: 'all';
+		const requestedUserID = getTableFilter(url, 'user_id');
+		const parsedUserID = Number(requestedUserID);
+		const userID = Number.isSafeInteger(parsedUserID) && parsedUserID > 0 ? requestedUserID : 'all';
 
-		requestsPage.sync({ page: getTablePage(url), filters: { status } });
+		requestsPage.sync({ page: getTablePage(url), filters: { status, userID } });
 	});
+
+	$effect(() => {
+		const userID =
+			requestsPage.filters.userID === 'all' ? undefined : Number(requestsPage.filters.userID);
+		refreshPreparationReport(userID);
+	});
+
+	function refreshPreparationReport(userID?: number) {
+		const version = ++preparationRequestVersion;
+		preparationReport = null;
+		printContext.setPreparationReport(null);
+		preparationLoading = false;
+
+		if (!userID) return;
+
+		preparationLoading = true;
+		void loadPreparationReport(userID, version);
+	}
+
+	async function loadRequestUsers() {
+		try {
+			requestUsers = await api.listItemRequestUsers();
+		} catch {
+			requestUsers = [];
+		}
+	}
+
+	async function loadPreparationReport(userID: number, version: number) {
+		try {
+			const report = await api.getItemRequestPreparationReport(userID);
+			if (version === preparationRequestVersion) {
+				preparationReport = report;
+				printContext.setPreparationReport(report);
+			}
+		} catch {
+			if (version === preparationRequestVersion) {
+				preparationReport = null;
+				printContext.setPreparationReport(null);
+			}
+		} finally {
+			if (version === preparationRequestVersion) preparationLoading = false;
+		}
+	}
 
 	async function decide(itemRequest: ItemRequestSummary, approve: boolean) {
 		requestsPage.error = '';
@@ -44,6 +124,7 @@
 				await api.denyItemRequest(itemRequest.user_id, itemRequest.item_id);
 			}
 			requestsPage.reloadAfterDelete();
+			refreshPreparationReport(selectedUserID);
 		} catch (reason) {
 			requestsPage.error = reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.';
 		}
@@ -53,9 +134,17 @@
 		updateTableQuery({ status: status === 'all' ? undefined : status, page: 1 });
 	}
 
+	function filterByUser(userID: string) {
+		updateTableQuery({ user_id: userID === 'all' ? undefined : userID, page: 1 });
+	}
+
 	function goToPage(nextPage: number) {
 		updateTableQuery({ page: nextPage });
 	}
+
+	let selectedUserID = $derived(
+		requestsPage.filters.userID === 'all' ? undefined : Number(requestsPage.filters.userID)
+	);
 </script>
 
 <section aria-labelledby="item-requests-heading">
@@ -64,37 +153,85 @@
 		<p class="font-mono text-xs font-medium tracking-wide text-muted">
 			UKUPNO: {requestsPage.total}
 		</p>
-		<Select.Root
-			type="single"
-			value={requestsPage.filters.status}
-			items={itemRequestStatusFilterOptions}
-			onValueChange={(value) => filterByStatus(value as ItemRequestStatusFilter)}
-		>
-			<Select.Trigger
-				class="flex h-9 w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
-				aria-label="Filtriraj zahteve po statusu"
-			>
-				<Select.Value />
-			</Select.Trigger>
-			<Select.Portal>
-				<Select.Content
-					class="z-30 w-44 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
-					sideOffset={4}
+		<div class="flex items-center gap-2">
+			{#if selectedUserID}
+				<Button.Root
+					type="button"
+					class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft"
+					disabled={!preparationReport || preparationLoading}
+					onclick={() => printContext.print()}
+					aria-label="Štampaj pripremu"
+					title={preparationLoading ? 'Učitavanje pripreme…' : 'Štampaj pripremu'}
 				>
-					<Select.Viewport>
-						{#each itemRequestStatusFilterOptions as option (option.value)}
-							<Select.Item
-								value={option.value}
-								label={option.label}
-								class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
-							>
-								{option.label}
-							</Select.Item>
-						{/each}
-					</Select.Viewport>
-				</Select.Content>
-			</Select.Portal>
-		</Select.Root>
+					<Printer class="size-4" aria-hidden="true" />
+					<span class="max-sm:sr-only"
+						>{preparationLoading ? 'Učitavanje…' : 'Štampaj pripremu'}</span
+					>
+				</Button.Root>
+			{/if}
+			<Select.Root
+				type="single"
+				value={requestsPage.filters.userID}
+				items={userFilterOptions}
+				onValueChange={(value) => filterByUser(value)}
+			>
+				<Select.Trigger
+					class="flex h-9 w-44 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
+					aria-label="Filtriraj zahteve po korisniku"
+				>
+					<Select.Value />
+				</Select.Trigger>
+				<Select.Portal>
+					<Select.Content
+						class="z-30 w-52 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
+						sideOffset={4}
+					>
+						<Select.Viewport>
+							{#each userFilterOptions as option (option.value)}
+								<Select.Item
+									value={option.value}
+									label={option.label}
+									class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
+								>
+									{option.label}
+								</Select.Item>
+							{/each}
+						</Select.Viewport>
+					</Select.Content>
+				</Select.Portal>
+			</Select.Root>
+			<Select.Root
+				type="single"
+				value={requestsPage.filters.status}
+				items={itemRequestStatusFilterOptions}
+				onValueChange={(value) => filterByStatus(value as ItemRequestStatusFilter)}
+			>
+				<Select.Trigger
+					class="flex h-9 w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
+					aria-label="Filtriraj zahteve po statusu"
+				>
+					<Select.Value />
+				</Select.Trigger>
+				<Select.Portal>
+					<Select.Content
+						class="z-30 w-44 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
+						sideOffset={4}
+					>
+						<Select.Viewport>
+							{#each itemRequestStatusFilterOptions as option (option.value)}
+								<Select.Item
+									value={option.value}
+									label={option.label}
+									class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
+								>
+									{option.label}
+								</Select.Item>
+							{/each}
+						</Select.Viewport>
+					</Select.Content>
+				</Select.Portal>
+			</Select.Root>
+		</div>
 	</div>
 	{#if requestsPage.error}
 		<p class="mt-3 text-sm text-danger" role="alert">{requestsPage.error}</p>

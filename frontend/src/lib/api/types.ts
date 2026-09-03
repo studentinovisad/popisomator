@@ -206,6 +206,35 @@ export type ItemRequestSummary = ItemRequest & {
 	item_name: string;
 };
 
+export type ItemRequestUserOption = {
+	id: number;
+	name: string;
+};
+
+export type ItemRequestPreparationReport = {
+	user: ItemRequestUserOption;
+	items: ItemRequestPreparationItem[];
+};
+
+export type ItemRequestPreparationItem = {
+	id: number;
+	name: string;
+	type_name: string;
+	derived_name_format: string;
+	consumption: ConsumptionStatus;
+	reason: string;
+	requested_at: string;
+	properties: ItemRequestPreparationProperty[];
+};
+
+export type ItemRequestPreparationProperty = {
+	name: string;
+	value: {};
+	value_type: PropertyValueType;
+	visibility: PropertyVisibility;
+	position: number;
+};
+
 export type CreatePersonalItemRequest = {
 	item_id: number;
 	reason: string;
@@ -215,4 +244,5 @@ export type ListItemRequestsParams = {
 	limit?: number;
 	offset?: number;
 	status?: ItemRequestStatus;
+	userID?: number;
 };
