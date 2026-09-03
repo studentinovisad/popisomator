@@ -202,11 +202,11 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 	}
 
 	return dto.ItemsPage{
-		Items:  itemsDTO,
-		Limit:  req.Limit,
-		Offset: req.Offset,
-		Total:  totalItems,
-		Totals: toItemPropertyTotals(totalRows),
+		Items:          itemsDTO,
+		Limit:          req.Limit,
+		Offset:         req.Offset,
+		Total:          totalItems,
+		PropertyTotals: toItemPropertyTotals(totalRows),
 	}, nil
 }
 

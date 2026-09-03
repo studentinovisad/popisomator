@@ -2972,15 +2972,15 @@ const docTemplate = `{
                 "offset": {
                     "type": "integer"
                 },
-                "total": {
-                    "type": "integer"
-                },
-                "totals": {
-                    "description": "Totals sums the structured properties of every item matching the filters, not just the ones\non this page.",
+                "property_totals": {
+                    "description": "PropertyTotals sums the structured properties of every item matching the filters, not just the\nones on this page.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
                     }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },

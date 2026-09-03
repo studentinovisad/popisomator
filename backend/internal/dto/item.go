@@ -60,9 +60,9 @@ type ItemsPage struct {
 	Limit  int32  `json:"limit"`
 	Offset int32  `json:"offset"`
 	Total  int64  `json:"total"`
-	// Totals sums the structured properties of every item matching the filters, not just the ones
-	// on this page.
-	Totals []ItemPropertyTotal `json:"totals"`
+	// PropertyTotals sums the structured properties of every item matching the filters, not just the
+	// ones on this page.
+	PropertyTotals []ItemPropertyTotal `json:"property_totals"`
 }
 
 // ItemPropertyTotal is the sum of one structured property (price, mass, volume) across every item

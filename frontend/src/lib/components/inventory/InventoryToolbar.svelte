@@ -6,7 +6,7 @@
 
 	let {
 		total,
-		totals = [],
+		propertyTotals = [],
 		properties = [],
 		itemTypes,
 		typeFilter,
@@ -16,7 +16,7 @@
 		onsearch
 	}: {
 		total: number;
-		totals?: ItemPropertyTotal[];
+		propertyTotals?: ItemPropertyTotal[];
 		properties?: PropertyOption[];
 		itemTypes: ItemTypeOption[];
 		typeFilter: string;
@@ -31,9 +31,11 @@
 	let propertyNamesByID = $derived(
 		new Map(properties.map((property) => [property.id, property.name]))
 	);
+	// Names are uppercased to sit consistently beside the UKUPNO label; the amounts are left alone,
+	// since unit symbols are case sensitive and 'mL' must not become 'ML'.
 	let summedProperties = $derived(
-		totals.map((totalled) => ({
-			name: propertyNamesByID.get(totalled.property_id) ?? '',
+		propertyTotals.map((totalled) => ({
+			name: (propertyNamesByID.get(totalled.property_id) ?? '').toLocaleUpperCase('sr-Latn-RS'),
 			amount: displayJson(totalled.value_type, totalled.value)
 		}))
 	);

@@ -76,7 +76,7 @@ export type ItemsPage = {
 	offset: number;
 	total: number;
 	// Sums of the structured properties across every item matching the filters, not just this page.
-	totals: ItemPropertyTotal[];
+	property_totals: ItemPropertyTotal[];
 };
 
 // Sum of one structured property (price, mass, volume) across every item matching a filter. `value`

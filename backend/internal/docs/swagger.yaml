@@ -372,15 +372,15 @@ definitions:
         type: integer
       offset:
         type: integer
-      total:
-        type: integer
-      totals:
+      property_totals:
         description: |-
-          Totals sums the structured properties of every item matching the filters, not just the ones
-          on this page.
+          PropertyTotals sums the structured properties of every item matching the filters, not just the
+          ones on this page.
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
         type: array
+      total:
+        type: integer
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.LoginRequest:
     properties:
