@@ -13,6 +13,7 @@ import (
 	"log"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/config"
@@ -35,58 +36,112 @@ type measure struct {
 }
 
 type chemicalRow struct {
-	Name         string
+	Name string
+	// CASNumber is the reagent's CAS registry number, the identifier a chemist actually searches
+	// an inventory by. It identifies the substance, not this inventory, so it is real data.
+	CASNumber    string
 	Manufacturer string
 	Purity       string
 	// A package is stocked either by mass (solids) or by volume (liquids), never both, so exactly
 	// one of these is set.
-	PackageMass    *measure
-	PackageVolume  *measure
-	PersonInCharge string
-	NoteDate       string
-	Location       string
-	Cabinet        string
-	Box            string
+	PackageMass   *measure
+	PackageVolume *measure
+	// PackageCount is how many identical packages of this reagent sit on the shelf. Rows with a
+	// count above one are seeded through the bulk-add path in one call, the same way the UI stocks
+	// several identical bottles at once, so every copy is its own item with its own request state.
+	PackageCount int
+	NoteDate     string
+	Location     string
+	Cabinet      string
+	Box          string
 }
 
 // generateChemicalRows fabricates a chemical inventory shaped like a real one. Chemical names are
 // real (common lab reagents), since a chemical's name isn't sensitive on its own; everything tied
-// to this specific inventory (manufacturer, person in charge, dates, box) is still made up so no
-// real data is committed. Each row becomes exactly one item. Selection is index-based (no
-// randomness) so the output is stable across runs.
+// to this specific inventory (manufacturer, dates, box) is still made up so no real data is
+// committed. Each row becomes PackageCount items. Selection is index-based (no randomness) so the
+// output is stable across runs.
 func generateChemicalRows() []chemicalRow {
 	// solid marks reagents stocked as a powder or crystal, which a lab weighs out; everything else
 	// is a liquid stocked by volume. The split is what gives the seed both mass and volume data.
+	// Salts are listed under their anhydrous CAS number; the seed does not model hydrates, which
+	// are separate registry entries.
 	chemicals := []struct {
 		name  string
+		cas   string
 		solid bool
 	}{
-		{"Acetone", false}, {"Methanol", false}, {"Ethanol", false}, {"Isopropanol", false},
-		{"Hexane", false}, {"Heptane", false}, {"Pentane", false}, {"Cyclohexane", false},
-		{"Toluene", false}, {"Xylene", false}, {"Benzene", false}, {"Dichloromethane", false},
-		{"Chloroform", false}, {"Diethyl ether", false}, {"Tetrahydrofuran", false},
-		{"Dimethyl sulfoxide", false}, {"Acetonitrile", false}, {"Ethyl acetate", false},
-		{"Formaldehyde", false}, {"Glycerol", false}, {"Sulfuric acid", false},
-		{"Hydrochloric acid", false}, {"Nitric acid", false}, {"Phosphoric acid", false},
-		{"Acetic acid", false}, {"Oxalic acid", true}, {"Citric acid", true},
-		{"Tartaric acid", true}, {"Boric acid", true}, {"Sodium hydroxide", true},
-		{"Potassium hydroxide", true}, {"Ammonium hydroxide", false}, {"Sodium chloride", true},
-		{"Potassium chloride", true}, {"Sodium carbonate", true}, {"Sodium bicarbonate", true},
-		{"Sodium sulfate", true}, {"Sodium acetate", true}, {"Sodium thiosulfate", true},
-		{"Sodium hypochlorite", false}, {"Ammonium chloride", true}, {"Ammonium nitrate", true},
-		{"Ammonium acetate", true}, {"Calcium chloride", true}, {"Magnesium sulfate", true},
-		{"Barium chloride", true}, {"Zinc sulfate", true}, {"Copper sulfate", true},
-		{"Iron(III) chloride", true}, {"Silver nitrate", true}, {"Potassium iodide", true},
-		{"Potassium permanganate", true}, {"Hydrogen peroxide", false}, {"Iodine", true},
-		{"Bromine", false}, {"EDTA", true}, {"Phenolphthalein", true}, {"Methyl orange", true},
-		{"Pyridine", false}, {"Triethylamine", false},
+		{"Acetone", "67-64-1", false},
+		{"Methanol", "67-56-1", false},
+		{"Ethanol", "64-17-5", false},
+		{"Isopropanol", "67-63-0", false},
+		{"Hexane", "110-54-3", false},
+		{"Heptane", "142-82-5", false},
+		{"Pentane", "109-66-0", false},
+		{"Cyclohexane", "110-82-7", false},
+		{"Toluene", "108-88-3", false},
+		{"Xylene", "1330-20-7", false},
+		{"Benzene", "71-43-2", false},
+		{"Dichloromethane", "75-09-2", false},
+		{"Chloroform", "67-66-3", false},
+		{"Diethyl ether", "60-29-7", false},
+		{"Tetrahydrofuran", "109-99-9", false},
+		{"Dimethyl sulfoxide", "67-68-5", false},
+		{"Acetonitrile", "75-05-8", false},
+		{"Ethyl acetate", "141-78-6", false},
+		{"Formaldehyde", "50-00-0", false},
+		{"Glycerol", "56-81-5", false},
+		{"Sulfuric acid", "7664-93-9", false},
+		{"Hydrochloric acid", "7647-01-0", false},
+		{"Nitric acid", "7697-37-2", false},
+		{"Phosphoric acid", "7664-38-2", false},
+		{"Acetic acid", "64-19-7", false},
+		{"Oxalic acid", "144-62-7", true},
+		{"Citric acid", "77-92-9", true},
+		{"Tartaric acid", "87-69-4", true},
+		{"Boric acid", "10043-35-3", true},
+		{"Sodium hydroxide", "1310-73-2", true},
+		{"Potassium hydroxide", "1310-58-3", true},
+		{"Ammonium hydroxide", "1336-21-6", false},
+		{"Sodium chloride", "7647-14-5", true},
+		{"Potassium chloride", "7447-40-7", true},
+		{"Sodium carbonate", "497-19-8", true},
+		{"Sodium bicarbonate", "144-55-8", true},
+		{"Sodium sulfate", "7757-82-6", true},
+		{"Sodium acetate", "127-09-3", true},
+		{"Sodium thiosulfate", "7772-98-7", true},
+		{"Sodium hypochlorite", "7681-52-9", false},
+		{"Ammonium chloride", "12125-02-9", true},
+		{"Ammonium nitrate", "6484-52-2", true},
+		{"Ammonium acetate", "631-61-8", true},
+		{"Calcium chloride", "10043-52-4", true},
+		{"Magnesium sulfate", "7487-88-9", true},
+		{"Barium chloride", "10361-37-2", true},
+		{"Zinc sulfate", "7733-02-0", true},
+		{"Copper sulfate", "7758-98-7", true},
+		{"Iron(III) chloride", "7705-08-0", true},
+		{"Silver nitrate", "7761-88-8", true},
+		{"Potassium iodide", "7681-11-0", true},
+		{"Potassium permanganate", "7722-64-7", true},
+		{"Hydrogen peroxide", "7722-84-1", false},
+		{"Iodine", "7553-56-2", true},
+		{"Bromine", "7726-95-6", false},
+		{"EDTA", "60-00-4", true},
+		{"Phenolphthalein", "77-09-8", true},
+		{"Methyl orange", "547-58-0", true},
+		{"Pyridine", "110-86-1", false},
+		{"Triethylamine", "121-44-8", false},
 	}
 	manufacturers := []string{"NovaChem", "Solvex Labs", "Ferronova", "BluePeak Reagents", "Cryotech Supply", "Meridian Chemicals", "Vertex Labs", "Arcadia Chemical", "Lumen Scientific", "Pinegrove Labs"}
 	purities := []string{"PA", "HPLC", "GC", "ultrapure", "technical", "0.99", "0.995", "0.997", "ACS"}
 	massPackages := []measure{{1.0, "kg"}, {2.5, "kg"}, {500, "g"}, {100, "g"}, {25, "g"}}
 	volumePackages := []measure{{1.0, "L"}, {2.5, "L"}, {5.0, "L"}, {500, "mL"}, {250, "mL"}}
-	persons := []string{"A.B.", "C.D.", "M.N.", "J.K.", "T.R.", "S.P."}
 	noteDates := []string{"", "", "12.03.2023", "05.07.2024", "21.11.2022", ""}
+	// How many identical packages each row is stocked in. Mostly ones, because a lab usually holds
+	// a single bottle of a given reagent; the larger counts stand in for the bulk-stocked staples
+	// and are what puts duplicate items in the seeded inventory. Cycled by index like every other
+	// field here, so reruns produce the same inventory.
+	packageCounts := []int{1, 1, 4, 1, 2, 1, 1, 3, 1, 6, 1, 2}
 	placements := []struct {
 		location string
 		cabinet  string
@@ -103,14 +158,15 @@ func generateChemicalRows() []chemicalRow {
 	for i, chemical := range chemicals {
 		placement := placements[i%len(placements)]
 		row := chemicalRow{
-			Name:           chemical.name,
-			Manufacturer:   manufacturers[i%len(manufacturers)],
-			Purity:         purities[i%len(purities)],
-			PersonInCharge: persons[i%len(persons)],
-			NoteDate:       noteDates[i%len(noteDates)],
-			Location:       placement.location,
-			Cabinet:        placement.cabinet,
-			Box:            placement.box,
+			Name:         chemical.name,
+			CASNumber:    chemical.cas,
+			Manufacturer: manufacturers[i%len(manufacturers)],
+			Purity:       purities[i%len(purities)],
+			NoteDate:     noteDates[i%len(noteDates)],
+			Location:     placement.location,
+			Cabinet:      placement.cabinet,
+			Box:          placement.box,
+			PackageCount: packageCounts[i%len(packageCounts)],
 		}
 		if chemical.solid {
 			packageMass := massPackages[i%len(massPackages)]
@@ -143,7 +199,11 @@ var testUsers = []testUser{
 }
 
 type itemRequestSeed struct {
-	Email     string
+	Email string
+	// ItemIndex points into the flat list of created items, not into generateChemicalRows: a
+	// bulk-added reagent occupies as many consecutive slots as it has packages, so neighbouring
+	// indexes can be two copies of the same chemical. That is intentional here - it leaves one
+	// copy requested and the rest free, which is the case worth showing.
 	ItemIndex int
 	Reason    string
 	Approved  bool
@@ -167,10 +227,10 @@ type propertyDef struct {
 var propertyDefs = []propertyDef{
 	{"name", "Naziv hemikalije", "string", repository.PropertyVisibilityDetails},
 	{"manufacturer", "Proizvođač", "string", repository.PropertyVisibilityDetails},
+	{"cas_number", "CAS broj", "string", repository.PropertyVisibilityOverview},
 	{"purity", "Čistoća", "string", repository.PropertyVisibilityOverview},
 	{"mass", "Masa", "mass", repository.PropertyVisibilityOverview},
 	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
-	{"person_in_charge", "Zadužena osoba", "string", repository.PropertyVisibilityDetails},
 	{"note_date", "Napomena/datum", "string", repository.PropertyVisibilityDetails},
 	{"cabinet", "Ormar", "string", repository.PropertyVisibilityOverview},
 	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
@@ -361,31 +421,41 @@ func ensureItemTypeProperties(ctx context.Context, itemType dto.ItemType, propID
 	return nil
 }
 
-// seedItems creates one item per physical package rather than one item per spreadsheet row: a
-// each row becomes exactly one item.
+// seedItems creates one item per physical package rather than one item per spreadsheet row, so a
+// row stocked in several identical packages becomes that many items. Those rows go through the
+// same bulk-add path the UI uses (one CreateItem call with Amount > 1), which is what gives the
+// seeded inventory duplicate items to exercise filtering and the property totals against.
 func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]dto.Item, error) {
 	rows := generateChemicalRows()
 	items := make([]dto.Item, 0, len(rows))
 
-	created := 0
+	bulkRows := 0
 	for _, row := range rows {
 		properties := propertyValues(row, propIDs)
 
 		createdItems, err := service.CreateItem(ctx, dto.CreateItemRequest{
 			TypeID:     typeID,
 			Properties: properties,
-			Amount:     1,
+			Amount:     int32(row.PackageCount),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("creating item %q: %w", row.Name, err)
 		}
-		itemCreated := createdItems[0]
-		fmt.Printf("created item %d (%s)\n", itemCreated.ID, row.Name)
-		items = append(items, itemCreated)
-		created++
+
+		itemIDs := make([]string, len(createdItems))
+		for index, createdItem := range createdItems {
+			itemIDs[index] = strconv.FormatInt(createdItem.ID, 10)
+		}
+		fmt.Printf("created %d item(s) %s (%s)\n", len(createdItems), strings.Join(itemIDs, ", "), row.Name)
+
+		items = append(items, createdItems...)
+		if len(createdItems) > 1 {
+			bulkRows++
+		}
 	}
 
-	fmt.Printf("seeded %d items across sample locations\n", created)
+	fmt.Printf("seeded %d items across sample locations (%d of %d reagents bulk-added)\n",
+		len(items), bulkRows, len(rows))
 	return items, nil
 }
 
@@ -450,6 +520,7 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 
 	addString("name", row.Name)
 	addString("manufacturer", row.Manufacturer)
+	addString("cas_number", row.CASNumber)
 	addString("purity", formatPurity(row.Purity))
 	addMeasure("mass", row.PackageMass, func(packageMass measure) any {
 		return dto.PTMass{Amount: scaleMeasureAmount(packageMass.Amount), Unit: packageMass.Unit}
@@ -457,7 +528,6 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 	addMeasure("volume", row.PackageVolume, func(packageVolume measure) any {
 		return dto.PTVolume{Amount: scaleMeasureAmount(packageVolume.Amount), Unit: packageVolume.Unit}
 	})
-	addString("person_in_charge", row.PersonInCharge)
 	addString("note_date", row.NoteDate)
 	addString("cabinet", row.Cabinet)
 	addString("box", row.Box)
