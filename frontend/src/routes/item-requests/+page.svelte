@@ -8,6 +8,7 @@
 		unavailableMessage: 'Zahtevi trenutno nisu dostupni.',
 		requiredRoles: ['manager', 'admin']
 	});
+	let requestsError = $state('');
 
 	onMount(() => void authPage.load());
 </script>
@@ -19,9 +20,9 @@
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading}
-		error={authPage.state.error}
+		error={authPage.state.error || requestsError}
 		authorized={authPage.state.authorized}
 	>
-		<ItemRequestsList />
+		<ItemRequestsList onloaderror={(message) => (requestsError = message)} />
 	</ProtectedPageState>
 </main>

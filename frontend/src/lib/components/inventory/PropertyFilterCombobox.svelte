@@ -3,7 +3,7 @@
 	import X from '@lucide/svelte/icons/x';
 	import { onDestroy } from 'svelte';
 	import { Combobox } from 'bits-ui';
-	import type { PropertyValueType } from '$lib/api';
+	import type { PropertyValue, PropertyValueType } from '$lib/api';
 	import { displayJson } from '$lib/domain/items';
 
 	let {
@@ -15,26 +15,28 @@
 		onsearchchange
 	}: {
 		label: string;
-		options: {}[];
-		value: {};
+		options: PropertyValue[];
+		value: PropertyValue;
 		value_type: PropertyValueType;
-		onvaluechange: (value: {} | undefined) => void;
+		onvaluechange: (value: PropertyValue | undefined) => void;
 		onsearchchange: (search: string) => void;
 	} = $props();
 
 	let open = $state(false);
-	let inputText = $state('');
+	let inputText = $derived(value != undefined ? displayJson(value_type, value) : '');
 	let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 	let control: HTMLDivElement | null = null;
 	let filteredOptions = $derived(
-		options.filter((option) => displayJson(value_type, option).toLocaleLowerCase().includes(inputText.toLocaleLowerCase()))
+		options.filter((option) =>
+			displayJson(value_type, option).toLocaleLowerCase().includes(inputText.toLocaleLowerCase())
+		)
 	);
-	let items = $derived(options.map((option) => ({ value: JSON.stringify(option), label: displayJson(value_type, option) })));
-
-	$effect(() => {
-		console.log(value)
-		inputText = value != undefined ? displayJson(value_type, value) : "";
-	});
+	let items = $derived(
+		options.map((option) => ({
+			value: JSON.stringify(option),
+			label: displayJson(value_type, option)
+		}))
+	);
 
 	onDestroy(() => {
 		if (searchTimeout) clearTimeout(searchTimeout);
@@ -56,7 +58,6 @@
 	}
 
 	function handleValueChange(nextValue: string) {
-		console.log(nextValue)
 		inputText = nextValue;
 		onvaluechange(JSON.parse(nextValue));
 	}
@@ -70,7 +71,7 @@
 			return;
 		}
 
-		inputText = value != undefined ? displayJson(value_type, value) : "";
+		inputText = value != undefined ? displayJson(value_type, value) : '';
 	}
 
 	function clear() {

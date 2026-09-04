@@ -13,6 +13,7 @@
 	});
 	let usersRefreshKey = $state(0);
 	let createUserDialogOpen = $state(false);
+	let usersError = $state('');
 
 	onMount(() => {
 		void authPage.load();
@@ -31,7 +32,7 @@
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading}
-		error={authPage.state.error}
+		error={authPage.state.error || usersError}
 		authorized={authPage.state.authorized}
 	>
 		<div id="users-summary"></div>
@@ -68,6 +69,10 @@
 				</Dialog.Content>
 			</Dialog.Portal>
 		</Dialog.Root>
-		<UserList refreshKey={usersRefreshKey} currentUserID={authPage.state.user!.id} />
+		<UserList
+			refreshKey={usersRefreshKey}
+			currentUserID={authPage.state.user!.id}
+			onloaderror={(message) => (usersError = message)}
+		/>
 	</ProtectedPageState>
 </main>

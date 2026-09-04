@@ -1,7 +1,13 @@
 <script lang="ts">
 	import Eye from '@lucide/svelte/icons/eye';
 	import { resolve } from '$app/paths';
-	import type { ConsumptionStatus, Item, ItemProperty, ItemTypeOption, PropertyOption } from '$lib/api';
+	import type {
+		ConsumptionStatus,
+		Item,
+		ItemProperty,
+		ItemTypeOption,
+		PropertyOption
+	} from '$lib/api';
 	import { displayJson } from '$lib/domain/items';
 	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
 
@@ -33,7 +39,7 @@
 			if (property.smart_data === 'expired') return 'bg-danger-soft text-danger';
 			else if (property.smart_data === 'expiring_soon') return 'bg-warning-soft text-warning';
 		}
-		
+
 		return 'bg-soft text-muted';
 	}
 </script>
