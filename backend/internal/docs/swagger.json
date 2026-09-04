@@ -1790,6 +1790,141 @@
                 }
             }
         },
+        "/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List notifications",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.NotificationsPage"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid limit/offset",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read, returns amount of notifications read",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete notification",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Notification ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "invalid notification id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/ping": {
             "get": {
                 "produces": [
@@ -2988,6 +3123,66 @@
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.Notification": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "desc_item_expiry": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.NotificationDescriptor_ItemExpiry"
+                },
+                "desc_item_request": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.NotificationKind"
+                },
+                "read": {
+                    "type": "boolean"
+                },
+                "recipient_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.NotificationDescriptor_ItemExpiry": {
+            "type": "object",
+            "properties": {
+                "expiry_type": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.NotifdescExpiryType"
+                },
+                "item": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.NotificationsPage": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Notification"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_unread": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.PropertiesPage": {
             "type": "object",
             "properties": {
@@ -3206,6 +3401,28 @@
                 "ConsumptionStatusPartiallyConsumed",
                 "ConsumptionStatusFullyConsumed",
                 "ConsumptionStatusDamaged"
+            ]
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_repository.NotifdescExpiryType": {
+            "type": "string",
+            "enum": [
+                "expiring_soon",
+                "expired"
+            ],
+            "x-enum-varnames": [
+                "NotifdescExpiryTypeExpiringSoon",
+                "NotifdescExpiryTypeExpired"
+            ]
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_repository.NotificationKind": {
+            "type": "string",
+            "enum": [
+                "item_request",
+                "item_expiry"
+            ],
+            "x-enum-varnames": [
+                "NotificationKindItemRequest",
+                "NotificationKindItemExpiry"
             ]
         },
         "github_com_studentinovisad_popisomator_backend_internal_repository.PropertyVisibility": {

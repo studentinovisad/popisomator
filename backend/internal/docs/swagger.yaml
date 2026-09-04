@@ -389,6 +389,45 @@ definitions:
       password:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.Notification:
+    properties:
+      created_at:
+        type: string
+      desc_item_expiry:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.NotificationDescriptor_ItemExpiry'
+      desc_item_request:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
+      id:
+        type: integer
+      kind:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.NotificationKind'
+      read:
+        type: boolean
+      recipient_id:
+        type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.NotificationDescriptor_ItemExpiry:
+    properties:
+      expiry_type:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.NotifdescExpiryType'
+      item:
+        $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item'
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.NotificationsPage:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Notification'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+      total_unread:
+        type: integer
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.PropertiesPage:
     properties:
       items:
@@ -537,6 +576,22 @@ definitions:
     - ConsumptionStatusPartiallyConsumed
     - ConsumptionStatusFullyConsumed
     - ConsumptionStatusDamaged
+  github_com_studentinovisad_popisomator_backend_internal_repository.NotifdescExpiryType:
+    enum:
+    - expiring_soon
+    - expired
+    type: string
+    x-enum-varnames:
+    - NotifdescExpiryTypeExpiringSoon
+    - NotifdescExpiryTypeExpired
+  github_com_studentinovisad_popisomator_backend_internal_repository.NotificationKind:
+    enum:
+    - item_request
+    - item_expiry
+    type: string
+    x-enum-varnames:
+    - NotificationKindItemRequest
+    - NotificationKindItemExpiry
   github_com_studentinovisad_popisomator_backend_internal_repository.PropertyVisibility:
     enum:
     - overview
@@ -1717,6 +1772,90 @@ paths:
       summary: Update a property value on an item (manager/admin only)
       tags:
       - Items
+  /notifications:
+    get:
+      parameters:
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.NotificationsPage'
+        "400":
+          description: invalid limit/offset
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: List notifications
+      tags:
+      - Notifications
+  /notifications/{id}:
+    delete:
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid notification id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete notification
+      tags:
+      - Notifications
+  /notifications/read:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            format: int64
+            type: integer
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Mark all notifications as read, returns amount of notifications read
+      tags:
+      - Notifications
   /ping:
     get:
       produces:

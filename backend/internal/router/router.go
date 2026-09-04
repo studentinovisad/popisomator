@@ -223,5 +223,19 @@ func New() *http.ServeMux {
 		middleware.Handle(controller.DeleteItemRequest),
 	))
 
+	// Notifications
+	mux.Handle("GET /notifications", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ListNotifications),
+	))
+	mux.Handle("POST /notifications/read", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.ReadNotifications),
+	))
+	mux.Handle("DELETE /notifications/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.DeleteNotification),
+	))
+
 	return mux
 }
