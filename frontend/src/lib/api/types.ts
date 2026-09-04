@@ -51,9 +51,13 @@ export type ConsumptionStatus =
 
 export type PropertyVisibility = 'overview' | 'details';
 
+// Property values are primitives or JSON-like structured values. `object` is intentional here:
+// individual value types are validated by the backend according to `PropertyValueType`.
+export type PropertyValue = string | number | boolean | object;
+
 export type ItemProperty = {
 	id: number;
-	value: {};
+	value: PropertyValue;
 	value_type?: PropertyValueType;
 	visibility?: PropertyVisibility;
 	smart_data?: string;
@@ -93,7 +97,7 @@ export type ItemPropertyTotal = {
 
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
-	propertyFilters?: Record<number, {}>;
+	propertyFilters?: Record<number, PropertyValue>;
 };
 
 export type UpdateItemRequest = {
@@ -109,7 +113,7 @@ export type CreateItemRequest = {
 
 export type ItemTypeProperty = {
 	id: number;
-	default_value: {} | null;
+	default_value: PropertyValue | null;
 	name?: string;
 	visibility: PropertyVisibility;
 };
@@ -150,7 +154,7 @@ export type UpdateItemTypeRequest = Partial<
 
 export type AddUpdateItemTypePropertyRequest = {
 	property_id?: number;
-	default_value?: {};
+	default_value?: PropertyValue;
 	visibility?: string;
 };
 
@@ -173,7 +177,7 @@ export type PropertyOption = {
 	id: number;
 	name: string;
 	value_type: PropertyValueType;
-	default_value: {} | null;
+	default_value: PropertyValue | null;
 };
 
 export type Property = PropertyOption & {
@@ -191,7 +195,7 @@ export type CreatePropertyRequest = {
 	name: string;
 	description: string;
 	value_type: PropertyValueType;
-	default_value: {} | null;
+	default_value: PropertyValue | null;
 };
 
 export type UpdatePropertyRequest = Partial<
@@ -243,7 +247,7 @@ export type ItemRequestPreparationItem = {
 
 export type ItemRequestPreparationProperty = {
 	name: string;
-	value: {};
+	value: PropertyValue;
 	value_type: PropertyValueType;
 	visibility: PropertyVisibility;
 	position: number;

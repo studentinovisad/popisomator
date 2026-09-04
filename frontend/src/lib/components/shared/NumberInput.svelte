@@ -18,6 +18,8 @@
 		className = '',
 		inputClassName = '',
 		compact = false,
+		invalid = false,
+		describedBy,
 		onvaluechange
 	}: {
 		id: string;
@@ -32,6 +34,8 @@
 		className?: string;
 		inputClassName?: string;
 		compact?: boolean;
+		invalid?: boolean;
+		describedBy?: string;
 		onvaluechange?: () => void;
 	} = $props();
 
@@ -50,7 +54,7 @@
 <div class={`relative ${className}`}>
 	<input
 		{id}
-		class={`number-input-field block w-full pr-9 ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
+		class={`number-input-field block w-full pr-9 ${compact ? 'h-8' : 'h-10'} ${inputClassName} ${invalid ? 'field-invalid' : ''}`}
 		type="number"
 		bind:value
 		aria-label={ariaLabel}
@@ -60,6 +64,8 @@
 		{step}
 		{required}
 		{disabled}
+		aria-invalid={invalid}
+		aria-describedby={describedBy}
 		oninput={onvaluechange}
 	/>
 	<div

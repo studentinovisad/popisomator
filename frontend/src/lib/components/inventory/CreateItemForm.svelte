@@ -1,10 +1,20 @@
 <script lang="ts">
-	import { api, ApiError, type ItemType, type ItemTypeOption, type PropertyOption } from '$lib/api';
+	import {
+		api,
+		ApiError,
+		type ItemType,
+		type ItemTypeOption,
+		type PropertyOption,
+		type PropertyValue
+	} from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 	import OptionCombobox from '$lib/components/shared/OptionCombobox.svelte';
+	import FormAlert from '$lib/components/shared/FormAlert.svelte';
 	import { defaultJsonValue } from '$lib/domain/items';
+	import { propertyValueError, requiredTextError } from '$lib/domain/form-validation';
 	import { Button, Label, Separator } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	let {
 		itemTypes,
@@ -20,9 +30,10 @@
 
 	let selectedTypeID = $state('');
 	let amount = $state(1);
-	let propertyValues = $state<Record<number, {}>>({});
+	let propertyValues = $state<Record<number, PropertyValue>>({});
 	let selectedPropertyIDs = $state<number[]>([]);
-	let error = $state('');
+	let fieldErrors = $state<{ type?: string; amount?: string }>({});
+	let propertyErrors = $state<Record<number, string>>({});
 	let creating = $state(false);
 	let loadingType = $state(false);
 	let selectedType = $state<ItemType | null>(null);
@@ -32,16 +43,17 @@
 
 	async function selectType(value: string) {
 		selectedTypeID = value;
+		if (fieldErrors.type) fieldErrors = { ...fieldErrors, type: undefined };
 		selectedType = null;
 		propertyValues = {};
 		selectedPropertyIDs = [];
+		propertyErrors = {};
 
 		const typeID = Number(value);
 		if (!Number.isSafeInteger(typeID)) return;
 
 		const version = ++typeLoadVersion;
 		loadingType = true;
-		error = '';
 		try {
 			const itemType = await api.getItemType(typeID);
 			if (version !== typeLoadVersion) return;
@@ -58,7 +70,7 @@
 			);
 		} catch (reason) {
 			if (version !== typeLoadVersion) return;
-			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije učitan.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Tip stavke nije učitan.');
 		} finally {
 			if (version === typeLoadVersion) loadingType = false;
 		}
@@ -66,11 +78,27 @@
 
 	async function createItem(event: SubmitEvent) {
 		event.preventDefault();
-		error = '';
-		if (!selectedTypeID) {
-			error = 'Odaberite tip stavke.';
-			return;
+		const parsedAmount = Number(amount);
+		fieldErrors = {
+			type: requiredTextError(selectedTypeID, 'tip stavke'),
+			amount:
+				Number.isInteger(parsedAmount) && parsedAmount >= 1 && parsedAmount <= 100
+					? undefined
+					: 'Količina mora biti ceo broj od 1 do 100.'
+		};
+		const nextPropertyErrors: Record<number, string> = {};
+		for (const propertyID of selectedPropertyIDs) {
+			const property = propertiesByID.get(propertyID);
+			if (!property) continue;
+			const message = propertyValueError(property, propertyValues[propertyID]);
+			if (message) nextPropertyErrors[propertyID] = message;
 		}
+		propertyErrors = nextPropertyErrors;
+		if (
+			Object.values(fieldErrors).some((fieldError) => fieldError !== undefined) ||
+			Object.keys(nextPropertyErrors).length
+		)
+			return;
 		creating = true;
 
 		try {
@@ -84,16 +112,24 @@
 			selectedTypeID = '';
 			propertyValues = {};
 			selectedPropertyIDs = [];
+			toast.success('Stavka je dodata.');
 			oncreated();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Stavka nije sačuvana.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Stavka nije sačuvana.');
 		} finally {
 			creating = false;
 		}
 	}
+
+	function clearPropertyError(propertyID: number) {
+		if (!propertyErrors[propertyID]) return;
+		const nextErrors = { ...propertyErrors };
+		delete nextErrors[propertyID];
+		propertyErrors = nextErrors;
+	}
 </script>
 
-<form class="grid gap-4" onsubmit={createItem}>
+<form class="grid gap-4" novalidate onsubmit={createItem}>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="new-item-type">Tip stavke</Label.Root>
 		<div class="mt-1">
@@ -102,12 +138,19 @@
 				options={itemTypes}
 				bind:value={selectedTypeID}
 				placeholder="Odaberite tip"
+				invalid={Boolean(fieldErrors.type)}
+				describedBy={fieldErrors.type ? 'new-item-type-error' : undefined}
 				onvaluechange={selectType}
 			/>
 		</div>
+		{#if fieldErrors.type}
+			<p id="new-item-type-error" class="mt-1 text-xs text-danger" role="alert">
+				{fieldErrors.type}
+			</p>
+		{/if}
 		<p class="mt-1 text-xs text-muted">Tip određuje skup dostupnih svojstava.</p>
 		{#if itemTypes.length === 0}
-			<p class="mt-2 text-sm text-danger" role="alert">Prvo dodajte tip stavke u katalogu.</p>
+			<div class="mt-2"><FormAlert message="Prvo dodajte tip stavke u katalogu." /></div>
 		{/if}
 	</div>
 	<div>
@@ -120,7 +163,17 @@
 			min={1}
 			max={100}
 			required
+			invalid={Boolean(fieldErrors.amount)}
+			describedBy={fieldErrors.amount ? 'new-item-amount-error' : undefined}
+			onvaluechange={() => {
+				if (fieldErrors.amount) fieldErrors = { ...fieldErrors, amount: undefined };
+			}}
 		/>
+		{#if fieldErrors.amount}
+			<p id="new-item-amount-error" class="mt-1 text-xs text-danger" role="alert">
+				{fieldErrors.amount}
+			</p>
+		{/if}
 		<p class="mt-1 text-xs text-muted">Koliko istih stavki želite da ubacite.</p>
 	</div>
 
@@ -146,11 +199,17 @@
 										id={`new-item-property-${property.id}`}
 										bind:value={propertyValues[property.id]}
 										className=""
-										inputClassName="text-sm"
+										inputClassName={`text-sm ${propertyErrors[property.id] ? 'field-invalid' : ''}`}
 										compact={true}
 										{property}
 										required
+										onvaluechange={() => clearPropertyError(property.id)}
 									/>
+									{#if propertyErrors[property.id]}
+										<p class="mt-1 text-xs text-danger" role="alert">
+											{propertyErrors[property.id]}
+										</p>
+									{/if}
 								{:else}
 									<p
 										class="flex h-8 items-center rounded-md border border-transparent pl-3 text-sm text-muted"
@@ -193,6 +252,5 @@
 				Otkaži dodavanje
 			</Button.Root>
 		{/if}
-		{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>

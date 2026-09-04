@@ -14,6 +14,8 @@
 		placeholder = 'Pretražite opcije',
 		emptyMessage = 'Nema odgovarajućih opcija.',
 		disabled = false,
+		invalid = false,
+		describedBy,
 		onvaluechange
 	}: {
 		id?: string;
@@ -22,6 +24,8 @@
 		placeholder?: string;
 		emptyMessage?: string;
 		disabled?: boolean;
+		invalid?: boolean;
+		describedBy?: string;
 		onvaluechange?: (value: string) => void;
 	} = $props();
 
@@ -52,8 +56,10 @@
 	<div class="relative">
 		<Combobox.Input
 			{id}
-			class="block h-10 w-full rounded-md border border-line bg-surface py-0 pr-10 pl-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand"
+			class={`block h-10 w-full rounded-md border border-line bg-surface py-0 pr-10 pl-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand ${invalid ? 'field-invalid' : ''}`}
 			{placeholder}
+			aria-invalid={invalid}
+			aria-describedby={describedBy}
 			oninput={handleInput}
 		/>
 		<Combobox.Trigger

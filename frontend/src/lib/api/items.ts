@@ -6,6 +6,7 @@ import type {
 	ItemProperty,
 	ItemsPage,
 	ListItemsParams,
+	PropertyValue,
 	UpdateItemRequest
 } from '$lib/api/types';
 
@@ -33,12 +34,12 @@ export const itemsApi = {
 	consumeItem: (id: number, status: ConsumptionStatus) =>
 		request<Item>(`/items/${id}/consume`, jsonRequest('POST', { consumption: status })),
 	deleteItem: (id: number) => request<void>(`/items/${id}`, { method: 'DELETE' }),
-	addItemProperty: (itemID: number, propertyID: number, value: {}) =>
+	addItemProperty: (itemID: number, propertyID: number, value: PropertyValue) =>
 		request<ItemProperty>(
 			`/items/${itemID}/properties`,
 			jsonRequest('POST', { property_id: propertyID, value })
 		),
-	updateItemProperty: (itemID: number, propertyID: number, value: {}) =>
+	updateItemProperty: (itemID: number, propertyID: number, value: PropertyValue) =>
 		request<ItemProperty>(
 			`/items/${itemID}/properties/${propertyID}`,
 			jsonRequest('PUT', { value })
