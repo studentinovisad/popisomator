@@ -169,6 +169,43 @@ body {
 	color: var(--color-surface);
 }
 
+@keyframes field-error-shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	25% {
+		transform: translateX(-3px);
+	}
+	75% {
+		transform: translateX(3px);
+	}
+}
+
+.field-invalid {
+	border-color: var(--color-danger) !important;
+	box-shadow: 0 0 0 1px var(--color-danger);
+	animation: field-error-shake 180ms ease-in-out;
+}
+
+/* Sonner's built-in collapsed-stack hiding applies only to styled toasts. We use
+ * unstyled toasts for the application theme, so hide and clip the cards behind
+ * the front toast ourselves. */
+[data-sonner-toast][data-expanded='false'][data-front='false'] {
+	overflow: hidden;
+}
+
+[data-sonner-toast][data-expanded='false'][data-front='false'] > * {
+	opacity: 0;
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.field-invalid {
+		animation: none;
+	}
+}
+
 @layer base {
 	:where(
 		a[href],

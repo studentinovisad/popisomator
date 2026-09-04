@@ -1,10 +1,10 @@
 import {
 	type ConsumptionStatus,
+	type PropertyValue,
 	type PropertyValueType,
 	type PTMeasure,
 	type PTPrice
 } from '$lib/api';
-import * as api from '$lib/api';
 
 export const consumptionOptions: { value: ConsumptionStatus; label: string }[] = [
 	{ value: 'not_consumed', label: 'Nije potrošeno' },
@@ -61,7 +61,10 @@ export function propertyValueTypeLabel(valueType: PropertyValueType) {
 // so `===` only ever reports reference identity - which is how an edit to one of them can look
 // unchanged and get dropped. Keys are sorted so that a value round-tripped through the API compares
 // equal to one built locally regardless of key order.
-export function samePropertyValue(left: {} | null | undefined, right: {} | null | undefined) {
+export function samePropertyValue(
+	left: PropertyValue | null | undefined,
+	right: PropertyValue | null | undefined
+) {
 	return stableStringify(left) === stableStringify(right);
 }
 
@@ -75,49 +78,53 @@ function stableStringify(value: unknown): string {
 
 export function displayJson(
 	valueType: PropertyValueType | undefined,
-	value: {} | null | undefined
+	value: PropertyValue | null | undefined
 ) {
 	if (value === null || value === undefined || value === '') return '—';
 
 	try {
 		switch (valueType) {
-			case "price":
-				const price = value as PTPrice
+			case 'price': {
+				const price = value as PTPrice;
 				return (price.amount / PriceMultiplier).toLocaleString('sr-RS', {
 					style: 'currency',
 					currency: price.currency,
 					minimumFractionDigits: 2,
 					maximumFractionDigits: 4
 				});
-			case "mass":
-			case "volume": {
+			}
+			case 'mass':
+			case 'volume': {
 				const measure = value as PTMeasure;
 				const amount = (measure.amount / MeasureMultiplier).toLocaleString('sr-RS', {
 					maximumFractionDigits: 4
 				});
 				return `${amount}${measure.unit}`;
 			}
-			case "boolean":
-				return value ? "Da" : "Ne";
+			case 'boolean':
+				return value ? 'Da' : 'Ne';
 			default:
 				return typeof value === 'string' ? value : JSON.stringify(value);
 		}
 	} catch {
-		return "???";
+		return '???';
 	}
 }
 
-export function defaultJsonValue(valueType: PropertyValueType, value: {} | null) {
+export function defaultJsonValue(
+	valueType: PropertyValueType,
+	value: PropertyValue | null
+): PropertyValue {
 	if (value !== null) return value;
-	if (valueType === 'string') return "";
+	if (valueType === 'string') return '';
 	if (valueType === 'number') return 0;
 	if (valueType === 'price') return { amount: 0, currency: 'RSD' };
 	if (valueType === 'mass') return { amount: 0, unit: 'g' };
 	if (valueType === 'volume') return { amount: 0, unit: 'mL' };
 	if (valueType === 'expiry') {
-		let sample_date = new Date();
-		sample_date.setDate(sample_date.getDate() + 7)
-		return sample_date.toISOString().split('T')[0];
+		const sampleDate = new Date();
+		sampleDate.setDate(sampleDate.getDate() + 7);
+		return sampleDate.toISOString().split('T')[0];
 	}
 	return false;
 }

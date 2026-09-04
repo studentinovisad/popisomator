@@ -3,6 +3,8 @@
 	import { page } from '$app/state';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
+	import { toast } from 'svelte-sonner';
 	import {
 		api,
 		ApiError,
@@ -12,7 +14,8 @@
 		type ItemType,
 		type ItemTypeOption,
 		type ItemTypeFilterableProperty,
-		type PropertyOption
+		type PropertyOption,
+		type PropertyValue
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -38,7 +41,7 @@
 	let properties = $state<PropertyOption[]>([]);
 	let selectedItemType = $state<ItemType | null>(null);
 	let itemTypeFilterableProperties = $state<ItemTypeFilterableProperty[]>([]);
-	let propertyFilterOptions = $state<Record<number, {}[]>>({});
+	let propertyFilterOptions = $state<Record<number, PropertyValue[]>>({});
 	let loadingInventory = $state(false);
 	let loadingInventoryOptions = $state(false);
 	let inventoryLoaded = $state(false);
@@ -48,7 +51,7 @@
 	let loadVersion = 0;
 	let inventoryQueryKey = '';
 	let itemTypeFiltersLoadVersion = 0;
-	let propertyFilterValueLoadVersions = new Map<string, number>();
+	let propertyFilterValueLoadVersions = new SvelteMap<string, number>();
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
 	let itemsTotal = $state(0);
@@ -63,7 +66,9 @@
 	let itemTypeFilter = $derived(
 		selectedItemTypeID === undefined ? 'all' : String(selectedItemTypeID)
 	);
-	let propertyOptionsByID = $derived(new Map(properties.map((property) => [property.id, property])));
+	let propertyOptionsByID = $derived(
+		new Map(properties.map((property) => [property.id, property]))
+	);
 	let propertyFilters = $derived.by((): PropertyFilter[] => {
 		if (!selectedItemType) return [];
 
@@ -74,12 +79,14 @@
 		return selectedItemType.properties.flatMap((itemTypeProperty) => {
 			const property = propertyOptionsByID.get(itemTypeProperty.id);
 			if (!property || (valueCounts.get(itemTypeProperty.id) ?? 0) < 2) return [];
-			return [{
-				id: property.id,
-				name: property.name,
-				value: selectedFilters[property.id] ?? undefined,
-				value_type: property.value_type
-			}];
+			return [
+				{
+					id: property.id,
+					name: property.name,
+					value: selectedFilters[property.id] ?? undefined,
+					value_type: property.value_type
+				}
+			];
 		});
 	});
 
@@ -99,13 +106,24 @@
 		const itemTypeID = getSelectedItemTypeID(url);
 		const selectedPropertyFilters = getPropertyFilters(url);
 		const currentPage = getTablePage(url);
-		const queryKey = JSON.stringify({ currentPage, search, itemTypeID, selectedPropertyFilters, itemsPerPage });
+		const queryKey = JSON.stringify({
+			currentPage,
+			search,
+			itemTypeID,
+			selectedPropertyFilters,
+			itemsPerPage
+		});
 
 		if (queryKey === inventoryQueryKey) return;
 
 		inventoryQueryKey = queryKey;
 		derivedNameSearch = search;
-		void loadInventory((currentPage - 1) * itemsPerPage, search, itemTypeID, selectedPropertyFilters);
+		void loadInventory(
+			(currentPage - 1) * itemsPerPage,
+			search,
+			itemTypeID,
+			selectedPropertyFilters
+		);
 	});
 
 	$effect(() => {
@@ -117,7 +135,7 @@
 			selectedItemType = null;
 			itemTypeFilterableProperties = [];
 			propertyFilterOptions = {};
-			propertyFilterValueLoadVersions = new Map();
+			propertyFilterValueLoadVersions = new SvelteMap();
 			return;
 		}
 
@@ -128,7 +146,7 @@
 		offset: number,
 		search: string,
 		itemTypeID: number | undefined,
-		selectedPropertyFilters: Record<number, {}>
+		selectedPropertyFilters: Record<number, PropertyValue>
 	) {
 		const version = ++loadVersion;
 		loadingInventory = true;
@@ -151,7 +169,7 @@
 			inventoryLoaded = true;
 		} catch (reason) {
 			if (version !== loadVersion) return;
-			inventoryError = reason instanceof ApiError ? reason.message : 'Stavke nisu učitane.';
+			reportInventoryError(reason instanceof ApiError ? reason.message : 'Stavke nisu učitane.');
 		} finally {
 			if (version === loadVersion) loadingInventory = false;
 		}
@@ -169,14 +187,15 @@
 			if (version !== itemTypeFiltersLoadVersion) return;
 			itemTypeFilterableProperties = filterableProperties;
 			propertyFilterOptions = {};
-			propertyFilterValueLoadVersions = new Map();
+			propertyFilterValueLoadVersions = new SvelteMap();
 		} catch (reason) {
 			if (version !== itemTypeFiltersLoadVersion) return;
 			if (!itemTypeLoaded) selectedItemType = null;
 			itemTypeFilterableProperties = [];
 			propertyFilterOptions = {};
-			inventoryError =
-				reason instanceof ApiError ? reason.message : 'Filteri svojstava nisu učitani.';
+			reportInventoryError(
+				reason instanceof ApiError ? reason.message : 'Filteri svojstava nisu učitani.'
+			);
 		}
 	}
 
@@ -192,16 +211,14 @@
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
 			const requestedTypeID = getSelectedItemTypeID(page.url);
-			if (
-				nextItemTypes.length === 1 &&
-				requestedTypeID === undefined
-			) {
+			if (nextItemTypes.length === 1 && requestedTypeID === undefined) {
 				updateTableQuery({ type_id: nextItemTypes[0].id });
 			}
 			inventoryOptionsLoaded = true;
 		} catch (reason) {
-			inventoryError =
-				reason instanceof ApiError ? reason.message : 'Podaci kataloga nisu učitani.';
+			reportInventoryError(
+				reason instanceof ApiError ? reason.message : 'Podaci kataloga nisu učitani.'
+			);
 		} finally {
 			loadingInventoryOptions = false;
 		}
@@ -209,16 +226,15 @@
 
 	async function changeConsumption(item: Item, status: ConsumptionStatus) {
 		if (item.consumption === status) return;
-		inventoryError = '';
 
 		try {
 			await api.consumeItem(item.id, status);
 			items = items.map((currentItem) =>
 				currentItem.id === item.id ? { ...currentItem, consumption: status } : currentItem
 			);
+			toast.success('Stanje stavke je promenjeno.');
 		} catch (reason) {
-			inventoryError =
-				reason instanceof ApiError ? reason.message : 'Stanje stavke nije promenjeno.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Stanje stavke nije promenjeno.');
 		}
 	}
 
@@ -238,7 +254,7 @@
 		updateTableQuery({ type_id: itemTypeID, page: 1, ...propertyFilterUpdates });
 	}
 
-	function filterByProperty(propertyID: number, value: {} | undefined) {
+	function filterByProperty(propertyID: number, value: PropertyValue | undefined) {
 		updateTableQuery({ [`property.${propertyID}`]: JSON.stringify(value), page: 1 });
 	}
 
@@ -252,21 +268,20 @@
 
 		try {
 			const values = await api.searchItemTypePropertyValues(itemTypeID, propertyID, search);
-			if (
-				selectedItemTypeID !== itemTypeID ||
-				propertyFilterValueLoadVersions.get(key) !== version
-			)
+			if (selectedItemTypeID !== itemTypeID || propertyFilterValueLoadVersions.get(key) !== version)
 				return;
 			propertyFilterOptions = { ...propertyFilterOptions, [propertyID]: values };
 		} catch (reason) {
-			if (
-				selectedItemTypeID !== itemTypeID ||
-				propertyFilterValueLoadVersions.get(key) !== version
-			)
+			if (selectedItemTypeID !== itemTypeID || propertyFilterValueLoadVersions.get(key) !== version)
 				return;
-			inventoryError =
-				reason instanceof ApiError ? reason.message : 'Vrednosti filtera nisu učitane.';
+			reportInventoryError(
+				reason instanceof ApiError ? reason.message : 'Vrednosti filtera nisu učitane.'
+			);
 		}
+	}
+
+	function reportInventoryError(message: string) {
+		inventoryError = message;
 	}
 
 	function refreshInventory() {
@@ -281,12 +296,13 @@
 			: undefined;
 	}
 
-	function getPropertyFilters(url: URL): Record<number, {}> {
-		const filters: Record<number, {}> = {};
+	function getPropertyFilters(url: URL): Record<number, PropertyValue> {
+		const filters: Record<number, PropertyValue> = {};
 		for (const [key, value] of url.searchParams) {
 			if (!key.startsWith('property.')) continue;
 			const propertyID = Number.parseInt(key.slice('property.'.length), 10);
-			if (Number.isSafeInteger(propertyID) && propertyID > 0 && value) filters[propertyID] = JSON.parse(value);
+			if (Number.isSafeInteger(propertyID) && propertyID > 0 && value)
+				filters[propertyID] = JSON.parse(value);
 		}
 		return filters;
 	}
@@ -306,7 +322,7 @@
 		loading={authPage.state.loading ||
 			(authPage.state.authorized && (loadingInventory || loadingInventoryOptions))}
 		contentLoaded={inventoryLoaded && inventoryOptionsLoaded}
-		error={authPage.state.error}
+		error={authPage.state.error || inventoryError}
 		authorized={authPage.state.authorized && authPage.state.user !== null}
 	>
 		{#if canManage}
@@ -322,7 +338,6 @@
 			</Portal>
 		{/if}
 
-		{#if inventoryError}<p class="mt-3 text-sm text-danger" role="alert">{inventoryError}</p>{/if}
 		<InventoryToolbar
 			total={itemsTotal}
 			propertyTotals={itemPropertyTotals}

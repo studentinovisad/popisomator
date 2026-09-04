@@ -25,8 +25,10 @@
 		type PreparationReportPrintContext
 	} from '$lib/state/preparation-report-print-context';
 	import { getTableFilter, getTablePage, updateTableQuery } from '$lib/state/table-query';
+	import { toast } from 'svelte-sonner';
 
 	const printContext = getContext<PreparationReportPrintContext>(preparationReportPrintContextKey);
+	let { onloaderror }: { onloaderror?: (message: string) => void } = $props();
 
 	const requestsPage = createServerPagination<
 		ItemRequestSummary,
@@ -69,6 +71,10 @@
 		const userID = Number.isSafeInteger(parsedUserID) && parsedUserID > 0 ? requestedUserID : 'all';
 
 		requestsPage.sync({ page: getTablePage(url), filters: { status, userID } });
+	});
+
+	$effect(() => {
+		if (requestsPage.error) onloaderror?.(requestsPage.error);
 	});
 
 	$effect(() => {
@@ -115,18 +121,17 @@
 	}
 
 	async function decide(itemRequest: ItemRequestSummary, approve: boolean) {
-		requestsPage.error = '';
-
 		try {
 			if (approve) {
 				await api.approveItemRequest(itemRequest.user_id, itemRequest.item_id);
 			} else {
 				await api.denyItemRequest(itemRequest.user_id, itemRequest.item_id);
 			}
+			toast.success(approve ? 'Zahtev je odobren.' : 'Zahtev je odbijen.');
 			requestsPage.reloadAfterDelete();
 			refreshPreparationReport(selectedUserID);
 		} catch (reason) {
-			requestsPage.error = reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.');
 		}
 	}
 
@@ -233,9 +238,6 @@
 			</Select.Root>
 		</div>
 	</div>
-	{#if requestsPage.error}
-		<p class="mt-3 text-sm text-danger" role="alert">{requestsPage.error}</p>
-	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 		<table class="hidden w-full table-fixed text-left text-sm lg:table">
 			<colgroup>

@@ -1,8 +1,7 @@
 <script lang="ts">
-	import type { PropertyOption } from '$lib/api';
+	import type { PropertyOption, PropertyValue } from '$lib/api';
 	import NumberInput from '$lib/components/shared/NumberInput.svelte';
 	import { measureUnits } from '$lib/domain/items';
-	import { DateField } from 'bits-ui';
 	import MeasureInput from './MeasureInput.svelte';
 	import PriceInput from './PriceInput.svelte';
 
@@ -18,7 +17,7 @@
 	}: {
 		property: PropertyOption;
 		id: string;
-		value: {};
+		value: PropertyValue;
 		className?: string;
 		inputClassName?: string;
 		compact?: boolean;
@@ -43,33 +42,33 @@
 		} catch {
 			stringValue = String(value);
 			numberValue = 0;
-			objectValue = value;
+			objectValue = typeof value === 'object' && value != null ? value : {};
 			booleanValue = false;
 		}
 
 		lastCommittedValue = value;
 	});
 
-	function commitValue(nextValue: {}) {
+	function commitValue(nextValue: PropertyValue) {
 		lastCommittedValue = nextValue;
 		value = nextValue;
 		onvaluechange?.();
 	}
 
 	function commitString() {
-		commitValue(stringValue)
+		commitValue(stringValue);
 	}
 
 	function commitNumber() {
-		commitValue(numberValue)
+		commitValue(numberValue);
 	}
 
 	function commitBoolean() {
-		commitValue(booleanValue)
+		commitValue(booleanValue);
 	}
 
 	function commitObject() {
-		commitValue(objectValue)
+		commitValue(objectValue);
 	}
 </script>
 

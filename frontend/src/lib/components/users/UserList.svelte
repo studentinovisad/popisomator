@@ -6,6 +6,7 @@
 	import UsersTable from '$lib/components/users/UsersTable.svelte';
 	import UsersToolbar from '$lib/components/users/UsersToolbar.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
+	import { toast } from 'svelte-sonner';
 	import { roleFilterOptions, type UserRoleFilter } from '$lib/domain/users';
 	import {
 		getTableFilter,
@@ -14,7 +15,15 @@
 		updateTableQuery
 	} from '$lib/state/table-query';
 
-	let { refreshKey, currentUserID }: { refreshKey: number; currentUserID: number } = $props();
+	let {
+		refreshKey,
+		currentUserID,
+		onloaderror
+	}: {
+		refreshKey: number;
+		currentUserID: number;
+		onloaderror?: (message: string) => void;
+	} = $props();
 
 	let pendingUsersTotal = $state(0);
 	let search = $state('');
@@ -53,6 +62,10 @@
 		if (shouldReloadUsers) void usersPage.load(usersPage.offset);
 	});
 
+	$effect(() => {
+		if (usersPage.error) onloaderror?.(usersPage.error);
+	});
+
 	async function loadPendingUsersTotal() {
 		try {
 			const page = await api.listUsers({ limit: 1, status: 'requested' });
@@ -63,15 +76,14 @@
 	}
 
 	async function updateRole(user: User, nextRole: UserRole) {
-		usersPage.error = '';
-
 		try {
 			const updatedUser = await api.updateUser(user.id, { role: nextRole });
 			usersPage.items = usersPage.items.map((listedUser) =>
 				listedUser.id === user.id ? updatedUser : listedUser
 			);
+			toast.success('Uloga korisnika je promenjena.');
 		} catch (reason) {
-			usersPage.error = reason instanceof ApiError ? reason.message : 'Uloga nije promenjena.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Uloga nije promenjena.');
 		}
 	}
 
@@ -99,9 +111,6 @@
 		onrolechange={filterByRole}
 		onsearch={searchUsers}
 	/>
-	{#if usersPage.error}
-		<p class="mt-3 text-sm text-danger" role="alert">{usersPage.error}</p>
-	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 		<UsersMobileList users={usersPage.items} {currentUserID} onrolechange={updateRole} />
 		<UsersTable users={usersPage.items} {currentUserID} onrolechange={updateRole} />

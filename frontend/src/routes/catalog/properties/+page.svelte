@@ -13,13 +13,13 @@
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { getTablePage, getTableSearch, updateTableQuery } from '$lib/state/table-query';
 	import { Portal } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Svojstva trenutno nisu dostupna.',
 		requiredRoles: ['admin']
 	});
 
-	let error = $state('');
 	const propertiesPage = createServerPagination<Property>({
 		loadPage: api.listProperties,
 		unavailableMessage: 'Svojstva nisu učitana.'
@@ -41,13 +41,12 @@
 
 	async function deleteProperty(property: Property) {
 		if (!confirm(`Obrisati svojstvo ${property.name}?`)) return;
-		error = '';
-
 		try {
 			await api.deleteProperty(property.id);
+			toast.success('Svojstvo je obrisano.');
 			propertiesPage.reloadAfterDelete();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Svojstvo nije obrisano.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Svojstvo nije obrisano.');
 		}
 	}
 
@@ -93,7 +92,6 @@
 			</a>
 		</Portal>
 
-		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 		<TableSearch
 			id="property-name-search"
 			placeholder="Pretraži po nazivu"

@@ -20,6 +20,7 @@
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { displayJson } from '$lib/domain/items';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
+	import { toast } from 'svelte-sonner';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Stavka trenutno nije dostupna.' });
 
@@ -28,7 +29,6 @@
 	let properties = $state<PropertyOption[]>([]);
 	let loading = $state(false);
 	let loadError = $state('');
-	let actionError = $state('');
 	let editing = $state(false);
 	let changingConsumption = $state(false);
 	let deleting = $state(false);
@@ -86,11 +86,11 @@
 		if (!item || item.consumption === status) return;
 
 		changingConsumption = true;
-		actionError = '';
 		try {
 			item = await api.consumeItem(item.id, status);
+			toast.success('Stanje stavke je promenjeno.');
 		} catch (reason) {
-			actionError = reason instanceof ApiError ? reason.message : 'Stanje stavke nije promenjeno.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Stanje stavke nije promenjeno.');
 		} finally {
 			changingConsumption = false;
 		}
@@ -108,12 +108,12 @@
 		if (!confirm(`Obrisati stavku „${name}“?`)) return;
 
 		deleting = true;
-		actionError = '';
 		try {
 			await api.deleteItem(item.id);
+			toast.success('Stavka je obrisana.');
 			await goto(resolve('/'));
 		} catch (reason) {
-			actionError = reason instanceof ApiError ? reason.message : 'Stavka nije obrisana.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Stavka nije obrisana.');
 		} finally {
 			deleting = false;
 		}
@@ -121,9 +121,8 @@
 
 	function propertiesSaved() {
 		editing = false;
-		actionError = '';
 		void refreshItem().catch((reason) => {
-			actionError = reason instanceof ApiError ? reason.message : 'Stavka nije osvežena.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Stavka nije osvežena.');
 		});
 	}
 
@@ -197,8 +196,6 @@
 					</div>
 				</div>
 
-				{#if actionError}<p class="mt-4 text-sm text-danger" role="alert">{actionError}</p>{/if}
-
 				<section class="mt-3" aria-labelledby="item-properties-heading">
 					<h3 id="item-properties-heading" class="text-base font-semibold text-ink">Svojstva</h3>
 					<div class="mt-3">
@@ -214,7 +211,7 @@
 											{propertyNames.get(property.id) ?? `Svojstvo #${property.id}`}
 										</dt>
 										<dd
-											class="col-start-2 flex min-h-8 items-center rounded-md border border-transparent pl-3 text-sm break-words text-ink"
+											class="col-start-2 flex min-h-8 items-center rounded-md border border-transparent pl-3 text-sm wrap-break-word text-ink"
 										>
 											{displayJson(property.value_type, property.value)}
 										</dd>

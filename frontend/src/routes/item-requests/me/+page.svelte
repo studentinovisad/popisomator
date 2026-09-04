@@ -39,15 +39,12 @@
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading}
-		error={authPage.state.error}
+		error={authPage.state.error || requestsPage.error}
 		authorized={authPage.state.authorized}
 	>
 		<p class="font-mono text-xs font-medium tracking-wide text-muted">
 			UKUPNO: {requestsPage.total}
 		</p>
-		{#if requestsPage.error}
-			<p class="mt-3 text-sm text-danger" role="alert">{requestsPage.error}</p>
-		{/if}
 		<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 			<table class="hidden w-full table-fixed text-left text-sm lg:table">
 				<colgroup>

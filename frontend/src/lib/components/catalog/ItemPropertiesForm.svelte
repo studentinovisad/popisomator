@@ -1,8 +1,17 @@
 <script lang="ts">
-	import { api, ApiError, type Item, type ItemType, type PropertyOption } from '$lib/api';
+	import {
+		api,
+		ApiError,
+		type Item,
+		type ItemType,
+		type PropertyOption,
+		type PropertyValue
+	} from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import { defaultJsonValue, samePropertyValue } from '$lib/domain/items';
+	import { propertyValueError } from '$lib/domain/form-validation';
 	import { Button, Label } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	let {
 		item,
@@ -29,9 +38,9 @@
 		new Map(item.properties.map((property) => [property.id, property.value]))
 	);
 	let selectedPropertyIDs = $state<number[]>([]);
-	let values = $state<Record<number, {}>>({});
+	let values = $state<Record<number, PropertyValue>>({});
+	let fieldErrors = $state<Record<number, string>>({});
 	let saving = $state(false);
-	let error = $state('');
 
 	$effect(() => {
 		selectedPropertyIDs = item.properties.map((property) => property.id);
@@ -45,10 +54,29 @@
 		);
 	});
 
+	function clearFieldError(propertyID: number) {
+		if (!fieldErrors[propertyID]) return;
+		const nextErrors = { ...fieldErrors };
+		delete nextErrors[propertyID];
+		fieldErrors = nextErrors;
+	}
+
+	function validate() {
+		const nextErrors: Record<number, string> = {};
+		for (const propertyID of selectedPropertyIDs) {
+			const property = propertyByID.get(propertyID);
+			if (!property) continue;
+			const message = propertyValueError(property, values[propertyID]);
+			if (message) nextErrors[propertyID] = message;
+		}
+		fieldErrors = nextErrors;
+		return Object.keys(nextErrors).length === 0;
+	}
+
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
+		if (!validate()) return;
 		saving = true;
-		error = '';
 
 		try {
 			const changes: Promise<unknown>[] = [];
@@ -68,16 +96,17 @@
 					changes.push(api.updateItemProperty(item.id, propertyID, values[propertyID]));
 			}
 			await Promise.all(changes);
+			if (changes.length > 0) toast.success('Svojstva stavke su sačuvana.');
 			onsaved();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Svojstva stavke nisu sačuvana.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Svojstva stavke nisu sačuvana.');
 		} finally {
 			saving = false;
 		}
 	}
 </script>
 
-<form onsubmit={save}>
+<form novalidate onsubmit={save}>
 	<div class="divide-y divide-line border-y border-line">
 		{#if editablePropertyIDs.length}
 			{#each editablePropertyIDs as propertyID (propertyID)}
@@ -96,11 +125,14 @@
 									id={`item-${item.id}-property-${propertyID}`}
 									bind:value={values[propertyID]}
 									className=""
-									inputClassName="text-sm"
+									inputClassName={`text-sm ${fieldErrors[propertyID] ? 'field-invalid' : ''}`}
 									compact={true}
 									{property}
-									required
+									onvaluechange={() => clearFieldError(propertyID)}
 								/>
+								{#if fieldErrors[propertyID]}
+									<p class="mt-1 text-xs text-danger" role="alert">{fieldErrors[propertyID]}</p>
+								{/if}
 							{:else}
 								<p
 									class="flex h-8 items-center rounded-md border border-transparent pl-3 text-sm text-muted"
@@ -133,6 +165,5 @@
 		>
 			{saving ? 'Čuvanje…' : 'Sačuvaj svojstva'}
 		</Button.Root>
-		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>

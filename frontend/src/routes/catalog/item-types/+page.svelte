@@ -12,13 +12,14 @@
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { getTablePage, getTableSearch, updateTableQuery } from '$lib/state/table-query';
 	import { Portal } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	const authPage = createAuthPage({
 		unavailableMessage: 'Tipovi stavki trenutno nisu dostupni.',
 		requiredRoles: ['admin']
 	});
 
-	let error = $state('');
+	let propertyOptionsError = $state('');
 	const itemTypesPage = createServerPagination<ItemType>({
 		loadPage: api.listItemTypes,
 		unavailableMessage: 'Tipovi stavki nisu učitani.'
@@ -46,12 +47,10 @@
 
 	async function loadPropertyOptions() {
 		propertyOptionsLoading = true;
-		error = '';
-
 		try {
 			propertyOptions = await api.getPropertyOptions();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Svojstva nisu učitana.';
+			propertyOptionsError = reason instanceof ApiError ? reason.message : 'Svojstva nisu učitana.';
 		} finally {
 			propertyOptionsLoading = false;
 		}
@@ -59,13 +58,13 @@
 
 	async function deleteItemType(itemType: ItemType) {
 		if (!confirm(`Obrisati tip ${itemType.name}?`)) return;
-		error = '';
 
 		try {
 			await api.deleteItemType(itemType.id);
+			toast.success('Tip stavke je obrisan.');
 			itemTypesPage.reloadAfterDelete();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije obrisan.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Tip stavke nije obrisan.');
 		}
 	}
 
@@ -87,7 +86,7 @@
 		loading={authPage.state.loading ||
 			(authPage.state.authorized && (itemTypesPage.loading || propertyOptionsLoading))}
 		contentLoaded={itemTypesPage.loaded && !propertyOptionsLoading}
-		error={authPage.state.error || itemTypesPage.error}
+		error={authPage.state.error || itemTypesPage.error || propertyOptionsError}
 		authorized={authPage.state.authorized}
 	>
 		<p class="font-mono text-xs leading-none font-medium tracking-wide text-muted">
@@ -111,7 +110,6 @@
 			</a>
 		</Portal>
 
-		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 		<TableSearch
 			id="item-type-name-search"
 			placeholder="Pretraži po nazivu"

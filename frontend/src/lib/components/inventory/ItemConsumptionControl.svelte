@@ -2,6 +2,7 @@
 	import { Button, Dialog, Label, Select } from 'bits-ui';
 	import { ApiError, type ConsumptionStatus, type Item } from '$lib/api';
 	import { consumptionClass, consumptionLabel, consumptionOptions } from '$lib/domain/items';
+	import { toast } from 'svelte-sonner';
 
 	let {
 		item,
@@ -27,19 +28,18 @@
 	let dialogOpen = $state(false);
 	let reason = $state('');
 	let submitting = $state(false);
-	let error = $state('');
 
 	async function submitRequest(event: SubmitEvent) {
 		event.preventDefault();
 		submitting = true;
-		error = '';
 
 		try {
 			await onrequest(item.id, reason);
 			reason = '';
 			dialogOpen = false;
+			toast.success('Zahtev je poslat.');
 		} catch (caught) {
-			error = caught instanceof ApiError ? caught.message : 'Zahtev nije poslat.';
+			toast.error(caught instanceof ApiError ? caught.message : 'Zahtev nije poslat.');
 		} finally {
 			submitting = false;
 		}
@@ -131,7 +131,6 @@
 						{submitting ? 'Slanje…' : 'Pošalji zahtev'}
 					</Button.Root>
 				</form>
-				{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 			</Dialog.Content>
 		</Dialog.Portal>
 	</Dialog.Root>

@@ -70,7 +70,8 @@ export class ServerPagination<T, Filters extends object = Record<string, never>>
 			this.loaded = true;
 		} catch (reason) {
 			if (version !== this.#loadVersion) return;
-			this.error = reason instanceof ApiError ? reason.message : this.#unavailableMessage;
+			const message = reason instanceof ApiError ? reason.message : this.#unavailableMessage;
+			this.error = message;
 		} finally {
 			if (version === this.#loadVersion) this.loading = false;
 		}

@@ -6,9 +6,13 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Info from '@lucide/svelte/icons/info';
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import LogOut from '@lucide/svelte/icons/log-out';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import X from '@lucide/svelte/icons/x';
 	import { api, type ItemRequestPreparationReport } from '$lib/api';
 	import AccountLink from '$lib/components/app/AccountLink.svelte';
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
@@ -22,6 +26,7 @@
 	} from '$lib/state/preparation-report-print-context';
 	import { theme } from '$lib/state/theme.svelte';
 	import { Button, Collapsible, Popover, ScrollArea } from 'bits-ui';
+	import { Toaster } from 'svelte-sonner';
 	import '../app.css';
 
 	let { children, data } = $props();
@@ -324,3 +329,54 @@
 {#if preparationReport}
 	<PreparationReport report={preparationReport} />
 {/if}
+
+{#snippet sonnerInfoIcon()}
+	<Info class="size-4" aria-hidden="true" />
+{/snippet}
+
+{#snippet sonnerSuccessIcon()}
+	<CircleCheck class="size-4" aria-hidden="true" />
+{/snippet}
+
+{#snippet sonnerWarningIcon()}
+	<TriangleAlert class="size-4" aria-hidden="true" />
+{/snippet}
+
+{#snippet sonnerErrorIcon()}
+	<CircleX class="size-4" aria-hidden="true" />
+{/snippet}
+
+{#snippet sonnerCloseIcon()}
+	<X class="size-4" aria-hidden="true" />
+{/snippet}
+
+<Toaster
+	position="top-center"
+	theme={theme.current}
+	closeButton
+	infoIcon={sonnerInfoIcon}
+	successIcon={sonnerSuccessIcon}
+	warningIcon={sonnerWarningIcon}
+	errorIcon={sonnerErrorIcon}
+	closeIcon={sonnerCloseIcon}
+	duration={5000}
+	gap={8}
+	mobileOffset="12px"
+	toastOptions={{
+		unstyled: true,
+		class:
+			'flex w-[calc(100vw-1.5rem)] max-w-md items-center gap-3 rounded-md border border-l-[3px] border-line border-l-brand bg-surface px-3.5 py-3 text-sm text-ink shadow-lg shadow-black/15',
+		classes: {
+			content: 'min-w-0 flex-1',
+			title: 'whitespace-pre-line font-medium leading-5',
+			icon: 'shrink-0 text-brand',
+			default: 'border-brand/45 border-l-brand bg-brand-soft',
+			info: 'border-brand/45 border-l-brand bg-brand-soft',
+			error: 'border-danger/45 border-l-danger !bg-danger-soft [&_[data-icon]]:text-danger',
+			success: 'border-success/45 border-l-success !bg-success-soft [&_[data-icon]]:text-success',
+			warning: 'border-warning/45 border-l-warning !bg-warning-soft [&_[data-icon]]:text-warning',
+			closeButton:
+				'order-last ml-auto inline-grid size-6 shrink-0 cursor-pointer place-items-center self-center rounded text-muted transition-colors hover:bg-soft hover:text-ink focus-visible:outline focus-visible:outline-1 focus-visible:outline-brand'
+		}
+	}}
+/>

@@ -5,8 +5,10 @@
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import { getTablePage, updateTableQuery } from '$lib/state/table-query';
+	import { toast } from 'svelte-sonner';
 
-	let { onempty }: { onempty: () => void } = $props();
+	let { onempty, onloaderror }: { onempty: () => void; onloaderror?: (message: string) => void } =
+		$props();
 
 	const registrationsPage = createServerPagination<User, { status: UserStatus }>({
 		initialFilters: { status: 'requested' },
@@ -22,20 +24,22 @@
 		if (registrationsPage.loaded && registrationsPage.total === 0) onempty();
 	});
 
-	async function decideRegistration(user: User, approve: boolean) {
-		registrationsPage.error = '';
+	$effect(() => {
+		if (registrationsPage.error) onloaderror?.(registrationsPage.error);
+	});
 
+	async function decideRegistration(user: User, approve: boolean) {
 		try {
 			if (approve) {
 				await api.updateUser(user.id, { status: 'active' });
 			} else {
 				await api.deleteUser(user.id);
 			}
+			toast.success(approve ? 'Zahtev je prihvaćen.' : 'Zahtev je odbijen.');
 
 			registrationsPage.reloadAfterDelete();
 		} catch (reason) {
-			registrationsPage.error =
-				reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.');
 		}
 	}
 
@@ -49,9 +53,6 @@
 	<p class="font-mono text-xs font-medium tracking-wide text-muted">
 		UKUPNO: {registrationsPage.total}
 	</p>
-	{#if registrationsPage.error}
-		<p class="mt-3 text-sm text-danger" role="alert">{registrationsPage.error}</p>
-	{/if}
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 		<table class="hidden w-full table-fixed text-left text-sm lg:table">
 			<colgroup>

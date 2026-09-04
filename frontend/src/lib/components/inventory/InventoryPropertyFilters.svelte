@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { ScrollArea } from 'bits-ui';
 	import PropertyFilterCombobox from '$lib/components/inventory/PropertyFilterCombobox.svelte';
-	import type { PropertyValueType } from '$lib/api';
+	import type { PropertyValue, PropertyValueType } from '$lib/api';
 
 	export type PropertyFilter = {
 		id: number;
 		name: string;
-		value: {};
+		value: PropertyValue;
 		value_type: PropertyValueType;
 	};
 
@@ -17,8 +17,8 @@
 		onfiltervaluesearch
 	}: {
 		filters: PropertyFilter[];
-		filterOptions: Record<number, {}[]>;
-		onfilterchange: (propertyID: number, value: {} | undefined) => void;
+		filterOptions: Record<number, PropertyValue[]>;
+		onfilterchange: (propertyID: number, value: PropertyValue | undefined) => void;
 		onfiltervaluesearch: (propertyID: number, search: string) => void;
 	} = $props();
 </script>

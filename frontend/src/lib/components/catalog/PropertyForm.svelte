@@ -4,11 +4,13 @@
 		ApiError,
 		type CreatePropertyRequest,
 		type Property,
+		type PropertyValue,
 		type PropertyValueType
 	} from '$lib/api';
 	import { defaultJsonValue, propertyValueTypeOptions } from '$lib/domain/items';
-	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import { propertyValueError, requiredTextError } from '$lib/domain/form-validation';
 	import { Button, Label, Select, Separator } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 	import ItemPropertyValueInput from '../inventory/ItemPropertyValueInput.svelte';
 
 	let {
@@ -25,9 +27,10 @@
 	let description = $state('');
 	let valueType = $state<PropertyValueType>('string');
 	let hasDefaultValue = $state(false);
-	let defaultValue = $state<{}>('');
+	let defaultValue = $state<PropertyValue>('');
 	let saving = $state(false);
-	let error = $state('');
+	let nameError = $state('');
+	let defaultValueError = $state('');
 
 	$effect(() => {
 		name = property?.name ?? '';
@@ -45,11 +48,15 @@
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
+		nameError = requiredTextError(name, 'naziv svojstva') ?? '';
+		defaultValueError = hasDefaultValue
+			? (propertyValueError({ value_type: valueType }, defaultValue) ?? '')
+			: '';
+		if (nameError || defaultValueError) return;
 		saving = true;
-		error = '';
 
 		try {
-			const savedDefaultValue = hasDefaultValue ? defaultValue : null 
+			const savedDefaultValue = hasDefaultValue ? defaultValue : null;
 			if (property) {
 				await api.updateProperty(property.id, {
 					name,
@@ -70,19 +77,30 @@
 				hasDefaultValue = false;
 				defaultValue = '';
 			}
+			toast.success(property ? 'Svojstvo je izmenjeno.' : 'Svojstvo je dodato.');
 			onsaved();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Svojstvo nije sačuvano.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Svojstvo nije sačuvano.');
 		} finally {
 			saving = false;
 		}
 	}
 </script>
 
-<form class="grid gap-4 sm:grid-cols-2" onsubmit={save}>
+<form class="grid gap-4 sm:grid-cols-2" novalidate onsubmit={save}>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="property-name">Naziv</Label.Root>
-		<input id="property-name" class="mt-1 block w-full" bind:value={name} required />
+		<input
+			id="property-name"
+			class={`mt-1 block w-full ${nameError ? 'field-invalid' : ''}`}
+			bind:value={name}
+			aria-invalid={Boolean(nameError)}
+			aria-describedby={nameError ? 'property-name-error' : undefined}
+			oninput={() => (nameError = '')}
+		/>
+		{#if nameError}<p id="property-name-error" class="mt-1 text-xs text-danger" role="alert">
+				{nameError}
+			</p>{/if}
 	</div>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="property-value-type"
@@ -139,11 +157,18 @@
 			Podrazumevana vrednost
 		</label>
 		{#if hasDefaultValue}
-			<ItemPropertyValueInput 
+			<ItemPropertyValueInput
 				id="property-default-value"
-				property={{'id': 0, 'value_type': valueType, 'name': name, 'default_value': null}}
+				property={{ id: 0, value_type: valueType, name: name, default_value: null }}
 				bind:value={defaultValue}
+				inputClassName={defaultValueError ? 'field-invalid' : ''}
+				onvaluechange={() => (defaultValueError = '')}
 			/>
+			{#if defaultValueError}
+				<p id="property-default-value-error" class="mt-1 text-xs text-danger" role="alert">
+					{defaultValueError}
+				</p>
+			{/if}
 		{/if}
 	</div>
 	<Separator.Root class="h-px bg-line sm:col-span-2" decorative />
@@ -167,6 +192,5 @@
 				</Button.Root>
 			{/if}
 		</div>
-		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>

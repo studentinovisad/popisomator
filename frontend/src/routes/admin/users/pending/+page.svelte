@@ -12,6 +12,7 @@
 		unavailableMessage: 'Zahtevi za registraciju trenutno nisu dostupni.',
 		requiredRole: 'admin'
 	});
+	let requestsError = $state('');
 
 	onMount(() => void authPage.load());
 
@@ -27,7 +28,7 @@
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading}
-		error={authPage.state.error}
+		error={authPage.state.error || requestsError}
 		authorized={authPage.state.authorized}
 	>
 		<Portal to="#page-header-actions">
@@ -40,6 +41,9 @@
 				<ArrowLeft class="size-4" aria-hidden="true" />
 			</a>
 		</Portal>
-		<PendingRegistrations onempty={returnToUsers} />
+		<PendingRegistrations
+			onempty={returnToUsers}
+			onloaderror={(message) => (requestsError = message)}
+		/>
 	</ProtectedPageState>
 </main>

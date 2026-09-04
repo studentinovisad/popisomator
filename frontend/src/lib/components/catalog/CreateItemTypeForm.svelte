@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { api, ApiError, type ItemType, type PropertyOption } from '$lib/api';
+	import { api, ApiError, type ItemType, type PropertyOption, type PropertyValue } from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import MultiOptionCombobox from '$lib/components/shared/MultiOptionCombobox.svelte';
 	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/domain/items';
+	import { requiredTextError } from '$lib/domain/form-validation';
 	import { Button, Label, ScrollArea, Separator } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	let {
 		itemType,
@@ -22,10 +24,10 @@
 	let derivedNameFormat = $state('');
 	let selectedPropertyValues = $state<string[]>([]);
 	let selectedPropertyIDs = $derived(selectedPropertyValues.map(Number));
-	let defaultValues = $state<Record<number, {}>>({});
+	let defaultValues = $state<Record<number, PropertyValue>>({});
 	let editedDefaultPropertyIDs = $state<Set<number>>(new Set());
 	let creating = $state(false);
-	let error = $state('');
+	let fieldErrors = $state<{ name?: string; derivedNameFormat?: string }>({});
 	let initializedItemTypeID = $state<number | undefined>(undefined);
 	let propertiesByID = $derived(new Map(properties.map((property) => [property.id, property])));
 	let selectedProperties = $derived(
@@ -84,10 +86,23 @@
 		editedDefaultPropertyIDs = new Set([...editedDefaultPropertyIDs, id]);
 	}
 
+	function clearFieldError(field: 'name' | 'derivedNameFormat') {
+		if (!fieldErrors[field]) return;
+		fieldErrors = { ...fieldErrors, [field]: undefined };
+	}
+
+	function validate() {
+		fieldErrors = {
+			name: requiredTextError(name, 'naziv tipa stavke'),
+			derivedNameFormat: requiredTextError(derivedNameFormat, 'format izvedenog naziva')
+		};
+		return Object.values(fieldErrors).every((fieldError) => fieldError === undefined);
+	}
+
 	async function createItemType(event: SubmitEvent) {
 		event.preventDefault();
+		if (!validate()) return;
 		creating = true;
-		error = '';
 
 		try {
 			if (!itemType) {
@@ -129,19 +144,32 @@
 				await Promise.all(removals);
 			}
 
+			toast.success(itemType ? 'Tip stavke je izmenjen.' : 'Tip stavke je dodat.');
 			onsaved();
 		} catch (reason) {
-			error = reason instanceof ApiError ? reason.message : 'Tip stavke nije sačuvan.';
+			toast.error(reason instanceof ApiError ? reason.message : 'Tip stavke nije sačuvan.');
 		} finally {
 			creating = false;
 		}
 	}
 </script>
 
-<form class="grid gap-4" onsubmit={createItemType}>
+<form class="grid gap-4" novalidate onsubmit={createItemType}>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="item-type-name">Naziv</Label.Root>
-		<input id="item-type-name" class="mt-1 block w-full" bind:value={name} required />
+		<input
+			id="item-type-name"
+			class={`mt-1 block w-full ${fieldErrors.name ? 'field-invalid' : ''}`}
+			bind:value={name}
+			aria-invalid={Boolean(fieldErrors.name)}
+			aria-describedby={fieldErrors.name ? 'item-type-name-error' : undefined}
+			oninput={() => clearFieldError('name')}
+		/>
+		{#if fieldErrors.name}
+			<p id="item-type-name-error" class="mt-1 text-xs text-danger" role="alert">
+				{fieldErrors.name}
+			</p>
+		{/if}
 	</div>
 	<div>
 		<Label.Root class="text-sm font-medium text-ink" for="item-type-description">Opis</Label.Root>
@@ -162,18 +190,28 @@
 		/>
 		<div class="mt-4">
 			<Label.Root class="text-sm font-medium text-ink" for="item-type-derived-name">
-				Prikazani naziv stavke
+				Izvedeni naziv stavke
 			</Label.Root>
 			<textarea
 				id="item-type-derived-name"
 				class="mt-1 block min-h-20 w-full font-mono text-sm"
 				bind:value={derivedNameFormat}
 				placeholder={'{Naziv stavke} · {Proizvođač}'}
-				required></textarea>
+				class:field-invalid={Boolean(fieldErrors.derivedNameFormat)}
+				aria-invalid={Boolean(fieldErrors.derivedNameFormat)}
+				aria-describedby={fieldErrors.derivedNameFormat
+					? 'item-type-derived-name-error'
+					: undefined}
+				oninput={() => clearFieldError('derivedNameFormat')}></textarea>
 			<p class="mt-1 text-xs text-muted">
 				Unesite nazive svojstava u vitičastim zagradama, npr. {'{Naziv stavke}'}. Možete dodati i
 				običan tekst.
 			</p>
+			{#if fieldErrors.derivedNameFormat}
+				<p id="item-type-derived-name-error" class="mt-1 text-xs text-danger" role="alert">
+					{fieldErrors.derivedNameFormat}
+				</p>
+			{/if}
 		</div>
 		{#if selectedProperties.length}
 			<p class="mt-3 text-xs font-medium text-muted">Podrazumevane vrednosti</p>
@@ -232,6 +270,5 @@
 				</Button.Root>
 			{/if}
 		</div>
-		{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 	</div>
 </form>

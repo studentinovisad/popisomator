@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ItemRequestPreparationReport } from '$lib/api';
 	import { consumptionLabel, displayJson } from '$lib/domain/items';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	let { report }: { report: ItemRequestPreparationReport } = $props();
 	type PreparationItem = ItemRequestPreparationReport['items'][number];
@@ -59,7 +60,7 @@
 	}
 
 	function groupItems(items: PreparationItem[]) {
-		const locations = new Map<string, LocationGroup>();
+		const locations = new SvelteMap<string, LocationGroup>();
 
 		for (const item of items) {
 			const location = storageValue(item, 'Lokacija') || 'Neraspoređeno';
