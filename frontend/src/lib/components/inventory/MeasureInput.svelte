@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { type PTMeasure } from '$lib/api';
-	import { MeasureMultiplier } from '$lib/domain/items';
+	import NumberInput from '$lib/components/shared/NumberInput.svelte';
+	import { MeasureMultiplier, scaleAmount, unscaleAmount } from '$lib/domain/items';
 	import { Select } from 'bits-ui';
 
 	let {
@@ -27,7 +28,19 @@
 		onvaluechange?: () => void;
 	} = $props();
 
-	let amount = $derived(value.amount != undefined ? value.amount / MeasureMultiplier : 0);
+	// The field keeps its own copy of the amount instead of deriving it from the bound value: an
+	// emptied input binds as null, and a derived amount would paint the committed 0 straight back
+	// into the field, so the last digit could never be erased. lastCommittedAmount is what this
+	// field wrote most recently, so a value replaced from the outside still refreshes the input.
+	let amount = $state<number | string>('');
+	let lastCommittedAmount: number | undefined;
+
+	$effect(() => {
+		if (value.amount === lastCommittedAmount) return;
+
+		amount = unscaleAmount(value.amount, MeasureMultiplier);
+		lastCommittedAmount = value.amount;
+	});
 
 	// Replace the bound object rather than mutating it in place. Callers seed their draft with the
 	// item's existing value, so an in-place edit would also rewrite the original they diff against
@@ -38,7 +51,8 @@
 	}
 
 	function onAmountInput() {
-		commit({ amount: Math.floor(amount * MeasureMultiplier) });
+		lastCommittedAmount = scaleAmount(amount, MeasureMultiplier);
+		commit({ amount: lastCommittedAmount });
 	}
 
 	function onUnitChange(unit: string) {
@@ -46,19 +60,22 @@
 	}
 </script>
 
-<div {id} class={`relative flex gap-2 ${className}`}>
-	<input
-		class={`number-input-field block w-full pr-9 ${compact ? 'h-8' : 'h-10'} ${inputClassName}`}
-		type="number"
+<div class={`flex gap-2 ${className}`}>
+	<NumberInput
+		{id}
 		bind:value={amount}
-		aria-label="Vrednost za {ariaLabel}"
+		ariaLabel="Vrednost za {ariaLabel}"
 		placeholder="Unesite vrednost"
-		min="0"
-		max="1000000000000"
-		step="0.0001"
+		className="min-w-0 flex-1"
+		{inputClassName}
+		min={0}
+		max={1000000000000}
+		step={0.0001}
+		stepIncrement={1}
 		{required}
 		{disabled}
-		oninput={onAmountInput}
+		{compact}
+		onvaluechange={onAmountInput}
 	/>
 	<Select.Root
 		type="single"
