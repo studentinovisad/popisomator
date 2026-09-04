@@ -2,6 +2,8 @@
 	import BackendStatus from '$lib/components/app/BackendStatus.svelte';
 	import ThemeToggle from '$lib/components/app/ThemeToggle.svelte';
 	import { pagination } from '$lib/state/pagination.svelte';
+	import { Button } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	function setRowsPerPage(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -69,6 +71,39 @@
 					Đorđe Mančić · Matija Kljajić · Miša Stefanović
 				</a>
 			</div>
+
+			{#if import.meta.env.DEV}
+				<div class="border-t border-line p-4 sm:px-6">
+					<h2 class="font-medium text-ink">Pregled obaveštenja</h2>
+					<p class="mt-1 text-sm text-muted">Dostupno samo tokom razvoja.</p>
+					<div class="mt-3 flex flex-wrap gap-2">
+						<Button.Root
+							onclick={() => toast.info('Ovo je sistemsko obaveštenje.')}
+							class="h-9 cursor-pointer rounded-md border border-brand/40 bg-brand-soft px-3 text-sm font-medium text-ink transition-colors hover:border-brand"
+						>
+							Obaveštenje
+						</Button.Root>
+						<Button.Root
+							onclick={() => toast.warning('Rok trajanja stavke se približava.')}
+							class="h-9 cursor-pointer rounded-md border border-warning/40 bg-warning-soft px-3 text-sm font-medium text-ink transition-colors hover:border-warning"
+						>
+							Upozorenje
+						</Button.Root>
+						<Button.Root
+							onclick={() => toast.error('Radnja nije uspela.')}
+							class="h-9 cursor-pointer rounded-md border border-danger/40 bg-danger-soft px-3 text-sm font-medium text-ink transition-colors hover:border-danger"
+						>
+							Greška
+						</Button.Root>
+						<Button.Root
+							onclick={() => toast.success('Stavka je uspešno sačuvana.')}
+							class="h-9 cursor-pointer rounded-md border border-success/40 bg-success-soft px-3 text-sm font-medium text-ink transition-colors hover:border-success"
+						>
+							Uspeh
+						</Button.Root>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</section>
 </main>
