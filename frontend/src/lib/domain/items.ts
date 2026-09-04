@@ -42,6 +42,25 @@ export function measureUnits(valueType: PropertyValueType) {
 	return valueType === 'mass' ? massUnits : volumeUnits;
 }
 
+// The scaled integer a price or measure stores and the decimal its input shows are two different
+// numbers, and an emptied number input binds as null. Report that as undefined instead of folding
+// it to 0: committing a 0 for an empty field is what makes the leading zero impossible to erase.
+// Rounds rather than truncates, so 0.29 does not land on 0.2899 through float drift.
+export function scaleAmount(amount: number | string | null, multiplier: number) {
+	if (amount === null || amount === '') return undefined;
+
+	const parsedAmount = Number(amount);
+	return Number.isFinite(parsedAmount) ? Math.round(parsedAmount * multiplier) : undefined;
+}
+
+// Inverse of scaleAmount: an absent amount becomes an empty field rather than a 0.
+export function unscaleAmount(
+	amount: number | null | undefined,
+	multiplier: number
+): number | string {
+	return amount == undefined ? '' : amount / multiplier;
+}
+
 export function consumptionLabel(status: ConsumptionStatus) {
 	return consumptionOptions.find((option) => option.value === status)?.label ?? status;
 }
