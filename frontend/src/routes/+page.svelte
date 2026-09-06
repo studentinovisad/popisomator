@@ -15,7 +15,8 @@
 		type ItemTypeOption,
 		type ItemTypeFilterableProperty,
 		type PropertyOption,
-		type PropertyValue
+		type PropertyValue,
+		type SortOrder
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -24,6 +25,7 @@
 	import InventoryPropertyFilters, {
 		type PropertyFilter
 	} from '$lib/components/inventory/InventoryPropertyFilters.svelte';
+	import InventorySortDialog from '$lib/components/inventory/InventorySortDialog.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { pagination } from '$lib/state/pagination.svelte';
 	import {
@@ -62,6 +64,9 @@
 	let currentPage = $derived(Math.floor(itemOffset / itemsPerPage) + 1);
 	let hasPreviousPage = $derived(itemOffset > 0);
 	let hasNextPage = $derived(itemOffset + items.length < itemsTotal);
+	let sortDialogOpen = $state(false);
+	let sortPropertyID = $derived(getSortPropertyID(page.url));
+	let sortOrder = $derived(getSortOrder(page.url));
 	let selectedItemTypeID = $derived(getSelectedItemTypeID(page.url));
 	let itemTypeFilter = $derived(
 		selectedItemTypeID === undefined ? 'all' : String(selectedItemTypeID)
@@ -69,6 +74,18 @@
 	let propertyOptionsByID = $derived(
 		new Map(properties.map((property) => [property.id, property]))
 	);
+	// What the sort dialog offers. Narrowing to the selected type's properties keeps the list to
+	// things the visible items actually carry; with no type picked there is no such set, so every
+	// property is offered. Details-only properties are included too - the name of a reagent is the
+	// most natural thing to sort by, and it isn't shown in the overview cell.
+	let sortableProperties = $derived.by((): PropertyOption[] => {
+		if (!selectedItemType || selectedItemType.id !== selectedItemTypeID) return properties;
+
+		return selectedItemType.properties.flatMap((itemTypeProperty) => {
+			const property = propertyOptionsByID.get(itemTypeProperty.id);
+			return property ? [property] : [];
+		});
+	});
 	let propertyFilters = $derived.by((): PropertyFilter[] => {
 		if (!selectedItemType) return [];
 
@@ -106,11 +123,15 @@
 		const itemTypeID = getSelectedItemTypeID(url);
 		const selectedPropertyFilters = getPropertyFilters(url);
 		const currentPage = getTablePage(url);
+		const selectedSortPropertyID = getSortPropertyID(url);
+		const selectedSortOrder = getSortOrder(url);
 		const queryKey = JSON.stringify({
 			currentPage,
 			search,
 			itemTypeID,
 			selectedPropertyFilters,
+			selectedSortPropertyID,
+			selectedSortOrder,
 			itemsPerPage
 		});
 
@@ -122,7 +143,9 @@
 			(currentPage - 1) * itemsPerPage,
 			search,
 			itemTypeID,
-			selectedPropertyFilters
+			selectedPropertyFilters,
+			selectedSortPropertyID,
+			selectedSortOrder
 		);
 	});
 
@@ -146,7 +169,9 @@
 		offset: number,
 		search: string,
 		itemTypeID: number | undefined,
-		selectedPropertyFilters: Record<number, PropertyValue>
+		selectedPropertyFilters: Record<number, PropertyValue>,
+		selectedSortPropertyID: number | undefined,
+		selectedSortOrder: SortOrder
 	) {
 		const version = ++loadVersion;
 		loadingInventory = true;
@@ -158,7 +183,9 @@
 				offset,
 				search,
 				typeID: itemTypeID,
-				propertyFilters: selectedPropertyFilters
+				propertyFilters: selectedPropertyFilters,
+				sortPropertyID: selectedSortPropertyID,
+				order: selectedSortOrder
 			});
 			if (version !== loadVersion) return;
 
@@ -251,7 +278,19 @@
 		for (const key of page.url.searchParams.keys()) {
 			if (key.startsWith('property.')) propertyFilterUpdates[key] = null;
 		}
-		updateTableQuery({ type_id: itemTypeID, page: 1, ...propertyFilterUpdates });
+		// A property sort is as type-bound as the property filters are: the new type may not even
+		// have the property being sorted by, so it goes too.
+		const sortUpdates =
+			getSortPropertyID(page.url) === undefined ? {} : { sort: null, order: null };
+		updateTableQuery({ type_id: itemTypeID, page: 1, ...propertyFilterUpdates, ...sortUpdates });
+	}
+
+	function sortItems(propertyID: number | undefined, order: SortOrder) {
+		updateTableQuery({
+			sort: propertyID === undefined ? null : `property.${propertyID}`,
+			order: order === 'desc' ? null : order,
+			page: 1
+		});
 	}
 
 	function filterByProperty(propertyID: number, value: PropertyValue | undefined) {
@@ -286,7 +325,28 @@
 
 	function refreshInventory() {
 		const itemTypeID = getSelectedItemTypeID(page.url);
-		void loadInventory(itemOffset, derivedNameSearch, itemTypeID, getPropertyFilters(page.url));
+		void loadInventory(
+			itemOffset,
+			derivedNameSearch,
+			itemTypeID,
+			getPropertyFilters(page.url),
+			getSortPropertyID(page.url),
+			getSortOrder(page.url)
+		);
+	}
+
+	// An absent or unrecognised `sort` means the default order, matching what the backend does with
+	// the parameter, so a hand-edited URL degrades to newest-first instead of erroring.
+	function getSortPropertyID(url: URL) {
+		const sort = getTableFilter(url, 'sort');
+		if (!sort.startsWith('property.')) return undefined;
+
+		const propertyID = Number.parseInt(sort.slice('property.'.length), 10);
+		return Number.isSafeInteger(propertyID) && propertyID > 0 ? propertyID : undefined;
+	}
+
+	function getSortOrder(url: URL): SortOrder {
+		return getTableFilter(url, 'order') === 'asc' ? 'asc' : 'desc';
 	}
 
 	function getSelectedItemTypeID(url: URL) {
@@ -348,6 +408,7 @@
 			loading={loadingInventory}
 			onitemtypechange={filterByItemType}
 			onsearch={searchItems}
+			onsortopen={() => (sortDialogOpen = true)}
 		/>
 		{#if selectedItemType && selectedItemType.id === selectedItemTypeID}
 			<InventoryPropertyFilters
@@ -362,8 +423,18 @@
 			{itemTypes}
 			{properties}
 			{canManage}
+			{sortPropertyID}
+			{sortOrder}
 			onconsumptionchange={changeConsumption}
 			onrequest={requestItemUsage}
+			onsortopen={() => (sortDialogOpen = true)}
+		/>
+		<InventorySortDialog
+			bind:open={sortDialogOpen}
+			options={sortableProperties}
+			{sortPropertyID}
+			{sortOrder}
+			onsortchange={sortItems}
 		/>
 		<PaginationFooter
 			total={itemsTotal}

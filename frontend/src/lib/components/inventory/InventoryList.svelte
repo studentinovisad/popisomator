@@ -1,4 +1,7 @@
 <script lang="ts">
+	import ArrowDown from '@lucide/svelte/icons/arrow-down';
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
+	import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
 	import Eye from '@lucide/svelte/icons/eye';
 	import { resolve } from '$app/paths';
 	import type {
@@ -6,7 +9,8 @@
 		Item,
 		ItemProperty,
 		ItemTypeOption,
-		PropertyOption
+		PropertyOption,
+		SortOrder
 	} from '$lib/api';
 	import { displayJson } from '$lib/domain/items';
 	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
@@ -16,19 +20,29 @@
 		itemTypes,
 		properties,
 		canManage,
+		sortPropertyID,
+		sortOrder,
 		onconsumptionchange,
-		onrequest
+		onrequest,
+		onsortopen
 	}: {
 		items: Item[];
 		itemTypes: ItemTypeOption[];
 		properties: PropertyOption[];
 		canManage: boolean;
+		// The property the list is sorted by, if any; undefined means the default newest-first order.
+		sortPropertyID: number | undefined;
+		sortOrder: SortOrder;
 		onconsumptionchange: (item: Item, status: ConsumptionStatus) => void;
 		onrequest: (itemID: number, reason: string) => Promise<void>;
+		onsortopen: () => void;
 	} = $props();
 
 	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
 	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
+	let sortedPropertyName = $derived(
+		sortPropertyID === undefined ? '' : (propertyNames.get(sortPropertyID) ?? '')
+	);
 
 	function typeName(item: Item) {
 		return typeNames.get(item.type_id) ?? 'Nepoznat tip';
@@ -55,7 +69,26 @@
 		<thead class="border-b border-line bg-soft text-muted">
 			<tr class="h-12">
 				<th class="px-4 py-3 font-medium">Stavka</th>
-				<th class="px-4 py-3 font-medium">Svojstva</th>
+				<!-- The properties of an item are one cell rather than a column each, so the header can't
+				     sort on its own: it opens the dialog that asks which property to sort by. The arrow
+				     only turns directional once a property sort is actually what's applied. -->
+				<th class="p-0 font-medium">
+					<button
+						class="flex h-12 w-full items-center gap-1.5 px-4 text-left transition-colors hover:text-ink"
+						type="button"
+						title={sortedPropertyName ? `Sortirano po: ${sortedPropertyName}` : 'Sortiraj stavke'}
+						onclick={onsortopen}
+					>
+						Svojstva
+						{#if sortPropertyID === undefined}
+							<ArrowUpDown class="size-3.5" aria-hidden="true" />
+						{:else if sortOrder === 'asc'}
+							<ArrowUp class="size-3.5 text-brand" aria-hidden="true" />
+						{:else}
+							<ArrowDown class="size-3.5 text-brand" aria-hidden="true" />
+						{/if}
+					</button>
+				</th>
 				<th class="px-4 py-3 font-medium">Stanje</th>
 				<th class="px-4 py-3 text-right font-medium">Detalji</th>
 			</tr>

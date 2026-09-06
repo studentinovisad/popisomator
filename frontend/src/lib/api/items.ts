@@ -16,11 +16,14 @@ export const itemsApi = {
 		offset = 0,
 		search = '',
 		typeID,
-		propertyFilters = {}
+		propertyFilters = {},
+		sortPropertyID,
+		order = 'desc'
 	}: ListItemsParams = {}) => {
-		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+		const query = new URLSearchParams({ limit: String(limit), offset: String(offset), order });
 		if (search) query.set('search', search);
 		if (typeID) query.set('type_id', String(typeID));
+		if (sortPropertyID) query.set('sort', `property.${sortPropertyID}`);
 		for (const [propertyID, value] of Object.entries(propertyFilters)) {
 			if (value) query.set(`property.${propertyID}`, JSON.stringify(value));
 		}

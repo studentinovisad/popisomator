@@ -95,9 +95,14 @@ export type ItemPropertyTotal = {
 	value_count: number;
 };
 
+export type SortOrder = 'asc' | 'desc';
+
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
 	propertyFilters?: Record<number, PropertyValue>;
+	// Property to order the items by. Left out, they come back newest first.
+	sortPropertyID?: number;
+	order?: SortOrder;
 };
 
 export type UpdateItemRequest = {

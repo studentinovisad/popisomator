@@ -27,6 +27,7 @@ import (
 // @Param consumption query []string false "Filter by consumption status (comma-separated)" collectionFormat(csv) Enums(not_consumed, partially_consumed, fully_consumed, damaged)
 // @Param created_from query string false "Filter by creation time, RFC3339"
 // @Param created_to query string false "Filter by creation time, RFC3339"
+// @Param sort query string false "Sort by creation time, or by an item property as property.{id}" default(created_at)
 // @Param order query string false "Sort order" Enums(asc, desc) default(desc)
 // @Success 200 {object} dto.ItemsPage
 // @Failure 400 {object} response.Error "invalid query parameters"
@@ -116,6 +117,23 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 
 	if val := query.Get("order"); val != "" {
 		req.Order = val
+	}
+
+	// "created_at" is spelled out rather than left implicit so the frontend can name the default
+	// sort without having to drop the parameter.
+	if val := query.Get("sort"); val != "" && val != "created_at" {
+		propertyIDText, ok := strings.CutPrefix(val, "property.")
+		if !ok {
+			response.WriteError(w, http.StatusBadRequest, "invalid sort")
+			return
+		}
+
+		propertyID, err := strconv.ParseInt(propertyIDText, 10, 64)
+		if err != nil || propertyID < 1 {
+			response.WriteError(w, http.StatusBadRequest, "invalid sort")
+			return
+		}
+		req.SortPropertyID = &propertyID
 	}
 
 	result, err := service.ListItems(r.Context(), req)
