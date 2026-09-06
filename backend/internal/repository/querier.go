@@ -52,6 +52,15 @@ type Querier interface {
 	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
 	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]json.RawMessage, error)
 	ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error)
+	// Sorting by a property has to reach into the JSONB value, whose shape depends on the property's
+	// value type, so the sort key is built as two columns - one numeric, one text - of which at most one
+	// is ever non-null. Mass and volume are compared in their dimension's base unit, with the unit
+	// factors arriving as three parallel arrays exactly like SumItemProperties takes them, so
+	// dto.MassUnitFactors / dto.VolumeUnitFactors stay their only definition. An amount whose unit has no
+	// factor gets a null key on purpose: the item sorts last instead of being read as base units.
+	// With no sort property both keys are null for every row, which makes the four sort_key terms of the
+	// ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
+	// null keys too, and so land last whichever direction is asked for.
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error)

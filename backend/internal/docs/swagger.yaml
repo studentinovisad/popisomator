@@ -1386,6 +1386,11 @@ paths:
         in: query
         name: created_to
         type: string
+      - default: created_at
+        description: Sort by creation time, or by an item property as property.{id}
+        in: query
+        name: sort
+        type: string
       - default: desc
         description: Sort order
         enum:

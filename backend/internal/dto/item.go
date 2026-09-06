@@ -50,8 +50,11 @@ type ListItemsRequest struct {
 	Limit           int32
 	Offset          int32
 	Order           string `validate:"oneof=asc desc"`
-	Search          string `validate:"max=100"`
-	ViewerID        int64
+	// SortPropertyID names the property to order by; nil orders by creation time. A property that
+	// doesn't exist is not an error - it simply yields no sort key, leaving creation order.
+	SortPropertyID *int64 `validate:"omitempty,gt=0"`
+	Search         string `validate:"max=100"`
+	ViewerID       int64
 }
 
 type ItemsPage struct {

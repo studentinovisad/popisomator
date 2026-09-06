@@ -1288,6 +1288,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort by creation time, or by an item property as property.{id}",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
                         "enum": [
                             "asc",
                             "desc"

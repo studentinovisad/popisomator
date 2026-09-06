@@ -2,9 +2,45 @@
 SELECT * FROM items
 WHERE id = $1 LIMIT 1;
 
+-- Sorting by a property has to reach into the JSONB value, whose shape depends on the property's
+-- value type, so the sort key is built as two columns - one numeric, one text - of which at most one
+-- is ever non-null. Mass and volume are compared in their dimension's base unit, with the unit
+-- factors arriving as three parallel arrays exactly like SumItemProperties takes them, so
+-- dto.MassUnitFactors / dto.VolumeUnitFactors stay their only definition. An amount whose unit has no
+-- factor gets a null key on purpose: the item sorts last instead of being read as base units.
+-- With no sort property both keys are null for every row, which makes the four sort_key terms of the
+-- ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
+-- null keys too, and so land last whichever direction is asked for.
 -- name: ListItems :many
 SELECT items.* FROM items
 JOIN item_types ON item_types.id = items.type_id
+LEFT JOIN item_properties AS sort_property
+  ON sort_property.item_id = items.id
+ AND sort_property.property_id = sqlc.narg('sort_property_id')::bigint
+LEFT JOIN LATERAL (
+  SELECT
+    CASE sort_property_definition.value_type
+      WHEN 'number'  THEN (sort_property.property_value #>> '{}')::numeric
+      WHEN 'boolean' THEN (sort_property.property_value #>> '{}')::boolean::int::numeric
+      WHEN 'price'   THEN (sort_property.property_value ->> 'amount')::numeric
+      WHEN 'mass'    THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+      WHEN 'volume'  THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+    END AS number_key,
+    CASE sort_property_definition.value_type
+      WHEN 'string' THEN lower(sort_property.property_value #>> '{}')
+      -- An expiry is stored as an ISO date string, which already sorts chronologically as text.
+      WHEN 'expiry' THEN sort_property.property_value #>> '{}'
+    END AS text_key
+  FROM properties AS sort_property_definition
+  LEFT JOIN ROWS FROM (
+    unnest(sqlc.arg('unit_value_types')::text[]),
+    unnest(sqlc.arg('unit_names')::text[]),
+    unnest(sqlc.arg('unit_factors')::bigint[])
+  ) AS sort_unit_factor(value_type, unit_name, factor)
+    ON sort_unit_factor.value_type = sort_property_definition.value_type
+   AND sort_unit_factor.unit_name = sort_property.property_value ->> 'unit'
+  WHERE sort_property_definition.id = sort_property.property_id
+) AS sort_key ON true
 WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
@@ -37,6 +73,10 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
     )
   )
 ORDER BY
+  CASE WHEN sqlc.arg('order_asc')::bool THEN sort_key.number_key END ASC NULLS LAST,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN sort_key.number_key END DESC NULLS LAST,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN sort_key.text_key END ASC NULLS LAST,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN sort_key.text_key END DESC NULLS LAST,
   CASE WHEN sqlc.arg('order_asc')::bool THEN items.created_at END ASC,
   CASE WHEN sqlc.arg('order_asc')::bool THEN items.id END ASC,
   CASE WHEN NOT sqlc.arg('order_asc')::bool THEN items.created_at END DESC,

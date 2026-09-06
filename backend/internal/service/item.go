@@ -123,6 +123,15 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
+	sortPropertyID := pgtype.Int8{}
+	if req.SortPropertyID != nil {
+		sortPropertyID = pgtype.Int8{Int64: *req.SortPropertyID, Valid: true}
+	}
+
+	// Both ListItems and SumItemProperties need the unit factor table: the first to compare masses
+	// and volumes recorded in different units, the second to add them up.
+	unitValueTypes, unitNames, unitFactors := dto.MeasureUnitFactorRows()
+
 	propertyIDs := make([]int64, 0, len(req.PropertyFilters))
 	for propertyID := range req.PropertyFilters {
 		propertyIDs = append(propertyIDs, propertyID)
@@ -157,6 +166,10 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		LimitVal:       req.Limit,
 		OffsetVal:      req.Offset,
 		OrderAsc:       req.Order == "asc",
+		SortPropertyID: sortPropertyID,
+		UnitValueTypes: unitValueTypes,
+		UnitNames:      unitNames,
+		UnitFactors:    unitFactors,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -184,7 +197,6 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		}
 	}
 
-	unitValueTypes, unitNames, unitFactors := dto.MeasureUnitFactorRows()
 	totalRows, err := db.Queries.SumItemProperties(ctx, repository.SumItemPropertiesParams{
 		TypeID:         typeID,
 		Consumption:    req.Consumption,

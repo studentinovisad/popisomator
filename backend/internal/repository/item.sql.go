@@ -359,28 +359,55 @@ func (q *Queries) ListItemTypePropertyValues(ctx context.Context, arg ListItemTy
 const listItems = `-- name: ListItems :many
 SELECT items.id, items.created_at, items.consumption, items.type_id FROM items
 JOIN item_types ON item_types.id = items.type_id
-WHERE ($1::bigint IS NULL OR items.type_id = $1)
-  AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
-  AND ($3::timestamptz IS NULL OR items.created_at >= $3)
-  AND ($4::timestamptz IS NULL OR items.created_at <= $4)
+LEFT JOIN item_properties AS sort_property
+  ON sort_property.item_id = items.id
+ AND sort_property.property_id = $1::bigint
+LEFT JOIN LATERAL (
+  SELECT
+    CASE sort_property_definition.value_type
+      WHEN 'number'  THEN (sort_property.property_value #>> '{}')::numeric
+      WHEN 'boolean' THEN (sort_property.property_value #>> '{}')::boolean::int::numeric
+      WHEN 'price'   THEN (sort_property.property_value ->> 'amount')::numeric
+      WHEN 'mass'    THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+      WHEN 'volume'  THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+    END AS number_key,
+    CASE sort_property_definition.value_type
+      WHEN 'string' THEN lower(sort_property.property_value #>> '{}')
+      -- An expiry is stored as an ISO date string, which already sorts chronologically as text.
+      WHEN 'expiry' THEN sort_property.property_value #>> '{}'
+    END AS text_key
+  FROM properties AS sort_property_definition
+  LEFT JOIN ROWS FROM (
+    unnest($2::text[]),
+    unnest($3::text[]),
+    unnest($4::bigint[])
+  ) AS sort_unit_factor(value_type, unit_name, factor)
+    ON sort_unit_factor.value_type = sort_property_definition.value_type
+   AND sort_unit_factor.unit_name = sort_property.property_value ->> 'unit'
+  WHERE sort_property_definition.id = sort_property.property_id
+) AS sort_key ON true
+WHERE ($5::bigint IS NULL OR items.type_id = $5)
+  AND ($6::consumption_status[] IS NULL OR items.consumption = ANY($6::consumption_status[]))
+  AND ($7::timestamptz IS NULL OR items.created_at >= $7)
+  AND ($8::timestamptz IS NULL OR items.created_at <= $8)
   AND (
-    $5::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($5::text) || '%'
+    $9::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($9::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($5::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($9::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($9::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($6::bigint[]),
-      unnest($7::jsonb[])
+      unnest($10::bigint[]),
+      unnest($11::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -391,14 +418,22 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
     )
   )
 ORDER BY
-  CASE WHEN $8::bool THEN items.created_at END ASC,
-  CASE WHEN $8::bool THEN items.id END ASC,
-  CASE WHEN NOT $8::bool THEN items.created_at END DESC,
-  CASE WHEN NOT $8::bool THEN items.id END DESC
-LIMIT $10 OFFSET $9
+  CASE WHEN $12::bool THEN sort_key.number_key END ASC NULLS LAST,
+  CASE WHEN NOT $12::bool THEN sort_key.number_key END DESC NULLS LAST,
+  CASE WHEN $12::bool THEN sort_key.text_key END ASC NULLS LAST,
+  CASE WHEN NOT $12::bool THEN sort_key.text_key END DESC NULLS LAST,
+  CASE WHEN $12::bool THEN items.created_at END ASC,
+  CASE WHEN $12::bool THEN items.id END ASC,
+  CASE WHEN NOT $12::bool THEN items.created_at END DESC,
+  CASE WHEN NOT $12::bool THEN items.id END DESC
+LIMIT $14 OFFSET $13
 `
 
 type ListItemsParams struct {
+	SortPropertyID pgtype.Int8         `json:"sort_property_id"`
+	UnitValueTypes []string            `json:"unit_value_types"`
+	UnitNames      []string            `json:"unit_names"`
+	UnitFactors    []int64             `json:"unit_factors"`
 	TypeID         pgtype.Int8         `json:"type_id"`
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
@@ -411,8 +446,21 @@ type ListItemsParams struct {
 	LimitVal       int32               `json:"limit_val"`
 }
 
+// Sorting by a property has to reach into the JSONB value, whose shape depends on the property's
+// value type, so the sort key is built as two columns - one numeric, one text - of which at most one
+// is ever non-null. Mass and volume are compared in their dimension's base unit, with the unit
+// factors arriving as three parallel arrays exactly like SumItemProperties takes them, so
+// dto.MassUnitFactors / dto.VolumeUnitFactors stay their only definition. An amount whose unit has no
+// factor gets a null key on purpose: the item sorts last instead of being read as base units.
+// With no sort property both keys are null for every row, which makes the four sort_key terms of the
+// ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
+// null keys too, and so land last whichever direction is asked for.
 func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error) {
 	rows, err := q.db.Query(ctx, listItems,
+		arg.SortPropertyID,
+		arg.UnitValueTypes,
+		arg.UnitNames,
+		arg.UnitFactors,
 		arg.TypeID,
 		arg.Consumption,
 		arg.CreatedFrom,
