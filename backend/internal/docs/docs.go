@@ -1289,8 +1289,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "default": "created_at",
-                        "description": "Sort by creation time, or by an item property as property.{id}",
+                        "description": "Sort by an item property, as property.{id}; omitted, items sort by creation time",
                         "name": "sort",
                         "in": "query"
                     },
