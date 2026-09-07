@@ -1,19 +1,25 @@
-DROP FUNCTION IF EXISTS render_item_derived_name(BIGINT, TEXT);
-DROP FUNCTION IF EXISTS escape_like_pattern(TEXT);
-DROP TABLE IF EXISTS item_requests;
-DROP TABLE IF EXISTS item_properties;
-DROP TABLE IF EXISTS items;
-DROP TABLE IF EXISTS item_type_properties;
-DROP TABLE IF EXISTS item_types;
-DROP TABLE IF EXISTS properties;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS notifdesc_item_request;
-DROP TABLE IF EXISTS notifdesc_item_expiry;
-DROP TYPE IF EXISTS request_status;
-DROP TYPE IF EXISTS property_visibility;
-DROP TYPE IF EXISTS consumption_status;
-DROP TYPE IF EXISTS user_status;
-DROP TYPE IF EXISTS user_role;
-DROP TYPE IF EXISTS notification_kind;
-DROP TYPE IF EXISTS notifdesc_expiry_type;
+DROP FUNCTION IF EXISTS 
+    render_item_derived_name(BIGINT, TEXT),
+    escape_like_pattern(TEXT)
+CASCADE;
+DROP TABLE IF EXISTS 
+    item_requests,
+    item_properties,
+    items,
+    item_type_properties,
+    item_types,
+    properties,
+    users,
+    notifications,
+    notifdesc_item_request,
+    notifdesc_item_expiry
+CASCADE;
+DROP TYPE IF EXISTS 
+    request_status,
+    property_visibility,
+    consumption_status,
+    user_status,
+    user_role,
+    notification_kind,
+    notifdesc_expiry_type
+CASCADE;
