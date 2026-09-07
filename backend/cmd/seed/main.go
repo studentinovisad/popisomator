@@ -12,8 +12,10 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand/v2"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/config"
@@ -50,7 +52,7 @@ type chemicalRow struct {
 	// count above one are seeded through the bulk-add path in one call, the same way the UI stocks
 	// several identical bottles at once, so every copy is its own item with its own request state.
 	PackageCount int
-	NoteDate     string
+	ExpiryDate   string
 	Location     string
 	Cabinet      string
 	Box          string
@@ -136,7 +138,6 @@ func generateChemicalRows() []chemicalRow {
 	purities := []string{"PA", "HPLC", "GC", "ultrapure", "technical", "0.99", "0.995", "0.997", "ACS"}
 	massPackages := []measure{{1.0, "kg"}, {2.5, "kg"}, {500, "g"}, {100, "g"}, {25, "g"}}
 	volumePackages := []measure{{1.0, "L"}, {2.5, "L"}, {5.0, "L"}, {500, "mL"}, {250, "mL"}}
-	noteDates := []string{"", "", "12.03.2023", "05.07.2024", "21.11.2022", ""}
 	// How many identical packages each row is stocked in. Mostly ones, because a lab usually holds
 	// a single bottle of a given reagent; the larger counts stand in for the bulk-stocked staples
 	// and are what puts duplicate items in the seeded inventory. Cycled by index like every other
@@ -157,16 +158,17 @@ func generateChemicalRows() []chemicalRow {
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
 		placement := placements[i%len(placements)]
+		expiryDate := time.Now().AddDate(0, rand.IntN(2), rand.IntN(20)).Format(time.DateOnly)
 		row := chemicalRow{
 			Name:         chemical.name,
 			CASNumber:    chemical.cas,
 			Manufacturer: manufacturers[i%len(manufacturers)],
 			Purity:       purities[i%len(purities)],
-			NoteDate:     noteDates[i%len(noteDates)],
 			Location:     placement.location,
 			Cabinet:      placement.cabinet,
 			Box:          placement.box,
 			PackageCount: packageCounts[i%len(packageCounts)],
+			ExpiryDate:   expiryDate,
 		}
 		if chemical.solid {
 			packageMass := massPackages[i%len(massPackages)]
@@ -231,7 +233,7 @@ var propertyDefs = []propertyDef{
 	{"purity", "Čistoća", "string", repository.PropertyVisibilityOverview},
 	{"mass", "Masa", "mass", repository.PropertyVisibilityOverview},
 	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
-	{"note_date", "Napomena/datum", "string", repository.PropertyVisibilityDetails},
+	{"expiry_date", "Istek roka", "expiry", repository.PropertyVisibilityOverview},
 	{"cabinet", "Ormar", "string", repository.PropertyVisibilityOverview},
 	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
 	{"location", "Lokacija", "string", repository.PropertyVisibilityOverview},
@@ -373,10 +375,13 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 		})
 	}
 
+	expiringSoonDays := int16(14)
+
 	created, err := service.CreateItemType(ctx, dto.CreateItemTypeRequest{
 		Name:              name,
 		DerivedNameFormat: chemicalDerivedNameFormat,
 		Properties:        properties,
+		ExpiringSoonDays:  &expiringSoonDays,
 	})
 	if err != nil {
 		return 0, err
@@ -528,7 +533,7 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 	addMeasure("volume", row.PackageVolume, func(packageVolume measure) any {
 		return dto.PTVolume{Amount: scaleMeasureAmount(packageVolume.Amount), Unit: packageVolume.Unit}
 	})
-	addString("note_date", row.NoteDate)
+	addString("expiry_date", row.ExpiryDate)
 	addString("cabinet", row.Cabinet)
 	addString("box", row.Box)
 	addString("location", row.Location)
