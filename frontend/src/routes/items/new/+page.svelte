@@ -52,18 +52,14 @@
 	<title>Nova stavka | Popisomator</title>
 </svelte:head>
 
-<main class="px-4 pt-4 pb-8 sm:px-6">
+<main class="flex min-h-full flex-col px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading || (authPage.state.authorized && loading)}
 		error={authPage.state.error || error}
 		authorized={authPage.state.authorized}
 	>
-		<section class="mx-auto max-w-4xl" aria-labelledby="new-item-heading">
-			<div class="border-b border-line pb-5">
-				<h2 id="new-item-heading" class="text-lg font-semibold text-ink">Nova stavka</h2>
-				<p class="mt-1 text-sm text-muted">Dodajte stavku i njene početne vrednosti svojstava.</p>
-			</div>
-			<div class="mt-6">
+		<section class="mx-auto flex w-full max-w-3xl flex-1 flex-col" aria-label="Nova stavka">
+			<div class="flex min-h-0 flex-1">
 				<CreateItemForm
 					{itemTypes}
 					{properties}
