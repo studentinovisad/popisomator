@@ -2643,6 +2643,10 @@
                 "description": {
                     "type": "string"
                 },
+                "expiring_soon_days": {
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3009,6 +3013,9 @@
                 "description": {
                     "type": "string"
                 },
+                "expiring_soon_days": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -3302,6 +3309,10 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "expiring_soon_days": {
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "id": {
                     "type": "integer"

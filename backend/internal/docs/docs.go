@@ -2650,6 +2650,10 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "expiring_soon_days": {
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3016,6 +3020,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "expiring_soon_days": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -3309,6 +3316,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "expiring_soon_days": {
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "id": {
                     "type": "integer"
