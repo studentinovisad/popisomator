@@ -33,7 +33,7 @@ WHERE recipient_id = $1;
 
 -- name: CountUnreadNotifications :one
 SELECT count(*) FROM notifications
-WHERE recipient_id = $1 AND read = true;
+WHERE recipient_id = $1 AND read = false;
 
 -- name: ReadNotifications :execrows
 UPDATE notifications
