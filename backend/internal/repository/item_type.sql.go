@@ -64,23 +64,30 @@ func (q *Queries) CountItemTypes(ctx context.Context, search string) (int64, err
 }
 
 const createItemType = `-- name: CreateItemType :one
-INSERT INTO item_types (name, description, derived_name_format) VALUES ($1, $2, $3) RETURNING id, name, description, derived_name_format
+INSERT INTO item_types (name, description, derived_name_format, expiring_soon_days) VALUES ($1, $2, $3, $4) RETURNING id, name, description, derived_name_format, expiring_soon_days
 `
 
 type CreateItemTypeParams struct {
 	Name              string      `json:"name"`
 	Description       pgtype.Text `json:"description"`
 	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
+	ExpiringSoonDays  pgtype.Int2 `json:"expiring_soon_days"`
 }
 
 func (q *Queries) CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error) {
-	row := q.db.QueryRow(ctx, createItemType, arg.Name, arg.Description, arg.DerivedNameFormat)
+	row := q.db.QueryRow(ctx, createItemType,
+		arg.Name,
+		arg.Description,
+		arg.DerivedNameFormat,
+		arg.ExpiringSoonDays,
+	)
 	var i ItemType
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Description,
 		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
 	)
 	return i, err
 }
@@ -98,7 +105,7 @@ func (q *Queries) DeleteItemType(ctx context.Context, id int64) (int64, error) {
 }
 
 const getAllItemTypes = `-- name: GetAllItemTypes :many
-SELECT id, name, description, derived_name_format FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
 `
 
 func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
@@ -115,6 +122,7 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 			&i.Name,
 			&i.Description,
 			&i.DerivedNameFormat,
+			&i.ExpiringSoonDays,
 		); err != nil {
 			return nil, err
 		}
@@ -127,7 +135,7 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 }
 
 const getItemTypeByID = `-- name: GetItemTypeByID :one
-SELECT id, name, description, derived_name_format FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
 WHERE id = $1 LIMIT 1
 `
 
@@ -139,6 +147,7 @@ func (q *Queries) GetItemTypeByID(ctx context.Context, id int64) (ItemType, erro
 		&i.Name,
 		&i.Description,
 		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
 	)
 	return i, err
 }
@@ -164,6 +173,44 @@ func (q *Queries) GetItemTypeProperties(ctx context.Context, typeIds []int64) ([
 			&i.DefaultValue,
 			&i.Visibility,
 			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getItemTypesByItemIDs = `-- name: GetItemTypesByItemIDs :many
+SELECT item_types.id, item_types.name, item_types.description, item_types.derived_name_format, item_types.expiring_soon_days, items.id as item_id FROM item_types
+JOIN items ON items.type_id = item_types.id
+WHERE items.id = ANY($1::bigint[])
+`
+
+type GetItemTypesByItemIDsRow struct {
+	ItemType ItemType `json:"item_type"`
+	ItemID   int64    `json:"item_id"`
+}
+
+func (q *Queries) GetItemTypesByItemIDs(ctx context.Context, itemIds []int64) ([]GetItemTypesByItemIDsRow, error) {
+	rows, err := q.db.Query(ctx, getItemTypesByItemIDs, itemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetItemTypesByItemIDsRow
+	for rows.Next() {
+		var i GetItemTypesByItemIDsRow
+		if err := rows.Scan(
+			&i.ItemType.ID,
+			&i.ItemType.Name,
+			&i.ItemType.Description,
+			&i.ItemType.DerivedNameFormat,
+			&i.ItemType.ExpiringSoonDays,
+			&i.ItemID,
 		); err != nil {
 			return nil, err
 		}
@@ -206,7 +253,7 @@ func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOption
 }
 
 const listItemTypes = `-- name: ListItemTypes :many
-SELECT id, name, description, derived_name_format FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
 WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 ORDER BY id
 LIMIT $3 OFFSET $2
@@ -232,6 +279,7 @@ func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([
 			&i.Name,
 			&i.Description,
 			&i.DerivedNameFormat,
+			&i.ExpiringSoonDays,
 		); err != nil {
 			return nil, err
 		}
@@ -307,7 +355,7 @@ func (q *Queries) UpdateItemTypeProperty_Visibility(ctx context.Context, arg Upd
 }
 
 const updateItemType_DerivedNameFormat = `-- name: UpdateItemType_DerivedNameFormat :one
-UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format
+UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
 `
 
 type UpdateItemType_DerivedNameFormatParams struct {
@@ -323,12 +371,13 @@ func (q *Queries) UpdateItemType_DerivedNameFormat(ctx context.Context, arg Upda
 		&i.Name,
 		&i.Description,
 		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
 	)
 	return i, err
 }
 
 const updateItemType_Description = `-- name: UpdateItemType_Description :one
-UPDATE item_types SET description = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format
+UPDATE item_types SET description = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
 `
 
 type UpdateItemType_DescriptionParams struct {
@@ -344,12 +393,35 @@ func (q *Queries) UpdateItemType_Description(ctx context.Context, arg UpdateItem
 		&i.Name,
 		&i.Description,
 		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
+	)
+	return i, err
+}
+
+const updateItemType_ExpiringSoonDays = `-- name: UpdateItemType_ExpiringSoonDays :one
+UPDATE item_types SET expiring_soon_days = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
+`
+
+type UpdateItemType_ExpiringSoonDaysParams struct {
+	ID               int64       `json:"id"`
+	ExpiringSoonDays pgtype.Int2 `json:"expiring_soon_days"`
+}
+
+func (q *Queries) UpdateItemType_ExpiringSoonDays(ctx context.Context, arg UpdateItemType_ExpiringSoonDaysParams) (ItemType, error) {
+	row := q.db.QueryRow(ctx, updateItemType_ExpiringSoonDays, arg.ID, arg.ExpiringSoonDays)
+	var i ItemType
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
 	)
 	return i, err
 }
 
 const updateItemType_Name = `-- name: UpdateItemType_Name :one
-UPDATE item_types SET name = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format
+UPDATE item_types SET name = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
 `
 
 type UpdateItemType_NameParams struct {
@@ -365,6 +437,7 @@ func (q *Queries) UpdateItemType_Name(ctx context.Context, arg UpdateItemType_Na
 		&i.Name,
 		&i.Description,
 		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
 	)
 	return i, err
 }

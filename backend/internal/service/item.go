@@ -7,6 +7,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -33,6 +34,85 @@ func populateItemRequestInformation(ctx context.Context, items []dto.Item, viewe
 	for _, itemRequest := range itemRequests {
 		index := itemIndexes[itemRequest.ItemID]
 		items[index].RequestStatus = &itemRequest.Status
+	}
+
+	return nil
+}
+
+func populateItemDetails(
+	ctx context.Context,
+	q *repository.Queries,
+	items []dto.Item,
+) error {
+	itemIDs := make([]int64, len(items))
+	itemIndexes := make(map[int64]int, len(items))
+	for index, item := range items {
+		itemIndexes[item.ID] = index
+		itemIDs[index] = item.ID
+	}
+
+	propertyRows, err := q.GetItemProperties(ctx, itemIDs)
+	if err != nil {
+		return err
+	}
+	itemTypeRows, err := q.GetItemTypesByItemIDs(ctx, itemIDs)
+	if err != nil {
+		return err
+	}
+	derivedNameRows, err := q.GetItemsDerivedNames(ctx, itemIDs)
+	if err != nil {
+		return err
+	}
+
+	itemTypesDTO := make(map[int64]dto.ItemType, len(items))
+	for _, row := range itemTypeRows {
+		itemTypesDTO[row.ItemID] = dto.ToItemTypeDTO(row.ItemType)
+	}
+
+	for _, row := range propertyRows {
+		itemIndex, exists := itemIndexes[row.ItemProperty.ItemID]
+		if !exists {
+			continue
+		}
+		item := &items[itemIndex]
+		itemType, itemTypeExists := itemTypesDTO[item.ID]
+
+		property := dto.ToItemPropertyDTO(row.ItemProperty)
+		property.Visibility = string(row.Visibility)
+		property.ValueType = row.PropertyType
+		switch property.ValueType {
+		case "expiry":
+			var propertyValue string
+			if err := json.Unmarshal(property.Value, &propertyValue); err != nil {
+				log.Printf("Couldn't unmarshal expiry date value %v. Error: %v", string(property.Value), err)
+				continue
+			}
+			expiryTime, err := time.Parse(time.DateOnly, propertyValue)
+			if err != nil {
+				log.Printf("Couldn't parse expiry date %v. Error: %v", propertyValue, err)
+				continue
+			}
+			currentTime := time.Now().UTC()
+			if currentTime.After(expiryTime) {
+				property.SmartData = "expired"
+			} else if itemTypeExists && itemType.ExpiringSoonDays != nil {
+				difference := expiryTime.Sub(currentTime)
+				days := int16(difference.Hours() / 24)
+				if days < *itemTypesDTO[item.ID].ExpiringSoonDays {
+					property.SmartData = "expiring_soon"
+				}
+			}
+		}
+		item.Properties = append(item.Properties, property)
+	}
+
+	for _, row := range derivedNameRows {
+		itemIndex, exists := itemIndexes[row.ItemID]
+		if !exists {
+			continue
+		}
+
+		items[itemIndex].DerivedName = row.DerivedName
 	}
 
 	return nil
@@ -86,15 +166,9 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 		}
 	}
 
-	propertyRows, err := queriesTx.GetItemProperties(ctx, itemIDs)
-	if err != nil {
+	if err := populateItemDetails(ctx, queriesTx, itemsDTO); err != nil {
 		return nil, err
 	}
-	derivedNameRows, err := queriesTx.GetItemsDerivedNames(ctx, itemIDs)
-	if err != nil {
-		return nil, err
-	}
-	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -183,15 +257,9 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 	}
 
 	if len(itemIDs) > 0 {
-		propRows, err := db.Queries.GetItemProperties(ctx, itemIDs)
-		if err != nil {
+		if err := populateItemDetails(ctx, db.Queries, itemsDTO); err != nil {
 			return dto.ItemsPage{}, err
 		}
-		derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, itemIDs)
-		if err != nil {
-			return dto.ItemsPage{}, err
-		}
-		populateItemDetails(itemsDTO, propRows, derivedNameRows)
 		if err := populateItemRequestInformation(ctx, itemsDTO, req.ViewerID); err != nil {
 			return dto.ItemsPage{}, err
 		}
@@ -273,18 +341,11 @@ func GetItem(ctx context.Context, id, viewerID int64) (dto.Item, error) {
 		return dto.Item{}, err
 	}
 
-	propertyRows, err := db.Queries.GetItemProperties(ctx, []int64{id})
-	if err != nil {
-		return dto.Item{}, err
-	}
-
-	derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, []int64{id})
-	if err != nil {
-		return dto.Item{}, err
-	}
-
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
-	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
+
+	if err := populateItemDetails(ctx, db.Queries, itemsDTO); err != nil {
+		return dto.Item{}, err
+	}
 	if err := populateItemRequestInformation(ctx, itemsDTO, viewerID); err != nil {
 		return dto.Item{}, err
 	}
@@ -333,18 +394,10 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 		return dto.Item{}, ErrNoUpdateFields
 	}
 
-	propertyRows, err := db.Queries.GetItemProperties(ctx, []int64{item.ID})
-	if err != nil {
-		return dto.Item{}, err
-	}
-
-	derivedNameRows, err := db.Queries.GetItemsDerivedNames(ctx, []int64{item.ID})
-	if err != nil {
-		return dto.Item{}, err
-	}
-
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
-	populateItemDetails(itemsDTO, propertyRows, derivedNameRows)
+	if err := populateItemDetails(ctx, db.Queries, itemsDTO); err != nil {
+		return dto.Item{}, err
+	}
 	if err := populateItemRequestInformation(ctx, itemsDTO, req.ViewerID); err != nil {
 		return dto.Item{}, err
 	}

@@ -24,7 +24,8 @@ CREATE TABLE item_types (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    derived_name_format TEXT
+    derived_name_format TEXT,
+    expiring_soon_days SMALLINT CHECK (expiring_soon_days > 0)
 );
 
 CREATE TYPE property_visibility AS ENUM ('overview', 'details');
