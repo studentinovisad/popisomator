@@ -47,25 +47,27 @@
 	function propertySaved() {
 		void goto(resolve('/catalog/properties'));
 	}
+
+	function cancelPropertyEdit() {
+		void goto(resolve('/catalog/properties'));
+	}
 </script>
 
 <svelte:head>
 	<title>Izmeni svojstvo | Popisomator</title>
 </svelte:head>
 
-<main class="px-4 pt-4 pb-8 sm:px-6">
+<main class="flex min-h-full flex-col px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading || (authPage.state.authorized && loadingProperty)}
 		error={authPage.state.error || error}
 		authorized={authPage.state.authorized}
 	>
 		{#if property}
-			<section class="mx-auto max-w-3xl" aria-labelledby="edit-property-heading">
-				<div class="border-b border-line pb-4">
-					<h2 id="edit-property-heading" class="text-lg font-semibold text-ink">Izmeni svojstvo</h2>
-					<p class="mt-1 text-sm text-muted">{property.name}</p>
+			<section class="mx-auto flex w-full max-w-2xl flex-1 flex-col" aria-label="Izmeni svojstvo">
+				<div class="flex min-h-0 flex-1">
+					<PropertyForm {property} onsaved={propertySaved} oncancel={cancelPropertyEdit} />
 				</div>
-				<div class="mt-6"><PropertyForm {property} onsaved={propertySaved} /></div>
 			</section>
 		{/if}
 	</ProtectedPageState>

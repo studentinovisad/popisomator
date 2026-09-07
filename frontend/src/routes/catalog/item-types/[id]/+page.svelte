@@ -59,21 +59,15 @@
 	<title>Izmeni tip stavke | Popisomator</title>
 </svelte:head>
 
-<main class="px-4 pt-4 pb-8 sm:px-6">
+<main class="flex min-h-full flex-col px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading || (authPage.state.authorized && loading)}
 		error={authPage.state.error || error}
 		authorized={authPage.state.authorized}
 	>
 		{#if itemType}
-			<section class="mx-auto max-w-3xl" aria-labelledby="edit-item-type-heading">
-				<div class="border-b border-line pb-4">
-					<h2 id="edit-item-type-heading" class="text-lg font-semibold text-ink">
-						Izmeni tip stavke
-					</h2>
-					<p class="mt-1 text-sm text-muted">{itemType.name}</p>
-				</div>
-				<div class="mt-6">
+			<section class="mx-auto flex w-full max-w-3xl flex-1 flex-col" aria-label="Izmeni tip stavke">
+				<div class="flex min-h-0 flex-1">
 					<CreateItemTypeForm {itemType} {properties} onsaved={itemTypeSaved} />
 				</div>
 			</section>

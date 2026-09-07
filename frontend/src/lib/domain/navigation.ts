@@ -11,7 +11,9 @@ export type AppPath =
 	| '/admin/users'
 	| '/admin/users/pending'
 	| '/catalog/item-types'
+	| '/catalog/item-types/new'
 	| '/catalog/properties'
+	| '/catalog/properties/new'
 	| '/settings'
 	| '/login'
 	| '/register';
@@ -31,6 +33,16 @@ type PageMetadata = {
 const fallbackPageMetadata: PageMetadata = {
 	title: 'Popisomator',
 	description: 'Popisomator'
+};
+
+const itemTypeEditPageMetadata: PageMetadata = {
+	title: 'Izmeni tip stavke',
+	description: 'Izmenite svojstva, podrazumevane vrednosti i način prikaza stavki ovog tipa.'
+};
+
+const propertyEditPageMetadata: PageMetadata = {
+	title: 'Izmeni svojstvo',
+	description: 'Izmenite naziv, opis i podrazumevanu vrednost svojstva.'
 };
 
 export const pageMetadata: Record<AppPath, PageMetadata> = {
@@ -66,9 +78,17 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Tipovi stavki',
 		description: 'Upravljajte tipovima stavki i njihovim pripadajućim svojstvima.'
 	},
+	'/catalog/item-types/new': {
+		title: 'Novi tip stavke',
+		description: 'Odaberite svojstva koja pripadaju ovom tipu.'
+	},
 	'/catalog/properties': {
 		title: 'Svojstva',
 		description: 'Upravljajte svojstvima koja se mogu dodeliti stavkama.'
+	},
+	'/catalog/properties/new': {
+		title: 'Novo svojstvo',
+		description: 'Odaberite tip vrednosti i opcionalnu podrazumevanu vrednost.'
 	},
 	'/settings': {
 		title: 'Podešavanja',
@@ -114,12 +134,20 @@ export function getPageMetadata(pathname: string): PageMetadata {
 		};
 	}
 
+	if (pathname === '/catalog/item-types/new') {
+		return pageMetadata['/catalog/item-types/new'];
+	}
+
 	if (pathname.startsWith('/catalog/item-types/')) {
-		return pageMetadata['/catalog/item-types'];
+		return itemTypeEditPageMetadata;
+	}
+
+	if (pathname === '/catalog/properties/new') {
+		return pageMetadata['/catalog/properties/new'];
 	}
 
 	if (pathname.startsWith('/catalog/properties/')) {
-		return pageMetadata['/catalog/properties'];
+		return propertyEditPageMetadata;
 	}
 
 	return pageMetadata[pathname as AppPath] ?? fallbackPageMetadata;
