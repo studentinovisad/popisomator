@@ -34,21 +34,21 @@ func ListNotifications(ctx context.Context, recipient_id int64, limit, offset in
 		switch notif.Kind {
 		case repository.NotificationKindItemRequest:
 			itemRequest, err := GetItemRequest(ctx, dto.ItemRequestIdentifierRequest{
-				UserID: row.NotifdescItemRequest.UserID,
-				ItemID: row.NotifdescItemRequest.ItemID,
+				UserID: row.ItemRequestUserID.Int64,
+				ItemID: row.ItemRequestItemID.Int64,
 			})
 			if err != nil {
 				return dto.NotificationsPage{}, err
 			}
 			notif.Descriptor_ItemRequest = &itemRequest
 		case repository.NotificationKindItemExpiry:
-			item, err := GetItem(ctx, row.NotifdescItemExpiry.ItemID, recipient_id)
+			item, err := GetItem(ctx, row.ItemExpiryItemID.Int64, recipient_id)
 			if err != nil {
 				return dto.NotificationsPage{}, err
 			}
 			notif.Descriptor_ItemExpiry = &dto.NotificationDescriptor_ItemExpiry{
 				Item: item,
-				Type: row.NotifdescItemExpiry.ExpiryType,
+				Type: row.ItemExpiryType.NotifdescExpiryType,
 			}
 		}
 		pageItems[index] = notif

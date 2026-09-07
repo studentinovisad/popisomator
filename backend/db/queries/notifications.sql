@@ -16,8 +16,10 @@ RETURNING *;
 -- name: ListNotifications :many
 SELECT 
     sqlc.embed(notif), 
-    sqlc.embed(notifdesc_item_request),
-    sqlc.embed(notifdesc_item_expiry)
+    notifdesc_item_request.user_id AS item_request_user_id,
+    notifdesc_item_request.item_id AS item_request_item_id,
+    notifdesc_item_expiry.item_id AS item_expiry_item_id,
+    notifdesc_item_expiry.expiry_type AS item_expiry_type
 FROM notifications AS notif
 LEFT JOIN notifdesc_item_request 
     ON notif.id = notifdesc_item_request.notification_id

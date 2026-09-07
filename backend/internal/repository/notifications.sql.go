@@ -7,6 +7,8 @@ package repository
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countNotifications = `-- name: CountNotifications :one
@@ -23,7 +25,7 @@ func (q *Queries) CountNotifications(ctx context.Context, recipientID int64) (in
 
 const countUnreadNotifications = `-- name: CountUnreadNotifications :one
 SELECT count(*) FROM notifications
-WHERE recipient_id = $1 AND read = true
+WHERE recipient_id = $1 AND read = false
 `
 
 func (q *Queries) CountUnreadNotifications(ctx context.Context, recipientID int64) (int64, error) {
@@ -164,8 +166,10 @@ func (q *Queries) DeleteNotification(ctx context.Context, arg DeleteNotification
 const listNotifications = `-- name: ListNotifications :many
 SELECT 
     notif.id, notif.recipient_id, notif.created_at, notif.kind, notif.read, 
-    notifdesc_item_request.notification_id, notifdesc_item_request.kind, notifdesc_item_request.user_id, notifdesc_item_request.item_id,
-    notifdesc_item_expiry.notification_id, notifdesc_item_expiry.kind, notifdesc_item_expiry.item_id, notifdesc_item_expiry.expiry_type
+    notifdesc_item_request.user_id AS item_request_user_id,
+    notifdesc_item_request.item_id AS item_request_item_id,
+    notifdesc_item_expiry.item_id AS item_expiry_item_id,
+    notifdesc_item_expiry.expiry_type AS item_expiry_type
 FROM notifications AS notif
 LEFT JOIN notifdesc_item_request 
     ON notif.id = notifdesc_item_request.notification_id
@@ -183,9 +187,11 @@ type ListNotificationsParams struct {
 }
 
 type ListNotificationsRow struct {
-	Notification         Notification         `json:"notification"`
-	NotifdescItemRequest NotifdescItemRequest `json:"notifdesc_item_request"`
-	NotifdescItemExpiry  NotifdescItemExpiry  `json:"notifdesc_item_expiry"`
+	Notification      Notification            `json:"notification"`
+	ItemRequestUserID pgtype.Int8             `json:"item_request_user_id"`
+	ItemRequestItemID pgtype.Int8             `json:"item_request_item_id"`
+	ItemExpiryItemID  pgtype.Int8             `json:"item_expiry_item_id"`
+	ItemExpiryType    NullNotifdescExpiryType `json:"item_expiry_type"`
 }
 
 func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
@@ -203,14 +209,10 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.Notification.CreatedAt,
 			&i.Notification.Kind,
 			&i.Notification.Read,
-			&i.NotifdescItemRequest.NotificationID,
-			&i.NotifdescItemRequest.Kind,
-			&i.NotifdescItemRequest.UserID,
-			&i.NotifdescItemRequest.ItemID,
-			&i.NotifdescItemExpiry.NotificationID,
-			&i.NotifdescItemExpiry.Kind,
-			&i.NotifdescItemExpiry.ItemID,
-			&i.NotifdescItemExpiry.ExpiryType,
+			&i.ItemRequestUserID,
+			&i.ItemRequestItemID,
+			&i.ItemExpiryItemID,
+			&i.ItemExpiryType,
 		); err != nil {
 			return nil, err
 		}
