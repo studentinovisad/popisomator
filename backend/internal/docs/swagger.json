@@ -1020,6 +1020,69 @@
                 }
             }
         },
+        "/item-types/{id}/properties/order": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemTypes"
+                ],
+                "summary": "Reorder an item type's properties (manager/admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ordered property IDs",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ReorderItemTypePropertiesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/item-types/{id}/properties/{prop_id}": {
             "delete": {
                 "security": [
@@ -3271,6 +3334,24 @@
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ReorderItemTypePropertiesRequest": {
+            "type": "object",
+            "required": [
+                "property_ids",
+                "type_id"
+            ],
+            "properties": {
+                "property_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "type_id": {
+                    "type": "integer"
                 }
             }
         },

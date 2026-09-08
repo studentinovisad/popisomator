@@ -291,6 +291,39 @@ func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([
 	return items, nil
 }
 
+const lockItemType = `-- name: LockItemType :one
+SELECT id, name, description, derived_name_format FROM item_types
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockItemType(ctx context.Context, id int64) (ItemType, error) {
+	row := q.db.QueryRow(ctx, lockItemType, id)
+	var i ItemType
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+	)
+	return i, err
+}
+
+const offsetItemTypePropertyPositions = `-- name: OffsetItemTypePropertyPositions :exec
+UPDATE item_type_properties AS target
+SET position = target.position + (
+  SELECT COALESCE(max(source.position), -1) + 1
+  FROM item_type_properties AS source
+  WHERE source.type_id = target.type_id
+)
+WHERE target.type_id = $1
+`
+
+func (q *Queries) OffsetItemTypePropertyPositions(ctx context.Context, typeID int64) error {
+	_, err := q.db.Exec(ctx, offsetItemTypePropertyPositions, typeID)
+	return err
+}
+
 const removeItemTypeProperty = `-- name: RemoveItemTypeProperty :execrows
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2
 `
@@ -302,6 +335,26 @@ type RemoveItemTypePropertyParams struct {
 
 func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error) {
 	result, err := q.db.Exec(ctx, removeItemTypeProperty, arg.TypeID, arg.PropertyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setItemTypePropertyPosition = `-- name: SetItemTypePropertyPosition :execrows
+UPDATE item_type_properties
+SET position = $3
+WHERE type_id = $1 AND property_id = $2
+`
+
+type SetItemTypePropertyPositionParams struct {
+	TypeID     int64 `json:"type_id"`
+	PropertyID int64 `json:"property_id"`
+	Position   int32 `json:"position"`
+}
+
+func (q *Queries) SetItemTypePropertyPosition(ctx context.Context, arg SetItemTypePropertyPositionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setItemTypePropertyPosition, arg.TypeID, arg.PropertyID, arg.Position)
 	if err != nil {
 		return 0, err
 	}

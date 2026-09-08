@@ -75,8 +75,11 @@ type Querier interface {
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	LockItemForRequest(ctx context.Context, id int64) (int64, error)
 	ReadNotifications(ctx context.Context, recipientID int64) (int64, error)
+	LockItemType(ctx context.Context, id int64) (ItemType, error)
+	OffsetItemTypePropertyPositions(ctx context.Context, typeID int64) error
 	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error)
 	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error)
+	SetItemTypePropertyPosition(ctx context.Context, arg SetItemTypePropertyPositionParams) (int64, error)
 	// Sums every structured property (price, mass, volume) over the same set of items CountItems
 	// counts, so the WHERE block below has to stay identical to it. Mass and volume are summed in
 	// their dimension's base unit: the unit factors arrive as three parallel arrays instead of being
