@@ -12,15 +12,22 @@ type ItemType struct {
 	Description       string             `json:"description"`
 	Properties        []ItemTypeProperty `json:"properties"`
 	DerivedNameFormat string             `json:"derived_name_format" validate:"required,max=255"`
+	ExpiringSoonDays  *int16             `json:"expiring_soon_days"`
 }
 
 func ToItemTypeDTO(itemType repository.ItemType) ItemType {
+	var expiringSoonDays *int16
+	if itemType.ExpiringSoonDays.Valid {
+		expiringSoonDays = &itemType.ExpiringSoonDays.Int16
+	}
+
 	return ItemType{
 		ID:                itemType.ID,
 		Name:              itemType.Name,
 		Description:       itemType.Description.String,
 		Properties:        make([]ItemTypeProperty, 0),
 		DerivedNameFormat: itemType.DerivedNameFormat.String,
+		ExpiringSoonDays:  expiringSoonDays,
 	}
 }
 
@@ -64,6 +71,7 @@ type CreateItemTypeRequest struct {
 	Description       string             `json:"description"`
 	Properties        []ItemTypeProperty `json:"properties" validate:"dive"`
 	DerivedNameFormat string             `json:"derived_name_format" validate:"required,max=255"`
+	ExpiringSoonDays  *int16             `json:"expiring_soon_days" validate:"omitempty,gte=0"`
 }
 
 type UpdateItemTypeRequest struct {
@@ -71,6 +79,7 @@ type UpdateItemTypeRequest struct {
 	Name              *string `json:"name"`
 	Description       *string `json:"description"`
 	DerivedNameFormat *string `json:"derived_name_format" validate:"omitempty,max=255"`
+	ExpiringSoonDays  *int16  `json:"expiring_soon_days" validate:"omitempty,gte=0"`
 }
 
 type AddUpdateItemTypePropertyRequest struct {

@@ -159,15 +159,21 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 		description = pgtype.Text{String: req.Description, Valid: true}
 	}
 
-	derived_name_format := pgtype.Text{String: "", Valid: false}
+	derivedNameFormat := pgtype.Text{String: "", Valid: false}
 	if len(req.DerivedNameFormat) > 0 {
-		derived_name_format = pgtype.Text{String: req.DerivedNameFormat, Valid: true}
+		derivedNameFormat = pgtype.Text{String: req.DerivedNameFormat, Valid: true}
+	}
+
+	expiringSoonDays := pgtype.Int2{Valid: false}
+	if req.ExpiringSoonDays != nil && *req.ExpiringSoonDays > 0 {
+		expiringSoonDays = pgtype.Int2{Int16: *req.ExpiringSoonDays, Valid: true}
 	}
 
 	itemType, err := queriesTx.CreateItemType(ctx, repository.CreateItemTypeParams{
 		Name:              req.Name,
 		Description:       description,
-		DerivedNameFormat: derived_name_format,
+		DerivedNameFormat: derivedNameFormat,
+		ExpiringSoonDays:  expiringSoonDays,
 	})
 	if err != nil {
 		return dto.ItemType{}, err
@@ -262,6 +268,21 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 			if itemType, err = queriesTx.UpdateItemType_DerivedNameFormat(ctx, repository.UpdateItemType_DerivedNameFormatParams{
 				ID:                req.ID,
 				DerivedNameFormat: derived_name_format,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
+		if req.ExpiringSoonDays != nil {
+			expiringSoonDays := pgtype.Int2{Valid: false}
+			if *req.ExpiringSoonDays > 0 {
+				expiringSoonDays = pgtype.Int2{Int16: *req.ExpiringSoonDays, Valid: true}
+			}
+
+			var err error
+			if itemType, err = queriesTx.UpdateItemType_ExpiringSoonDays(ctx, repository.UpdateItemType_ExpiringSoonDaysParams{
+				ID:               req.ID,
+				ExpiringSoonDays: expiringSoonDays,
 			}); err != nil {
 				return dto.ItemType{}, err
 			}

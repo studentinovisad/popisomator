@@ -57,6 +57,9 @@ definitions:
         type: string
       description:
         type: string
+      expiring_soon_days:
+        minimum: 0
+        type: integer
       name:
         type: string
       properties:
@@ -306,6 +309,8 @@ definitions:
         type: string
       description:
         type: string
+      expiring_soon_days:
+        type: integer
       id:
         type: integer
       name:
@@ -502,6 +507,9 @@ definitions:
         type: string
       description:
         type: string
+      expiring_soon_days:
+        minimum: 0
+        type: integer
       id:
         type: integer
       name:

@@ -335,6 +335,7 @@ type ItemType struct {
 	Name              string      `json:"name"`
 	Description       pgtype.Text `json:"description"`
 	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
+	ExpiringSoonDays  pgtype.Int2 `json:"expiring_soon_days"`
 }
 
 type ItemTypeProperty struct {
