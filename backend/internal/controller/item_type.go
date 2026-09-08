@@ -342,6 +342,43 @@ func UpdateItemTypeProperty(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, typeProp)
 }
 
+// ReorderItemTypeProperties godoc
+// @Summary Reorder an item type's properties (manager/admin only)
+// @Tags ItemTypes
+// @Accept json
+// @Security CookieAuth
+// @Param id path int true "Item Type ID"
+// @Param body body dto.ReorderItemTypePropertiesRequest true "Ordered property IDs"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid request"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /item-types/{id}/properties/order [put]
+func ReorderItemTypeProperties(w http.ResponseWriter, r *http.Request) {
+	typeID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || typeID < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024*32)
+
+	var req dto.ReorderItemTypePropertiesRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.TypeID = typeID
+
+	if err := service.ReorderItemTypeProperties(r.Context(), req); err != nil {
+		writeServiceError(w, err, "couldn't reorder type properties")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 // RemoveItemTypeProperty godoc
 // @Summary Remove a property from an item type (manager/admin only)
 // @Tags ItemTypes

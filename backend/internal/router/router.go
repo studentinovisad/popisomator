@@ -173,6 +173,11 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.UpdateItemTypeProperty),
 	))
+	mux.Handle("PUT /item-types/{id}/properties/order", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.ReorderItemTypeProperties),
+	))
 	mux.Handle("DELETE /item-types/{id}/properties/{prop_id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),

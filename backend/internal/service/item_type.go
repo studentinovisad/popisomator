@@ -411,6 +411,64 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 	return typePropDTO, nil
 }
 
+func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePropertiesRequest) error {
+	if err := dto.Validate(req); err != nil {
+		return err
+	}
+
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	if _, err := queriesTx.LockItemType(ctx, req.TypeID); err != nil {
+		return err
+	}
+
+	typeProperties, err := queriesTx.GetItemTypeProperties(ctx, []int64{req.TypeID})
+	if err != nil {
+		return err
+	}
+	if len(typeProperties) != len(req.PropertyIDs) {
+		return ErrInvalidItemTypePropertyOrder
+	}
+
+	existingPropertyIDs := make(map[int64]struct{}, len(typeProperties))
+	for _, typeProperty := range typeProperties {
+		existingPropertyIDs[typeProperty.PropertyID] = struct{}{}
+	}
+	for _, propertyID := range req.PropertyIDs {
+		if _, exists := existingPropertyIDs[propertyID]; !exists {
+			return ErrInvalidItemTypePropertyOrder
+		}
+		delete(existingPropertyIDs, propertyID)
+	}
+	if len(existingPropertyIDs) != 0 {
+		return ErrInvalidItemTypePropertyOrder
+	}
+
+	if err := queriesTx.OffsetItemTypePropertyPositions(ctx, req.TypeID); err != nil {
+		return err
+	}
+	for position, propertyID := range req.PropertyIDs {
+		rowsAffected, err := queriesTx.SetItemTypePropertyPosition(ctx, repository.SetItemTypePropertyPositionParams{
+			TypeID:     req.TypeID,
+			PropertyID: propertyID,
+			Position:   int32(position),
+		})
+		if err != nil {
+			return err
+		}
+		if rowsAffected != 1 {
+			return ErrInvalidItemTypePropertyOrder
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
 func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) error {
 	itemType, err := db.Queries.GetItemTypeByID(ctx, typeId)
 	if err != nil {

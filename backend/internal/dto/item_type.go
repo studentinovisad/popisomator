@@ -88,3 +88,8 @@ type AddUpdateItemTypePropertyRequest struct {
 	DefaultValue *json.RawMessage               `json:"default_value"`
 	Visibility   *repository.PropertyVisibility `json:"visibility" validate:"omitempty,oneof=overview details"`
 }
+
+type ReorderItemTypePropertiesRequest struct {
+	TypeID      int64   `json:"type_id" validate:"required"`
+	PropertyIDs []int64 `json:"property_ids" validate:"required,min=1,dive,required"`
+}
