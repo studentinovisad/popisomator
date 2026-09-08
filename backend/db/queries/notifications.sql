@@ -26,7 +26,9 @@ LEFT JOIN notifdesc_item_request
 LEFT JOIN notifdesc_item_expiry 
     ON notif.id = notifdesc_item_expiry.notification_id
 WHERE recipient_id = $1
-ORDER BY notif.created_at
+-- Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
+-- bulk-inserted, so a whole batch shares one created_at.
+ORDER BY notif.read ASC, notif.created_at DESC, notif.id DESC
 LIMIT sqlc.arg('page_limit') OFFSET sqlc.arg('page_offset');
 
 -- name: CountNotifications :one

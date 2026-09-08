@@ -269,3 +269,35 @@ export type ListItemRequestsParams = {
 	status?: ItemRequestStatus;
 	userID?: number;
 };
+
+export type NotificationKind = 'item_request' | 'item_expiry';
+export type NotificationExpiryType = 'expiring_soon' | 'expired';
+
+export type NotificationItemExpiry = {
+	item: Item;
+	expiry_type: NotificationExpiryType;
+};
+
+// Only the descriptor matching `kind` is sent; both are absent if the descriptor row is missing.
+export type Notification = {
+	id: number;
+	recipient_id: number;
+	created_at: string;
+	kind: NotificationKind;
+	read: boolean;
+	desc_item_request?: ItemRequest;
+	desc_item_expiry?: NotificationItemExpiry;
+};
+
+export type NotificationsPage = {
+	items: Notification[];
+	limit: number;
+	offset: number;
+	total: number;
+	total_unread: number;
+};
+
+export type ListNotificationsParams = {
+	limit?: number;
+	offset?: number;
+};

@@ -14,6 +14,7 @@ export type AppPath =
 	| '/catalog/item-types/new'
 	| '/catalog/properties'
 	| '/catalog/properties/new'
+	| '/notifications'
 	| '/settings'
 	| '/login'
 	| '/register';
@@ -89,6 +90,10 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/catalog/properties/new': {
 		title: 'Novo svojstvo',
 		description: 'Odaberite tip vrednosti i opcionalnu podrazumevanu vrednost.'
+	},
+	'/notifications': {
+		title: 'Obaveštenja',
+		description: 'Pregledajte obaveštenja o zahtevima i rokovima stavki.'
 	},
 	'/settings': {
 		title: 'Podešavanja',

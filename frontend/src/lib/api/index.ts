@@ -1,6 +1,7 @@
 import { catalogApi } from '$lib/api/catalog';
 import { itemRequestsApi } from '$lib/api/item-requests';
 import { itemsApi } from '$lib/api/items';
+import { notificationsApi } from '$lib/api/notifications';
 import { usersApi } from '$lib/api/users';
 
 export { ApiError } from '$lib/api/client';
@@ -10,5 +11,6 @@ export const api = {
 	...usersApi,
 	...itemsApi,
 	...catalogApi,
-	...itemRequestsApi
+	...itemRequestsApi,
+	...notificationsApi
 };

@@ -57,6 +57,15 @@ func ListNotifications(ctx context.Context, recipient_id int64, limit, offset in
 	return dto.NotificationsPage{Items: pageItems, Limit: limit, Offset: offset, Total: total, TotalUnread: totalUnread}, nil
 }
 
+func CountUnreadNotifications(ctx context.Context, recipient_id int64) (int64, error) {
+	totalUnread, err := db.Queries.CountUnreadNotifications(ctx, recipient_id)
+	if err != nil {
+		return 0, err
+	}
+
+	return totalUnread, nil
+}
+
 func ReadNotifications(ctx context.Context, recipient_id int64) (int64, error) {
 	rowsAffected, err := db.Queries.ReadNotifications(ctx, recipient_id)
 	if err != nil {
