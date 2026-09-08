@@ -54,6 +54,11 @@ export const catalogApi = {
 		),
 	removeItemTypeProperty: (itemTypeID: number, propertyID: number) =>
 		request<void>(`/item-types/${itemTypeID}/properties/${propertyID}`, { method: 'DELETE' }),
+	reorderItemTypeProperties: (itemTypeID: number, propertyIDs: number[]) =>
+		request<void>(
+			`/item-types/${itemTypeID}/properties/order`,
+			jsonRequest('PUT', { property_ids: propertyIDs })
+		),
 	listProperties: ({ limit = 20, offset = 0, search = '' }: PageRequest = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 		if (search) query.set('search', search);

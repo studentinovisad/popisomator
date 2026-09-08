@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { flip } from 'svelte/animate';
+	import { onMount } from 'svelte';
 	import X from '@lucide/svelte/icons/x';
 	import {
 		api,
@@ -13,6 +15,7 @@
 	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/domain/items';
 	import { requiredTextError } from '$lib/domain/form-validation';
 	import { Button, Label, Portal, Separator, Tabs } from 'bits-ui';
+	import { dndzone, setAriaStrings, type DndEvent } from 'svelte-dnd-action';
 	import { toast } from 'svelte-sonner';
 
 	const steps = [
@@ -20,6 +23,7 @@
 		{ value: 'properties', label: 'Svojstva' },
 		{ value: 'display', label: 'Prikaz' }
 	] as const;
+	const reorderAnimationDuration = 150;
 
 	let {
 		itemType,
@@ -36,8 +40,9 @@
 	let name = $state('');
 	let description = $state('');
 	let derivedNameFormat = $state('');
-	let selectedPropertyValues = $state<string[]>([]);
-	let selectedPropertyIDs = $derived(selectedPropertyValues.map(Number));
+	let comboboxSelectedPropertyValues = $state<string[]>([]);
+	let selectedPropertyIDs = $state<number[]>([]);
+	let orderedProperties = $state<PropertyOption[]>([]);
 	let defaultValues = $state<Record<number, PropertyValue>>({});
 	let visibilities = $state<Record<number, PropertyVisibility>>({});
 	let editedDefaultPropertyIDs = $state<Set<number>>(new Set());
@@ -59,6 +64,12 @@
 	let originalProperties = $derived(
 		new Map(itemType?.properties.map((property) => [property.id, property]))
 	);
+	let propertyOrderChanged = $derived(
+		itemType
+			? itemType.properties.length !== selectedPropertyIDs.length ||
+					itemType.properties.some((property, index) => property.id !== selectedPropertyIDs[index])
+			: false
+	);
 
 	$effect(() => {
 		if (initializedItemTypeID === itemType?.id) return;
@@ -67,7 +78,13 @@
 		name = itemType?.name ?? '';
 		description = itemType?.description ?? '';
 		derivedNameFormat = itemType?.derived_name_format ?? '';
-		selectedPropertyValues = itemType?.properties.map((property) => String(property.id)) ?? [];
+		comboboxSelectedPropertyValues =
+			itemType?.properties.map((property) => String(property.id)) ?? [];
+		selectedPropertyIDs = itemType?.properties.map((property) => property.id) ?? [];
+		orderedProperties = selectedPropertyIDs.flatMap((propertyID) => {
+			const property = propertiesByID.get(propertyID);
+			return property ? [property] : [];
+		});
 		defaultValues = Object.fromEntries(
 			(itemType?.properties ?? []).flatMap((itemTypeProperty) => {
 				const property = propertiesByID.get(itemTypeProperty.id);
@@ -102,8 +119,18 @@
 	});
 
 	function updateSelectedProperties(values: string[]) {
-		selectedPropertyValues = values;
-		for (const propertyID of values.map(Number)) {
+		comboboxSelectedPropertyValues = values;
+		const nextPropertyIDs = values.map(Number);
+		selectedPropertyIDs = [
+			...selectedPropertyIDs.filter((propertyID) => nextPropertyIDs.includes(propertyID)),
+			...nextPropertyIDs.filter((propertyID) => !selectedPropertyIDs.includes(propertyID))
+		];
+		orderedProperties = selectedPropertyIDs.flatMap((propertyID) => {
+			const property = propertiesByID.get(propertyID);
+			return property ? [property] : [];
+		});
+
+		for (const propertyID of selectedPropertyIDs) {
 			if (defaultValues[propertyID] !== undefined) continue;
 
 			const property = propertiesByID.get(propertyID);
@@ -115,7 +142,7 @@
 			}
 		}
 
-		for (const propertyID of values.map(Number)) {
+		for (const propertyID of selectedPropertyIDs) {
 			if (visibilities[propertyID] !== undefined) continue;
 			visibilities = { ...visibilities, [propertyID]: 'overview' };
 		}
@@ -127,10 +154,37 @@
 
 	function removeSelectedProperty(propertyID: number) {
 		updateSelectedProperties(
-			selectedPropertyValues.filter(
+			comboboxSelectedPropertyValues.filter(
 				(selectedPropertyID) => Number(selectedPropertyID) !== propertyID
 			)
 		);
+	}
+
+	function reorderSelectedProperties(event: CustomEvent<DndEvent<PropertyOption>>) {
+		orderedProperties = event.detail.items;
+
+		if (event.detail.items.every((property) => typeof property.id === 'number')) {
+			selectedPropertyIDs = event.detail.items.map((property) => property.id);
+		}
+	}
+
+	function listenForPropertyReorder(node: HTMLElement) {
+		const handleReorder = (event: Event) =>
+			reorderSelectedProperties(event as CustomEvent<DndEvent<PropertyOption>>);
+
+		node.addEventListener('consider', handleReorder);
+		node.addEventListener('finalize', handleReorder);
+
+		return {
+			destroy() {
+				node.removeEventListener('consider', handleReorder);
+				node.removeEventListener('finalize', handleReorder);
+			}
+		};
+	}
+
+	function keepPillInteraction(event: MouseEvent | TouchEvent) {
+		event.stopPropagation();
 	}
 
 	function setVisibility(propertyID: number, visibility: PropertyVisibility) {
@@ -226,6 +280,9 @@
 					.filter((property) => !selectedPropertyIDs.includes(property.id))
 					.map((property) => api.removeItemTypeProperty(itemType.id, property.id));
 				await Promise.all(removals);
+				if (propertyOrderChanged) {
+					await api.reorderItemTypeProperties(itemType.id, selectedPropertyIDs);
+				}
 			}
 
 			toast.success(itemType ? 'Tip stavke je izmenjen.' : 'Tip stavke je dodat.');
@@ -236,6 +293,25 @@
 			creating = false;
 		}
 	}
+
+	onMount(() => {
+		setAriaStrings({
+			dragStarted: ({ itemLabel, zoneLabel }) =>
+				`Početo je premeštanje svojstva ${itemLabel} u listi ${zoneLabel}.`,
+			movedToPosition: ({ itemLabel, zoneLabel, position, count }) =>
+				`Svojstvo ${itemLabel} je na poziciji ${position} od ${count} u listi ${zoneLabel}.`,
+			movedToZoneEnd: ({ itemLabel, zoneLabel }) =>
+				`Svojstvo ${itemLabel} je premešteno na kraj liste ${zoneLabel}.`,
+			movedToZoneStart: ({ itemLabel, zoneLabel }) =>
+				`Svojstvo ${itemLabel} je premešteno na početak liste ${zoneLabel}.`,
+			dropped: ({ itemLabel, zoneLabel, position, count }) =>
+				`Svojstvo ${itemLabel} je postavljeno na poziciju ${position} od ${count} u listi ${zoneLabel}.`,
+			zoneActiveInstruction:
+				'Pritisnite razmak ili Enter da započnete premeštanje. Strelicama promenite položaj, a zatim razmakom, Enterom ili Escape tasterom završite.'
+		});
+
+		return () => setAriaStrings(null);
+	});
 </script>
 
 <form id="item-type-form" class="flex min-h-0 flex-1 flex-col" novalidate onsubmit={createItemType}>
@@ -308,7 +384,7 @@
 							<MultiOptionCombobox
 								id="item-type-properties"
 								options={properties}
-								bind:values={selectedPropertyValues}
+								bind:values={comboboxSelectedPropertyValues}
 								placeholder="Pretražite i dodajte svojstvo"
 								emptyMessage="Nema odgovarajućih svojstava."
 								showSelected={false}
@@ -325,24 +401,51 @@
 							<p class="text-sm font-medium text-ink">Izabrana svojstva</p>
 							<span class="text-xs text-muted">{selectedProperties.length}</span>
 						</div>
-						<ul class="mt-1 flex flex-wrap gap-2" aria-label="Izabrana svojstva">
-							{#each selectedProperties as property, index (property.id)}
+						<ul
+							class="mt-1 flex flex-wrap gap-2"
+							aria-label="Izabrana svojstva"
+							use:listenForPropertyReorder
+							use:dndzone={{
+								items: orderedProperties,
+								type: 'item-type-properties',
+								flipDurationMs: reorderAnimationDuration,
+								dropTargetStyle: {},
+								dragDisabled: creating
+							}}
+						>
+							{#each orderedProperties as property (property.id)}
 								<li
-									class={`flex min-w-0 items-center rounded-md border ${activePropertyID === property.id ? 'border-brand bg-brand-soft' : 'border-line bg-soft'}`}
+									animate:flip={{ duration: reorderAnimationDuration }}
+									aria-label={`${property.name}${visibilities[property.id] === 'overview' ? ', prikazuje se direktno u tabeli' : ''}`}
+									class={`flex min-w-0 cursor-grab items-center rounded-md border bg-soft transition-colors hover:border-brand hover:bg-brand-soft active:cursor-grabbing ${activePropertyID === property.id ? 'border-brand ring-1 ring-brand' : 'border-line'}`}
 								>
-									<button
-										class="flex min-w-0 cursor-pointer items-center gap-1.5 py-1.5 pr-1.5 pl-2.5 text-sm text-ink focus-visible:outline-1 focus-visible:outline-brand"
-										type="button"
+									<span
+										class="flex min-w-0 items-center gap-1.5 py-1.5 pr-1.5 pl-2.5 text-sm text-ink"
+										role="button"
+										tabindex="0"
 										aria-pressed={activePropertyID === property.id}
 										onclick={() => (activePropertyID = property.id)}
+										onkeydown={(event) => {
+											if (event.key !== 'Enter' && event.key !== ' ') return;
+											event.preventDefault();
+											event.stopPropagation();
+											activePropertyID = property.id;
+										}}
 									>
-										<span class="font-mono text-xs text-muted">{index + 1}</span>
-										<span class="max-w-48 truncate">{property.name}</span>
-									</button>
+										<span
+											class={`max-w-48 truncate ${visibilities[property.id] === 'overview' ? '' : 'text-ink/70'}`}
+											>{property.name}</span
+										>
+									</span>
 									<button
 										class="mr-1 grid size-6 shrink-0 cursor-pointer place-items-center rounded text-muted hover:bg-surface hover:text-ink"
 										type="button"
-										onclick={() => removeSelectedProperty(property.id)}
+										onmousedown={keepPillInteraction}
+										ontouchstart={keepPillInteraction}
+										onclick={(event) => {
+											event.stopPropagation();
+											removeSelectedProperty(property.id);
+										}}
 										aria-label={`Ukloni ${property.name}`}
 									>
 										<X class="size-3.5" aria-hidden="true" />
@@ -414,12 +517,14 @@
 							{#each selectedProperties as property (property.id)}
 								<li>
 									<button
-										class="cursor-pointer rounded-md border border-line bg-soft px-2.5 py-1.5 text-sm text-ink transition-colors hover:border-brand hover:bg-brand-soft focus-visible:outline-1 focus-visible:outline-brand"
+										class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line bg-soft px-2.5 py-1.5 text-sm text-ink transition-colors hover:border-brand hover:bg-brand-soft focus-visible:outline-1 focus-visible:outline-brand"
 										type="button"
 										onclick={() => appendPropertyToken(property.name)}
-										aria-label={`Dodaj ${property.name} u format izvedenog naziva`}
+										aria-label={`Dodaj ${property.name} u format izvedenog naziva${visibilities[property.id] === 'overview' ? ', prikazuje se direktno u tabeli' : ''}`}
 									>
-										{property.name}
+										<span class={visibilities[property.id] === 'overview' ? '' : 'text-ink/70'}
+											>{property.name}</span
+										>
 									</button>
 								</li>
 							{/each}
