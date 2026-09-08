@@ -56,6 +56,90 @@ func (ns NullConsumptionStatus) Value() (driver.Value, error) {
 	return string(ns.ConsumptionStatus), nil
 }
 
+type NotifdescExpiryType string
+
+const (
+	NotifdescExpiryTypeExpiringSoon NotifdescExpiryType = "expiring_soon"
+	NotifdescExpiryTypeExpired      NotifdescExpiryType = "expired"
+)
+
+func (e *NotifdescExpiryType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NotifdescExpiryType(s)
+	case string:
+		*e = NotifdescExpiryType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NotifdescExpiryType: %T", src)
+	}
+	return nil
+}
+
+type NullNotifdescExpiryType struct {
+	NotifdescExpiryType NotifdescExpiryType `json:"notifdesc_expiry_type"`
+	Valid               bool                `json:"valid"` // Valid is true if NotifdescExpiryType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNotifdescExpiryType) Scan(value interface{}) error {
+	if value == nil {
+		ns.NotifdescExpiryType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NotifdescExpiryType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNotifdescExpiryType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NotifdescExpiryType), nil
+}
+
+type NotificationKind string
+
+const (
+	NotificationKindItemRequest NotificationKind = "item_request"
+	NotificationKindItemExpiry  NotificationKind = "item_expiry"
+)
+
+func (e *NotificationKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NotificationKind(s)
+	case string:
+		*e = NotificationKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NotificationKind: %T", src)
+	}
+	return nil
+}
+
+type NullNotificationKind struct {
+	NotificationKind NotificationKind `json:"notification_kind"`
+	Valid            bool             `json:"valid"` // Valid is true if NotificationKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNotificationKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.NotificationKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NotificationKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNotificationKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NotificationKind), nil
+}
+
 type PropertyVisibility string
 
 const (
@@ -259,6 +343,28 @@ type ItemTypeProperty struct {
 	DefaultValue *json.RawMessage   `json:"default_value"`
 	Visibility   PropertyVisibility `json:"visibility"`
 	Position     int32              `json:"position"`
+}
+
+type NotifdescItemExpiry struct {
+	NotificationID int64                `json:"notification_id"`
+	Kind           NullNotificationKind `json:"kind"`
+	ItemID         int64                `json:"item_id"`
+	ExpiryType     NotifdescExpiryType  `json:"expiry_type"`
+}
+
+type NotifdescItemRequest struct {
+	NotificationID int64                `json:"notification_id"`
+	Kind           NullNotificationKind `json:"kind"`
+	UserID         int64                `json:"user_id"`
+	ItemID         int64                `json:"item_id"`
+}
+
+type Notification struct {
+	ID          int64              `json:"id"`
+	RecipientID int64              `json:"recipient_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Kind        NotificationKind   `json:"kind"`
+	Read        bool               `json:"read"`
 }
 
 type Property struct {
