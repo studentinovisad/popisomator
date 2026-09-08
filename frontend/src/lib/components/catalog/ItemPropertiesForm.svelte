@@ -8,7 +8,7 @@
 		type PropertyValue
 	} from '$lib/api';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
-	import { defaultJsonValue, samePropertyValue } from '$lib/domain/items';
+	import { samePropertyValue } from '$lib/domain/items';
 	import { propertyValueError } from '$lib/domain/form-validation';
 	import { Button, Label } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
@@ -38,7 +38,7 @@
 		new Map(item.properties.map((property) => [property.id, property.value]))
 	);
 	let selectedPropertyIDs = $state<number[]>([]);
-	let values = $state<Record<number, PropertyValue>>({});
+	let values = $state<Record<number, PropertyValue | null>>({});
 	let fieldErrors = $state<Record<number, string>>({});
 	let saving = $state(false);
 
@@ -47,9 +47,7 @@
 		values = Object.fromEntries(
 			editablePropertyIDs.flatMap((id) => {
 				const property = propertyByID.get(id);
-				return property
-					? [[id, originalValues.get(id) ?? defaultJsonValue(property.value_type, null)]]
-					: [];
+				return property ? [[id, originalValues.get(id) ?? null]] : [];
 			})
 		);
 	});
@@ -83,17 +81,19 @@
 			for (const propertyID of editablePropertyIDs) {
 				const wasSelected = originalValues.has(propertyID);
 				const isSelected = selectedPropertyIDs.includes(propertyID);
+				const value = values[propertyID];
 				if (wasSelected && !isSelected) changes.push(api.removeItemProperty(item.id, propertyID));
-				if (!wasSelected && isSelected)
-					changes.push(api.addItemProperty(item.id, propertyID, values[propertyID]));
+				if (!wasSelected && isSelected && value !== null)
+					changes.push(api.addItemProperty(item.id, propertyID, value));
 				// Structured property types (price, mass, volume) hold objects, so compare by content:
 				// a reference check reports "unchanged" for every edit and silently drops it.
 				if (
 					wasSelected &&
 					isSelected &&
-					!samePropertyValue(originalValues.get(propertyID), values[propertyID])
+					value !== null &&
+					!samePropertyValue(originalValues.get(propertyID), value)
 				)
-					changes.push(api.updateItemProperty(item.id, propertyID, values[propertyID]));
+					changes.push(api.updateItemProperty(item.id, propertyID, value));
 			}
 			await Promise.all(changes);
 			if (changes.length > 0) toast.success('Svojstva stavke su sačuvana.');

@@ -17,7 +17,7 @@
 	}: {
 		property: PropertyOption;
 		id: string;
-		value: PropertyValue;
+		value: PropertyValue | null;
 		className?: string;
 		inputClassName?: string;
 		compact?: boolean;
@@ -26,22 +26,22 @@
 	} = $props();
 
 	let stringValue = $state('');
-	let numberValue = $state(0);
+	let numberValue = $state<number | string>('');
 	let booleanValue = $state(false);
 	let objectValue = $state({});
-	let lastCommittedValue = {};
+	let lastCommittedValue: PropertyValue | null | undefined;
 
 	$effect(() => {
 		if (value === lastCommittedValue) return;
 
 		try {
 			stringValue = typeof value === 'string' ? value : '';
-			numberValue = typeof value === 'number' ? value : 0;
+			numberValue = typeof value === 'number' ? value : '';
 			objectValue = typeof value === 'object' && value != null ? value : {};
 			booleanValue = value === true;
 		} catch {
 			stringValue = String(value);
-			numberValue = 0;
+			numberValue = '';
 			objectValue = typeof value === 'object' && value != null ? value : {};
 			booleanValue = false;
 		}

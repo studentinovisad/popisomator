@@ -48,18 +48,14 @@
 	<title>Novi tip stavke | Popisomator</title>
 </svelte:head>
 
-<main class="px-4 pt-4 pb-8 sm:px-6">
+<main class="flex min-h-full flex-col px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
 		loading={authPage.state.loading || (authPage.state.authorized && loading)}
 		error={authPage.state.error || error}
 		authorized={authPage.state.authorized}
 	>
-		<section class="mx-auto max-w-3xl" aria-labelledby="new-item-type-heading">
-			<div class="border-b border-line pb-4">
-				<h2 id="new-item-type-heading" class="text-lg font-semibold text-ink">Novi tip stavke</h2>
-				<p class="mt-1 text-sm text-muted">Odaberite svojstva koja pripadaju ovom tipu.</p>
-			</div>
-			<div class="mt-6">
+		<section class="mx-auto flex w-full max-w-3xl flex-1 flex-col">
+			<div class="flex min-h-0 flex-1">
 				<CreateItemTypeForm
 					{properties}
 					onsaved={itemTypeCreated}

@@ -90,7 +90,7 @@
 					</button>
 				</th>
 				<th class="px-4 py-3 font-medium">Stanje</th>
-				<th class="px-4 py-3 text-right font-medium">Detalji</th>
+				<th class="px-4 py-3 text-right font-medium"><span class="sr-only">Detalji</span></th>
 			</tr>
 		</thead>
 		<tbody class="divide-y divide-line text-ink">

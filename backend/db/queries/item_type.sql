@@ -24,6 +24,11 @@ SELECT sqlc.embed(item_types), items.id as item_id FROM item_types
 JOIN items ON items.type_id = item_types.id
 WHERE items.id = ANY(sqlc.arg('item_ids')::bigint[]);
 
+-- name: LockItemType :one
+SELECT * FROM item_types
+WHERE id = $1
+FOR UPDATE;
+
 -- name: CreateItemType :one
 INSERT INTO item_types (name, description, derived_name_format, expiring_soon_days) VALUES ($1, $2, $3, $4) RETURNING *;
 
@@ -65,6 +70,22 @@ UPDATE item_type_properties SET default_value = $3 WHERE type_id = $1 AND proper
 
 -- name: UpdateItemTypeProperty_Visibility :one
 UPDATE item_type_properties SET visibility = $3 WHERE type_id = $1 AND property_id = $2 RETURNING *;
+
+-- name: OffsetItemTypePropertyPositions :exec
+UPDATE item_type_properties AS target
+SET position = target.position + (
+  SELECT COALESCE(max(source.position), -1) + 1
+  FROM item_type_properties AS source
+  WHERE source.type_id = target.type_id
+)
+WHERE target.type_id = $1;
+
+-- name: SetItemTypePropertyPositions :execrows
+UPDATE item_type_properties AS itp
+SET position = u.pos - 1
+FROM unnest(sqlc.arg('property_ids')::bigint[]) WITH ORDINALITY AS u(prop_id, pos)
+WHERE itp.type_id = $1 
+  AND itp.property_id = u.prop_id;
 
 -- name: RemoveItemTypeProperty :execrows
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2;

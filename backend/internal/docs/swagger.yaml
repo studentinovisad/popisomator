@@ -484,6 +484,18 @@ definitions:
       password:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ReorderItemTypePropertiesRequest:
+    properties:
+      property_ids:
+        items:
+          type: integer
+        type: array
+      type_id:
+        type: integer
+    required:
+    - property_ids
+    - type_id
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest:
     properties:
       consumption:
@@ -1384,6 +1396,46 @@ paths:
       security:
       - CookieAuth: []
       summary: Search distinct values of an item type property for an item filter
+      tags:
+      - ItemTypes
+  /item-types/{id}/properties/order:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item Type ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Ordered property IDs
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ReorderItemTypePropertiesRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Reorder an item type's properties (manager/admin only)
       tags:
       - ItemTypes
   /item-types/options:

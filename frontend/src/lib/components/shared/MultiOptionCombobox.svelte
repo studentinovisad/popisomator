@@ -10,18 +10,22 @@
 	};
 
 	let {
+		id,
 		options,
 		values = $bindable([]),
 		placeholder = 'Pretražite opcije',
 		emptyMessage = 'Nema odgovarajućih opcija.',
 		disabled = false,
+		showSelected = true,
 		onvaluechange
 	}: {
+		id?: string;
 		options: Option[];
 		values?: string[];
 		placeholder?: string;
 		emptyMessage?: string;
 		disabled?: boolean;
+		showSelected?: boolean;
 		onvaluechange?: (values: string[]) => void;
 	} = $props();
 
@@ -70,30 +74,35 @@
 	{disabled}
 	onValueChange={handleValueChange}
 >
-	<div
-		class="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5 focus-within:border-brand hover:border-brand"
-	>
-		{#each selectedOptions as option (option.id)}
-			<span class="inline-flex items-center gap-1 rounded bg-brand-soft px-2 py-1 text-xs text-ink">
-				{option.name}
-				<button
-					class="rounded text-muted hover:text-ink"
-					type="button"
-					onclick={() => removeOption(option.id)}
-					aria-label={`Ukloni ${option.name}`}
+	{#if showSelected && selectedOptions.length}
+		<ul class="mb-3 flex flex-wrap gap-2" aria-label="Izabrana svojstva">
+			{#each selectedOptions as option (option.id)}
+				<li
+					class="inline-flex items-center gap-1.5 rounded-md border border-line bg-soft py-1.5 pr-1.5 pl-2.5 text-sm text-ink"
 				>
-					<X class="size-3" aria-hidden="true" />
-				</button>
-			</span>
-		{/each}
+					{option.name}
+					<button
+						class="grid size-5 cursor-pointer place-items-center rounded text-muted hover:bg-surface hover:text-ink"
+						type="button"
+						onclick={() => removeOption(option.id)}
+						aria-label={`Ukloni ${option.name}`}
+					>
+						<X class="size-3.5" aria-hidden="true" />
+					</button>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+	<div class="relative">
 		<Combobox.Input
+			{id}
 			bind:ref={input}
-			class="min-w-24 grow bg-transparent px-1 py-0.5 text-sm text-ink outline-none placeholder:text-muted"
+			class="block h-10 w-full rounded-md border border-line bg-surface py-0 pr-10 pl-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand"
 			{placeholder}
 			oninput={handleInput}
 		/>
 		<Combobox.Trigger
-			class="group grid size-7 shrink-0 cursor-pointer place-items-center rounded text-muted outline-none hover:bg-soft hover:text-ink focus-visible:ring-1 focus-visible:ring-brand disabled:cursor-not-allowed"
+			class="group absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded text-muted outline-none hover:bg-soft hover:text-ink focus-visible:ring-1 focus-visible:ring-brand disabled:cursor-not-allowed"
 			aria-label="Prikaži opcije"
 		>
 			<ChevronDown
