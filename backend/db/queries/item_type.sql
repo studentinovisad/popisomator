@@ -82,7 +82,7 @@ WHERE target.type_id = $1;
 
 -- name: SetItemTypePropertyPositions :execrows
 UPDATE item_type_properties AS itp
-SET position = u.pos
+SET position = u.pos - 1
 FROM unnest(sqlc.arg('property_ids')::bigint[]) WITH ORDINALITY AS u(prop_id, pos)
 WHERE itp.type_id = $1 
   AND itp.property_id = u.prop_id;
