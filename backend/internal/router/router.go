@@ -233,6 +233,10 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.ListNotifications),
 	))
+	mux.Handle("GET /notifications/unread-count", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.CountUnreadNotifications),
+	))
 	mux.Handle("POST /notifications/read", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.ReadNotifications),

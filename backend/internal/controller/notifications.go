@@ -45,6 +45,30 @@ func ListNotifications(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, notifications)
 }
 
+// CountUnreadNotifications godoc
+// @Summary Count unread notifications
+// @Tags Notifications
+// @Produce json
+// @Security CookieAuth
+// @Success 200 {object} int64
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /notifications/unread-count [get]
+func CountUnreadNotifications(w http.ResponseWriter, r *http.Request) {
+	id, ok := r.Context().Value("userID").(int64)
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
+		return
+	}
+
+	count, err := service.CountUnreadNotifications(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err, "couldn't count unread notifications")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, count)
+}
+
 // ReadNotifications godoc
 // @Summary Mark all notifications as read, returns amount of notifications read
 // @Tags Notifications

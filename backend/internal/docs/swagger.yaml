@@ -1921,6 +1921,25 @@ paths:
       summary: Mark all notifications as read, returns amount of notifications read
       tags:
       - Notifications
+  /notifications/unread-count:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            format: int64
+            type: integer
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Count unread notifications
+      tags:
+      - Notifications
   /ping:
     get:
       produces:

@@ -176,7 +176,7 @@ LEFT JOIN notifdesc_item_request
 LEFT JOIN notifdesc_item_expiry 
     ON notif.id = notifdesc_item_expiry.notification_id
 WHERE recipient_id = $1
-ORDER BY notif.created_at
+ORDER BY notif.read ASC, notif.created_at DESC, notif.id DESC
 LIMIT $3 OFFSET $2
 `
 
@@ -194,6 +194,8 @@ type ListNotificationsRow struct {
 	ItemExpiryType    NullNotifdescExpiryType `json:"item_expiry_type"`
 }
 
+// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
+// bulk-inserted, so a whole batch shares one created_at.
 func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
 	rows, err := q.db.Query(ctx, listNotifications, arg.RecipientID, arg.PageOffset, arg.PageLimit)
 	if err != nil {

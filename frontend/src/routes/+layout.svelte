@@ -16,9 +16,11 @@
 	import { api, type ItemRequestPreparationReport } from '$lib/api';
 	import AccountLink from '$lib/components/app/AccountLink.svelte';
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
+	import NotificationBell from '$lib/components/app/NotificationBell.svelte';
 	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
 	import PreparationReport from '$lib/components/admin/ItemRequestPreparationReport.svelte';
 	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/domain/navigation';
+	import { notifications } from '$lib/state/notifications.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import {
 		preparationReportPrintContextKey,
@@ -36,6 +38,9 @@
 	let sidebarExpanded = $state(true);
 	let sessionHydrated = $state(false);
 	let currentUser = $derived(sessionHydrated ? session.user : data.currentUser);
+	// Deriving the id keeps the badge poller from restarting every time a page reloads the session
+	// and hands `session.user` a fresh object.
+	let currentUserID = $derived(currentUser?.id);
 	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
 
 	// svelte-ignore state_referenced_locally
@@ -76,6 +81,11 @@
 	});
 
 	$effect(() => {
+		if (currentUserID === undefined) return;
+		return notifications.start();
+	});
+
+	$effect(() => {
 		if (popoverSide === 'bottom') {
 			void page.url.pathname;
 			tabHelpOpen = false;
@@ -97,6 +107,7 @@
 
 	async function logout() {
 		session.clear();
+		notifications.clear();
 
 		try {
 			await api.logout();
@@ -166,6 +177,15 @@
 			</div>
 
 			<div class={`mt-auto px-3 ${sidebarExpanded ? 'py-4' : 'pt-3 pb-4'}`}>
+				{#if currentUser}
+					<div class="mb-1">
+						<NotificationBell
+							variant="sidebar"
+							iconOnly={!sidebarExpanded}
+							active={page.url.pathname === '/notifications'}
+						/>
+					</div>
+				{/if}
 				<NavigationLinks
 					items={secondaryNavigation}
 					pathname={page.url.pathname}
@@ -225,6 +245,7 @@
 				<a class="font-semibold tracking-tight" href={resolve('/')}>Popisomator</a>
 				<div class="flex items-center gap-2">
 					{#if currentUser}
+						<NotificationBell variant="header" active={page.url.pathname === '/notifications'} />
 						<a
 							class={`inline-flex size-9 items-center justify-center rounded-md transition-colors ${
 								page.url.pathname === '/account'

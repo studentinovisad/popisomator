@@ -69,6 +69,8 @@ type Querier interface {
 	// ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
 	// null keys too, and so land last whichever direction is asked for.
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
+	// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
+	// bulk-inserted, so a whole batch shares one created_at.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error)
