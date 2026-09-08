@@ -80,10 +80,12 @@ SET position = target.position + (
 )
 WHERE target.type_id = $1;
 
--- name: SetItemTypePropertyPosition :execrows
-UPDATE item_type_properties
-SET position = $3
-WHERE type_id = $1 AND property_id = $2;
+-- name: SetItemTypePropertyPositions :execrows
+UPDATE item_type_properties AS itp
+SET position = u.pos
+FROM unnest(sqlc.arg('property_ids')::bigint[]) WITH ORDINALITY AS u(prop_id, pos)
+WHERE itp.type_id = $1 
+  AND itp.property_id = u.prop_id;
 
 -- name: RemoveItemTypeProperty :execrows
 DELETE FROM item_type_properties WHERE type_id = $1 AND property_id = $2;

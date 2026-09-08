@@ -292,7 +292,7 @@ func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([
 }
 
 const lockItemType = `-- name: LockItemType :one
-SELECT id, name, description, derived_name_format FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
 WHERE id = $1
 FOR UPDATE
 `
@@ -305,6 +305,7 @@ func (q *Queries) LockItemType(ctx context.Context, id int64) (ItemType, error) 
 		&i.Name,
 		&i.Description,
 		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
 	)
 	return i, err
 }
@@ -341,20 +342,21 @@ func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemType
 	return result.RowsAffected(), nil
 }
 
-const setItemTypePropertyPosition = `-- name: SetItemTypePropertyPosition :execrows
-UPDATE item_type_properties
-SET position = $3
-WHERE type_id = $1 AND property_id = $2
+const setItemTypePropertyPositions = `-- name: SetItemTypePropertyPositions :execrows
+UPDATE item_type_properties AS itp
+SET position = u.pos
+FROM unnest($2::bigint[]) WITH ORDINALITY AS u(prop_id, pos)
+WHERE itp.type_id = $1 
+  AND itp.property_id = u.prop_id
 `
 
-type SetItemTypePropertyPositionParams struct {
-	TypeID     int64 `json:"type_id"`
-	PropertyID int64 `json:"property_id"`
-	Position   int32 `json:"position"`
+type SetItemTypePropertyPositionsParams struct {
+	TypeID      int64   `json:"type_id"`
+	PropertyIds []int64 `json:"property_ids"`
 }
 
-func (q *Queries) SetItemTypePropertyPosition(ctx context.Context, arg SetItemTypePropertyPositionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setItemTypePropertyPosition, arg.TypeID, arg.PropertyID, arg.Position)
+func (q *Queries) SetItemTypePropertyPositions(ctx context.Context, arg SetItemTypePropertyPositionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setItemTypePropertyPositions, arg.TypeID, arg.PropertyIds)
 	if err != nil {
 		return 0, err
 	}

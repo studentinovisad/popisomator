@@ -452,18 +452,17 @@ func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePrope
 	if err := queriesTx.OffsetItemTypePropertyPositions(ctx, req.TypeID); err != nil {
 		return err
 	}
-	for position, propertyID := range req.PropertyIDs {
-		rowsAffected, err := queriesTx.SetItemTypePropertyPosition(ctx, repository.SetItemTypePropertyPositionParams{
-			TypeID:     req.TypeID,
-			PropertyID: propertyID,
-			Position:   int32(position),
-		})
-		if err != nil {
-			return err
-		}
-		if rowsAffected != 1 {
-			return ErrInvalidItemTypePropertyOrder
-		}
+
+	rowsAffected, err := queriesTx.SetItemTypePropertyPositions(ctx, repository.SetItemTypePropertyPositionsParams{
+		TypeID:      req.TypeID,
+		PropertyIds: req.PropertyIDs,
+	})
+
+	if err != nil {
+		return err
+	}
+	if rowsAffected != int64(len(req.PropertyIDs)) {
+		return ErrInvalidItemTypePropertyOrder
 	}
 
 	return tx.Commit(ctx)
