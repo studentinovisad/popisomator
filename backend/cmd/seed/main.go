@@ -216,6 +216,65 @@ var itemRequestSeeds = []itemRequestSeed{
 	{Email: "user2@popisomator.test", ItemIndex: 1},
 	{Email: "user1@popisomator.test", ItemIndex: 2, Reason: "Za planirani eksperiment.", Approved: true},
 	{Email: "user2@popisomator.test", ItemIndex: 3, Reason: "Dopuna zaliha za vežbe."},
+	// Approved, and here so each test user has a decided request to be notified about; one approved
+	// request between them would leave the other's notification list empty.
+	{Email: "user1@popisomator.test", ItemIndex: 8, Reason: "Za analizu uzoraka.", Approved: true},
+	{Email: "user2@popisomator.test", ItemIndex: 12, Reason: "Za redovne laboratorijske vežbe.", Approved: true},
+}
+
+// notificationSeed is one row in a recipient's notification list. Kind picks which descriptor the
+// notification carries, and so which of the two index fields below is read.
+type notificationSeed struct {
+	// Email is the recipient - the person whose bell this lands on, not the person who caused it.
+	Email string
+	Kind  repository.NotificationKind
+	// ItemRequestIndex points into itemRequestSeeds, and is only read for item_request. The
+	// descriptor's foreign key is onto item_requests, so the request has to already exist.
+	//
+	// One kind covers two opposite messages, told apart only by whether the recipient is the person
+	// who made the request. Someone else is being asked to decide it, so that request must still be
+	// pending; the requester is being told it was decided, so theirs must be approved. Getting the
+	// pairing backwards seeds a list that reads as nonsense - a manager chased about a request that
+	// is already settled, or a user informed they requested their own item - so seedNotifications
+	// rejects both rather than leaving it to be caught by eye.
+	ItemRequestIndex int
+	// ItemIndex points into the flat list of created items, and ExpiryType says whether the item is
+	// merely approaching its date or past it. Both are only read for item_expiry.
+	ItemIndex  int
+	ExpiryType repository.NotifdescExpiryType
+	// AgeHours backdates created_at. Real notifications trickle in over time and the list is
+	// ordered newest first, so seeding every row at now() would leave nothing to sort by. Two seeds
+	// sharing an age is deliberate: that is the identical-timestamp case the id tiebreaker in
+	// ListNotifications exists to settle.
+	AgeHours int
+	// Read rows are the ones a recipient has already seen: no highlight, and sorted below every
+	// unread row no matter how much older the unread one is.
+	Read bool
+}
+
+var notificationSeeds = []notificationSeed{
+	// Unread, recent: what the badge counts and the page highlights on a first visit.
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 0, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 1},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 0, AgeHours: 3},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 4, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 5, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 3, AgeHours: 20},
+	// Unread but a month old, sitting below fresher unread rows and above every read one.
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 9, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 24 * 30},
+	// Already read, and deliberately newer than the row above to show read state outranking age.
+	// Shares a request with the manager below: a pending request is worth telling both of them about.
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 1, AgeHours: 26, Read: true},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 10, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 40, Read: true},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 11, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 52, Read: true},
+	// The manager sees a smaller list, so the two accounts do not look identical.
+	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 1, AgeHours: 2},
+	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 6, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 15},
+	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 7, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 36, Read: true},
+	// The two plain users are on the receiving end instead: each is told about a request of their
+	// own that a manager approved. No expiry rows here, since minding stock levels is not their job.
+	{Email: "user1@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 2, AgeHours: 4},
+	{Email: "user1@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 4, AgeHours: 30, Read: true},
+	{Email: "user2@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 5, AgeHours: 6},
 }
 
 // propertyDef describes one of the "Hemikalija" item type's properties.
@@ -273,6 +332,10 @@ func main() {
 
 	if err := seedItemRequests(ctx, users, items); err != nil {
 		log.Fatalf("unable to seed item requests: %v", err)
+	}
+
+	if err := seedNotifications(ctx, users, items); err != nil {
+		log.Fatalf("unable to seed notifications: %v", err)
 	}
 
 	fmt.Println("seeding complete")
@@ -499,6 +562,111 @@ func seedItemRequests(ctx context.Context, users map[string]dto.User, items []dt
 	}
 
 	return nil
+}
+
+func seedNotifications(ctx context.Context, users map[string]dto.User, items []dto.Item) error {
+	ages := make([]int32, 0, len(notificationSeeds))
+	readFlags := make([]bool, 0, len(notificationSeeds))
+	notificationIDs := make([]int64, 0, len(notificationSeeds))
+
+	for _, seed := range notificationSeeds {
+		recipient, ok := users[seed.Email]
+		if !ok {
+			return fmt.Errorf("seed user %s was not created", seed.Email)
+		}
+
+		var created []int64
+		var err error
+		var description string
+
+		switch seed.Kind {
+		case repository.NotificationKindItemRequest:
+			if seed.ItemRequestIndex >= len(itemRequestSeeds) {
+				return fmt.Errorf("notification references missing item request at index %d", seed.ItemRequestIndex)
+			}
+			request := itemRequestSeeds[seed.ItemRequestIndex]
+			requester, ok := users[request.Email]
+			if !ok {
+				return fmt.Errorf("seed user %s was not created", request.Email)
+			}
+
+			// See the ItemRequestIndex comment: who is receiving this decides which request state
+			// makes sense.
+			notifiesRequester := requester.ID == recipient.ID
+			switch {
+			case notifiesRequester && !request.Approved:
+				return fmt.Errorf("notification tells %s their own request at index %d was decided, but it is still pending", seed.Email, seed.ItemRequestIndex)
+			case !notifiesRequester && request.Approved:
+				return fmt.Errorf("notification asks %s to decide the request at index %d, but it is already approved", seed.Email, seed.ItemRequestIndex)
+			}
+			if request.ItemIndex >= len(items) {
+				return fmt.Errorf("notification references missing item at index %d", request.ItemIndex)
+			}
+
+			created, err = service.CreateItemRequestNotifications(ctx, []int64{recipient.ID}, requester.ID, items[request.ItemIndex].ID)
+			description = fmt.Sprintf("request by %s", requester.FullName)
+			if notifiesRequester {
+				description = "own request approved"
+			}
+		case repository.NotificationKindItemExpiry:
+			if seed.ItemIndex >= len(items) {
+				return fmt.Errorf("notification references missing item at index %d", seed.ItemIndex)
+			}
+
+			created, err = service.CreateItemExpiryNotifications(ctx, []int64{recipient.ID}, items[seed.ItemIndex].ID, seed.ExpiryType)
+			description = string(seed.ExpiryType)
+		default:
+			return fmt.Errorf("unknown notification kind %q", seed.Kind)
+		}
+		if err != nil {
+			return fmt.Errorf("creating %s notification for %s: %w", seed.Kind, seed.Email, err)
+		}
+
+		notificationIDs = append(notificationIDs, created...)
+		ages = append(ages, int32(seed.AgeHours))
+		readFlags = append(readFlags, seed.Read)
+
+		state := "unread"
+		if seed.Read {
+			state = "read"
+		}
+		fmt.Printf("created %s notification for %s (%s, %s, %dh old)\n", seed.Kind, recipient.FullName, description, state, seed.AgeHours)
+	}
+
+	return backdateNotifications(ctx, notificationIDs, ages, readFlags)
+}
+
+// backdateNotifications spreads the seeded notifications back through time and marks some of them
+// read. Both columns default on insert - created_at to now(), read to false - and the service takes
+// neither, because a real notification is always new and unread when it is made. Only a seed needs
+// to fake a history, so the statement lives here rather than in the shared query set.
+func backdateNotifications(ctx context.Context, notificationIDs []int64, ages []int32, readFlags []bool) error {
+	if len(notificationIDs) == 0 {
+		return nil
+	}
+
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE notifications AS notification
+		SET created_at = now() - (seed.age_hours * interval '1 hour'),
+		    read = seed.read
+		FROM (
+			SELECT
+				unnest($1::bigint[]) AS id,
+				unnest($2::int[]) AS age_hours,
+				unnest($3::boolean[]) AS read
+		) AS seed
+		WHERE notification.id = seed.id
+	`, notificationIDs, ages, readFlags); err != nil {
+		return fmt.Errorf("backdating notifications: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }
 
 // propertyValues builds the property list for a row's item, skipping any field left blank

@@ -8,6 +8,88 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
+// CreateItemRequestNotifications tells every recipient that userID requested itemID, returning the
+// new notification IDs. A notification is useless without its descriptor, so both rows go in under
+// one transaction.
+//
+// Nothing in the running app calls this yet: what should trigger a request notification, and who
+// should receive it, is still undecided, so the seeder is the only caller for now.
+func CreateItemRequestNotifications(ctx context.Context, recipientIDs []int64, userID, itemID int64) ([]int64, error) {
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	notifications, err := queriesTx.CreateNotifications(ctx, repository.CreateNotificationsParams{
+		Kind:         repository.NotificationKindItemRequest,
+		RecipientIds: recipientIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	notificationIDs := notificationIDsOf(notifications)
+	if _, err := queriesTx.CreateNotificationDescriptors_ItemRequest(ctx, repository.CreateNotificationDescriptors_ItemRequestParams{
+		NotificationIds: notificationIDs,
+		UserID:          userID,
+		ItemID:          itemID,
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return notificationIDs, nil
+}
+
+// CreateItemExpiryNotifications tells every recipient that itemID is near or past its expiry date,
+// returning the new notification IDs. Same caveat as CreateItemRequestNotifications: no caller in
+// the running app yet.
+func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, itemID int64, expiryType repository.NotifdescExpiryType) ([]int64, error) {
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	notifications, err := queriesTx.CreateNotifications(ctx, repository.CreateNotificationsParams{
+		Kind:         repository.NotificationKindItemExpiry,
+		RecipientIds: recipientIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	notificationIDs := notificationIDsOf(notifications)
+	if _, err := queriesTx.CreateNotificationDescriptors_ItemExpiry(ctx, repository.CreateNotificationDescriptors_ItemExpiryParams{
+		NotificationIds: notificationIDs,
+		ItemID:          itemID,
+		ExpiryType:      expiryType,
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return notificationIDs, nil
+}
+
+func notificationIDsOf(notifications []repository.Notification) []int64 {
+	ids := make([]int64, len(notifications))
+	for index, notification := range notifications {
+		ids[index] = notification.ID
+	}
+
+	return ids
+}
+
 func ListNotifications(ctx context.Context, recipient_id int64, limit, offset int32) (dto.NotificationsPage, error) {
 	total, err := db.Queries.CountNotifications(ctx, recipient_id)
 	if err != nil {
