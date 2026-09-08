@@ -344,7 +344,7 @@ func (q *Queries) RemoveItemTypeProperty(ctx context.Context, arg RemoveItemType
 
 const setItemTypePropertyPositions = `-- name: SetItemTypePropertyPositions :execrows
 UPDATE item_type_properties AS itp
-SET position = u.pos
+SET position = u.pos - 1
 FROM unnest($2::bigint[]) WITH ORDINALITY AS u(prop_id, pos)
 WHERE itp.type_id = $1 
   AND itp.property_id = u.prop_id
