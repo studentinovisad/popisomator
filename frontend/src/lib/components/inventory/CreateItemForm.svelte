@@ -218,24 +218,26 @@
 						<Label.Root class="text-sm font-medium text-ink" for="new-item-amount"
 							>Količina</Label.Root
 						>
-						<NumberInput
-							id="new-item-amount"
-							bind:value={amount}
-							ariaLabel="Količina"
-							placeholder="Unesite količinu"
-							min={1}
-							max={100}
-							required
-							invalid={Boolean(fieldErrors.amount)}
-							describedBy={fieldErrors.amount ? 'new-item-amount-error' : undefined}
-							onvaluechange={() => {
-								if (fieldErrors.amount) fieldErrors = { ...fieldErrors, amount: undefined };
-							}}
-						/>
-						<p class="mt-1 text-xs text-muted">Broj istih stavki za unos.</p>
-						<p id="new-item-amount-error" class="min-h-4 text-xs text-danger" aria-live="polite">
-							{fieldErrors.amount}
-						</p>
+						<div class="mt-1">
+							<NumberInput
+								id="new-item-amount"
+								bind:value={amount}
+								ariaLabel="Količina"
+								placeholder="Unesite količinu"
+								min={1}
+								max={100}
+								required
+								invalid={Boolean(fieldErrors.amount)}
+								describedBy={fieldErrors.amount ? 'new-item-amount-error' : undefined}
+								onvaluechange={() => {
+									if (fieldErrors.amount) fieldErrors = { ...fieldErrors, amount: undefined };
+								}}
+							/>
+							<p class="mt-1 text-xs text-muted">Broj istih stavki za unos.</p>
+							<p id="new-item-amount-error" class="min-h-4 text-xs text-danger" aria-live="polite">
+								{fieldErrors.amount}
+							</p>
+						</div>
 					</div>
 				</div>
 				{#if itemTypes.length === 0}
