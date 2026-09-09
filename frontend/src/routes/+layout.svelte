@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import favicon from '$lib/assets/favicon.svg';
+	import Bell from '@lucide/svelte/icons/bell';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
@@ -15,8 +16,8 @@
 	import X from '@lucide/svelte/icons/x';
 	import { api, type ItemRequestPreparationReport } from '$lib/api';
 	import AccountLink from '$lib/components/app/AccountLink.svelte';
+	import CountBadge from '$lib/components/shared/CountBadge.svelte';
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
-	import NotificationBell from '$lib/components/app/NotificationBell.svelte';
 	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
 	import PreparationReport from '$lib/components/admin/ItemRequestPreparationReport.svelte';
 	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/domain/navigation';
@@ -41,6 +42,14 @@
 	// Deriving the id keeps the badge poller from restarting every time a page reloads the session
 	// and hands `session.user` a fresh object.
 	let currentUserID = $derived(currentUser?.id);
+	let notificationBadgeCounts = $derived({ '/notifications': notifications.unreadCount });
+	// The bell sits in the mobile header beside the account link, so it is dropped from the bottom
+	// bar rather than appearing in both.
+	let mobileNavigation = $derived(
+		(currentUser ? [...primaryNavigation, ...secondaryNavigation] : secondaryNavigation).filter(
+			(item) => item.path !== '/notifications'
+		)
+	);
 	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
 
 	// svelte-ignore state_referenced_locally
@@ -177,20 +186,12 @@
 			</div>
 
 			<div class={`mt-auto px-3 ${sidebarExpanded ? 'py-4' : 'pt-3 pb-4'}`}>
-				{#if currentUser}
-					<div class="mb-1">
-						<NotificationBell
-							variant="sidebar"
-							iconOnly={!sidebarExpanded}
-							active={page.url.pathname === '/notifications'}
-						/>
-					</div>
-				{/if}
 				<NavigationLinks
 					items={secondaryNavigation}
 					pathname={page.url.pathname}
 					role={currentUser?.role}
 					iconOnly={!sidebarExpanded}
+					badgeCounts={notificationBadgeCounts}
 					class="space-y-1"
 				/>
 				{#if currentUser}
@@ -245,7 +246,23 @@
 				<a class="font-semibold tracking-tight" href={resolve('/')}>Popisomator</a>
 				<div class="flex items-center gap-2">
 					{#if currentUser}
-						<NotificationBell variant="header" active={page.url.pathname === '/notifications'} />
+						<a
+							class={`inline-flex size-9 items-center justify-center rounded-md transition-colors ${
+								page.url.pathname === '/notifications'
+									? 'bg-brand-soft text-brand'
+									: 'bg-chrome text-chrome-muted hover:bg-on-chrome/10 hover:text-on-chrome'
+							}`}
+							href={resolve('/notifications')}
+							aria-label={notifications.unreadCount > 0
+								? `Obaveštenja, ${notifications.unreadCount} nepročitanih`
+								: 'Obaveštenja'}
+							aria-current={page.url.pathname === '/notifications' ? 'page' : undefined}
+						>
+							<span class="relative">
+								<Bell class="size-4" aria-hidden="true" />
+								<CountBadge count={notifications.unreadCount} class="absolute -top-1.5 -right-2" />
+							</span>
+						</a>
 						<a
 							class={`inline-flex size-9 items-center justify-center rounded-md transition-colors ${
 								page.url.pathname === '/account'
@@ -338,7 +355,7 @@
 		aria-label="Glavna navigacija"
 	>
 		<NavigationLinks
-			items={currentUser ? [...primaryNavigation, ...secondaryNavigation] : secondaryNavigation}
+			items={mobileNavigation}
 			pathname={page.url.pathname}
 			role={currentUser?.role}
 			iconOnlyOnSmall

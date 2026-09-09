@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Bell from '@lucide/svelte/icons/bell';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Boxes from '@lucide/svelte/icons/boxes';
 	import ClipboardCheck from '@lucide/svelte/icons/clipboard-check';
@@ -17,6 +18,8 @@
 	<UsersRound class="size-4 shrink-0" aria-hidden="true" />
 {:else if name === 'requests'}
 	<ClipboardCheck class="size-4 shrink-0" aria-hidden="true" />
+{:else if name === 'notifications'}
+	<Bell class="size-4 shrink-0" aria-hidden="true" />
 {:else}
 	<Settings class="size-4 shrink-0" aria-hidden="true" />
 {/if}

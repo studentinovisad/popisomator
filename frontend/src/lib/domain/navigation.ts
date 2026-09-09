@@ -1,6 +1,7 @@
 import type { UserRole } from '$lib/api';
 
-export type NavigationIconName = 'inventory' | 'catalog' | 'settings' | 'users' | 'requests';
+export type NavigationIconName =
+	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications';
 
 export type AppPath =
 	| '/'
@@ -128,6 +129,14 @@ export const primaryNavigation: NavigationItem[] = [
 ];
 
 export const secondaryNavigation: NavigationItem[] = [
+	// Every signed-in role has notifications; listing them all is what hides the link from signed-out
+	// visitors, who can still reach Podešavanja below.
+	{
+		path: '/notifications',
+		label: 'Obaveštenja',
+		icon: 'notifications',
+		requiredRoles: ['admin', 'manager', 'user']
+	},
 	{ path: '/settings', label: 'Podešavanja', icon: 'settings' }
 ];
 

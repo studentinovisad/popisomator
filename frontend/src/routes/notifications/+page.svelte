@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { resolve } from '$app/paths';
 	import Bell from '@lucide/svelte/icons/bell';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import CalendarX from '@lucide/svelte/icons/calendar-x';
@@ -141,7 +140,7 @@
 							{/if}
 						</span>
 						{#if href}
-							<a class="min-w-0 flex-1" href={resolve(href)}>
+							<a class="min-w-0 flex-1" {href}>
 								{@render body(notification, detail)}
 							</a>
 						{:else}
