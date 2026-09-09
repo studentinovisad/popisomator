@@ -8,12 +8,10 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
-// CreateItemRequestNotifications tells every recipient that userID requested itemID, returning the
-// new notification IDs. A notification is useless without its descriptor, so both rows go in under
-// one transaction.
-//
-// Nothing in the running app calls this yet: what should trigger a request notification, and who
-// should receive it, is still undecided, so the seeder is the only caller for now.
+// CreateItemRequestNotifications gives each recipient a notification about userID's request for
+// itemID, returning the new notification IDs in recipient order. The notification and its
+// descriptor are written under one transaction, since a notification whose descriptor is missing
+// has nothing to render. Recipients are taken as given; picking them is the caller's decision.
 func CreateItemRequestNotifications(ctx context.Context, recipientIDs []int64, userID, itemID int64) ([]int64, error) {
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
@@ -46,9 +44,9 @@ func CreateItemRequestNotifications(ctx context.Context, recipientIDs []int64, u
 	return notificationIDs, nil
 }
 
-// CreateItemExpiryNotifications tells every recipient that itemID is near or past its expiry date,
-// returning the new notification IDs. Same caveat as CreateItemRequestNotifications: no caller in
-// the running app yet.
+// CreateItemExpiryNotifications gives each recipient a notification that itemID is near or past its
+// expiry date, expiryType saying which, and returns the new notification IDs in recipient order.
+// Written under one transaction for the same reason as CreateItemRequestNotifications.
 func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, itemID int64, expiryType repository.NotifdescExpiryType) ([]int64, error) {
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {

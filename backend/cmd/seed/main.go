@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand/v2"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +27,10 @@ import (
 const (
 	chemicalDerivedNameFormat = "{Naziv hemikalije} · {Proizvođač}"
 	testPassword              = "Test1234"
+	// chemicalExpiringSoonDays is how many days ahead of its date an item counts as expiring soon.
+	// Set on the seeded item type, and reused to work out which items an expiry notification may
+	// truthfully point at.
+	chemicalExpiringSoonDays = 14
 )
 
 // measure is a package size as it appears on the bottle: an amount in a named unit. It maps onto
@@ -53,9 +56,12 @@ type chemicalRow struct {
 	// several identical bottles at once, so every copy is its own item with its own request state.
 	PackageCount int
 	ExpiryDate   string
-	Location     string
-	Cabinet      string
-	Box          string
+	// ExpiryOffsetDays is ExpiryDate expressed as days from today, kept alongside it so the expiry
+	// state of an item can be told without parsing the date back out again.
+	ExpiryOffsetDays int
+	Location         string
+	Cabinet          string
+	Box              string
 }
 
 // generateChemicalRows fabricates a chemical inventory shaped like a real one. Chemical names are
@@ -143,6 +149,11 @@ func generateChemicalRows() []chemicalRow {
 	// and are what puts duplicate items in the seeded inventory. Cycled by index like every other
 	// field here, so reruns produce the same inventory.
 	packageCounts := []int{1, 1, 4, 1, 2, 1, 1, 3, 1, 6, 1, 2}
+	// Days from today to each row's expiry date. Negatives are already expired and the small
+	// positives fall inside the type's chemicalExpiringSoonDays window, so the shelf carries both
+	// warning states rather than being uniformly fresh - without that, an expiry notification has
+	// nothing truthful to point at. Cycled by index, so reruns produce the same inventory.
+	expiryOffsetDays := []int{-45, 6, 120, -12, 40, 2, 200, -3, 70, 11, -21, 25, 9, 320, -7, 55}
 	placements := []struct {
 		location string
 		cabinet  string
@@ -158,17 +169,19 @@ func generateChemicalRows() []chemicalRow {
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
 		placement := placements[i%len(placements)]
-		expiryDate := time.Now().AddDate(0, rand.IntN(2), rand.IntN(20)).Format(time.DateOnly)
+		expiryOffset := expiryOffsetDays[i%len(expiryOffsetDays)]
+		expiryDate := time.Now().AddDate(0, 0, expiryOffset).Format(time.DateOnly)
 		row := chemicalRow{
-			Name:         chemical.name,
-			CASNumber:    chemical.cas,
-			Manufacturer: manufacturers[i%len(manufacturers)],
-			Purity:       purities[i%len(purities)],
-			Location:     placement.location,
-			Cabinet:      placement.cabinet,
-			Box:          placement.box,
-			PackageCount: packageCounts[i%len(packageCounts)],
-			ExpiryDate:   expiryDate,
+			Name:             chemical.name,
+			CASNumber:        chemical.cas,
+			Manufacturer:     manufacturers[i%len(manufacturers)],
+			Purity:           purities[i%len(purities)],
+			Location:         placement.location,
+			Cabinet:          placement.cabinet,
+			Box:              placement.box,
+			PackageCount:     packageCounts[i%len(packageCounts)],
+			ExpiryDate:       expiryDate,
+			ExpiryOffsetDays: expiryOffset,
 		}
 		if chemical.solid {
 			packageMass := massPackages[i%len(massPackages)]
@@ -198,6 +211,25 @@ var testUsers = []testUser{
 	{Email: "user2@popisomator.test", FullName: "Mika Mikić", Role: "user", Status: "active"},
 	{Email: "jovana@popisomator.test", FullName: "Jovana Jovanović", Role: "user", Status: "requested"},
 	{Email: "nikola@popisomator.test", FullName: "Nikola Nikolić", Role: "user", Status: "requested"},
+}
+
+// seededItem is a created item together with how far its expiry date sits from today. Carrying the
+// offset out of seedItems means an expiry notification can be aimed at an item that genuinely is
+// expired or near expiry, instead of at a hard-coded index that says nothing about its date.
+type seededItem struct {
+	Item             dto.Item
+	ExpiryOffsetDays int
+}
+
+func (item seededItem) expiryState() (repository.NotifdescExpiryType, bool) {
+	switch {
+	case item.ExpiryOffsetDays < 0:
+		return repository.NotifdescExpiryTypeExpired, true
+	case item.ExpiryOffsetDays <= chemicalExpiringSoonDays:
+		return repository.NotifdescExpiryTypeExpiringSoon, true
+	default:
+		return "", false
+	}
 }
 
 type itemRequestSeed struct {
@@ -238,9 +270,10 @@ type notificationSeed struct {
 	// is already settled, or a user informed they requested their own item - so seedNotifications
 	// rejects both rather than leaving it to be caught by eye.
 	ItemRequestIndex int
-	// ItemIndex points into the flat list of created items, and ExpiryType says whether the item is
-	// merely approaching its date or past it. Both are only read for item_expiry.
-	ItemIndex  int
+	// ExpiryType says whether the item is merely approaching its date or already past it, and is
+	// only read for item_expiry. There is deliberately no item index to go with it: seedNotifications
+	// picks from the items whose dates actually put them in this state, so the item can never
+	// contradict what the notification says about it.
 	ExpiryType repository.NotifdescExpiryType
 	// AgeHours backdates created_at. Real notifications trickle in over time and the list is
 	// ordered newest first, so seeding every row at now() would leave nothing to sort by. Two seeds
@@ -254,22 +287,22 @@ type notificationSeed struct {
 
 var notificationSeeds = []notificationSeed{
 	// Unread, recent: what the badge counts and the page highlights on a first visit.
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 0, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 1},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 1},
 	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 0, AgeHours: 3},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 4, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 5, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
 	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 3, AgeHours: 20},
 	// Unread but a month old, sitting below fresher unread rows and above every read one.
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 9, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 24 * 30},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 24 * 30},
 	// Already read, and deliberately newer than the row above to show read state outranking age.
 	// Shares a request with the manager below: a pending request is worth telling both of them about.
 	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 1, AgeHours: 26, Read: true},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 10, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 40, Read: true},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 11, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 52, Read: true},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 40, Read: true},
+	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 52, Read: true},
 	// The manager sees a smaller list, so the two accounts do not look identical.
 	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 1, AgeHours: 2},
-	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 6, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 15},
-	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ItemIndex: 7, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 36, Read: true},
+	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 15},
+	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 36, Read: true},
 	// The two plain users are on the receiving end instead: each is told about a request of their
 	// own that a manager approved. No expiry rows here, since minding stock levels is not their job.
 	{Email: "user1@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 2, AgeHours: 4},
@@ -438,7 +471,7 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 		})
 	}
 
-	expiringSoonDays := int16(14)
+	expiringSoonDays := int16(chemicalExpiringSoonDays)
 
 	created, err := service.CreateItemType(ctx, dto.CreateItemTypeRequest{
 		Name:              name,
@@ -493,9 +526,9 @@ func ensureItemTypeProperties(ctx context.Context, itemType dto.ItemType, propID
 // row stocked in several identical packages becomes that many items. Those rows go through the
 // same bulk-add path the UI uses (one CreateItem call with Amount > 1), which is what gives the
 // seeded inventory duplicate items to exercise filtering and the property totals against.
-func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]dto.Item, error) {
+func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]seededItem, error) {
 	rows := generateChemicalRows()
-	items := make([]dto.Item, 0, len(rows))
+	items := make([]seededItem, 0, len(rows))
 
 	bulkRows := 0
 	for _, row := range rows {
@@ -516,7 +549,9 @@ func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]d
 		}
 		fmt.Printf("created %d item(s) %s (%s)\n", len(createdItems), strings.Join(itemIDs, ", "), row.Name)
 
-		items = append(items, createdItems...)
+		for _, createdItem := range createdItems {
+			items = append(items, seededItem{Item: createdItem, ExpiryOffsetDays: row.ExpiryOffsetDays})
+		}
 		if len(createdItems) > 1 {
 			bulkRows++
 		}
@@ -527,7 +562,7 @@ func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]d
 	return items, nil
 }
 
-func seedItemRequests(ctx context.Context, users map[string]dto.User, items []dto.Item) error {
+func seedItemRequests(ctx context.Context, users map[string]dto.User, items []seededItem) error {
 	for _, seed := range itemRequestSeeds {
 		user, ok := users[seed.Email]
 		if !ok {
@@ -537,7 +572,7 @@ func seedItemRequests(ctx context.Context, users map[string]dto.User, items []dt
 			return fmt.Errorf("item request references missing item at index %d", seed.ItemIndex)
 		}
 
-		item := items[seed.ItemIndex]
+		item := items[seed.ItemIndex].Item
 		itemRequest, err := service.CreateItemRequest(ctx, dto.ItemRequestCreateRequest{
 			UserID: user.ID,
 			ItemID: item.ID,
@@ -564,10 +599,21 @@ func seedItemRequests(ctx context.Context, users map[string]dto.User, items []dt
 	return nil
 }
 
-func seedNotifications(ctx context.Context, users map[string]dto.User, items []dto.Item) error {
+func seedNotifications(ctx context.Context, users map[string]dto.User, items []seededItem) error {
 	ages := make([]int32, 0, len(notificationSeeds))
 	readFlags := make([]bool, 0, len(notificationSeeds))
 	notificationIDs := make([]int64, 0, len(notificationSeeds))
+
+	// Group the items by the state their expiry date actually puts them in, so an expiry
+	// notification is aimed at an item that backs up what it claims. picked walks each group in
+	// turn.
+	expiryPools := make(map[repository.NotifdescExpiryType][]seededItem)
+	for _, item := range items {
+		if state, ok := item.expiryState(); ok {
+			expiryPools[state] = append(expiryPools[state], item)
+		}
+	}
+	picked := make(map[repository.NotifdescExpiryType]int)
 
 	for _, seed := range notificationSeeds {
 		recipient, ok := users[seed.Email]
@@ -603,18 +649,24 @@ func seedNotifications(ctx context.Context, users map[string]dto.User, items []d
 				return fmt.Errorf("notification references missing item at index %d", request.ItemIndex)
 			}
 
-			created, err = service.CreateItemRequestNotifications(ctx, []int64{recipient.ID}, requester.ID, items[request.ItemIndex].ID)
+			created, err = service.CreateItemRequestNotifications(ctx, []int64{recipient.ID}, requester.ID, items[request.ItemIndex].Item.ID)
 			description = fmt.Sprintf("request by %s", requester.FullName)
 			if notifiesRequester {
 				description = "own request approved"
 			}
 		case repository.NotificationKindItemExpiry:
-			if seed.ItemIndex >= len(items) {
-				return fmt.Errorf("notification references missing item at index %d", seed.ItemIndex)
+			pool := expiryPools[seed.ExpiryType]
+			if len(pool) == 0 {
+				return fmt.Errorf("no seeded item is %q, so that notification would claim something the item's date contradicts", seed.ExpiryType)
 			}
 
-			created, err = service.CreateItemExpiryNotifications(ctx, []int64{recipient.ID}, items[seed.ItemIndex].ID, seed.ExpiryType)
-			description = string(seed.ExpiryType)
+			// Cycle through the matching items so repeated seeds of one type spread over different
+			// items instead of all naming the same one.
+			item := pool[picked[seed.ExpiryType]%len(pool)]
+			picked[seed.ExpiryType]++
+
+			created, err = service.CreateItemExpiryNotifications(ctx, []int64{recipient.ID}, item.Item.ID, seed.ExpiryType)
+			description = fmt.Sprintf("%s, item %d expires in %d days", seed.ExpiryType, item.Item.ID, item.ExpiryOffsetDays)
 		default:
 			return fmt.Errorf("unknown notification kind %q", seed.Kind)
 		}

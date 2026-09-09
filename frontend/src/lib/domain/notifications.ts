@@ -1,4 +1,4 @@
-import type { Pathname } from '$app/types';
+import { resolve } from '$app/paths';
 import type { Notification, UserRole } from '$lib/api';
 
 export type NotificationIconName = 'request' | 'expiring' | 'expired' | 'generic';
@@ -43,18 +43,24 @@ export function notificationIcon(notification: Notification): NotificationIconNa
 	return 'generic';
 }
 
-// Where clicking the notification takes the user. Item request notifications land on whichever
-// request list the recipient is allowed to see.
+// Where clicking the notification takes the user, as a ready-to-use href. Item request
+// notifications land on whichever request list the recipient is allowed to see; for the managers
+// and admins who can act on it, that list is pre-filtered to the person who made the request, so
+// the row they were told about is the one in front of them. `user_id` is the filter
+// ItemRequestsList already reads off the URL.
 export function notificationHref(
 	notification: Notification,
 	role: UserRole | undefined
-): Pathname | null {
-	if (notification.desc_item_request) {
-		return role === 'admin' || role === 'manager' ? '/item-requests' : '/item-requests/me';
+): string | null {
+	const itemRequest = notification.desc_item_request;
+	if (itemRequest) {
+		return role === 'admin' || role === 'manager'
+			? `${resolve('/item-requests')}?user_id=${itemRequest.user_id}`
+			: resolve('/item-requests/me');
 	}
 
 	const itemExpiry = notification.desc_item_expiry;
-	if (itemExpiry) return `/items/${itemExpiry.item.id}`;
+	if (itemExpiry) return resolve(`/items/${itemExpiry.item.id}`);
 
 	return null;
 }
