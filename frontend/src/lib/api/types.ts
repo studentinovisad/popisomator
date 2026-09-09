@@ -96,6 +96,7 @@ export type ItemPropertyTotal = {
 };
 
 export type SortOrder = 'asc' | 'desc';
+export type HeldBy = 'nobody' | 'me';
 
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
@@ -103,6 +104,7 @@ export type ListItemsParams = PageRequest & {
 	// Property to order the items by. Left out, they come back newest first.
 	sortPropertyID?: number;
 	order?: SortOrder;
+	heldBy?: HeldBy;
 };
 
 export type UpdateItemRequest = {

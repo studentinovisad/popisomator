@@ -68,28 +68,36 @@ func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBu
 const countItems = `-- name: CountItems :one
 SELECT count(*) FROM items
 JOIN item_types ON item_types.id = items.type_id
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+  AND approved_request.status = 'approved'
 WHERE ($1::bigint IS NULL OR items.type_id = $1)
   AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
   AND ($3::timestamptz IS NULL OR items.created_at >= $3)
   AND ($4::timestamptz IS NULL OR items.created_at <= $4)
   AND (
-    $5::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($5::text) || '%'
+    $5::bigint IS NULL  
+    OR ($5::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = $5::bigint
+  )
+  AND (
+    $6::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($6::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($5::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($6::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($5::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($6::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($6::bigint[]),
-      unnest($7::jsonb[])
+      unnest($7::bigint[]),
+      unnest($8::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -106,6 +114,7 @@ type CountItemsParams struct {
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	HeldBy         pgtype.Int8         `json:"held_by"`
 	Search         string              `json:"search"`
 	PropertyIds    []int64             `json:"property_ids"`
 	PropertyValues []json.RawMessage   `json:"property_values"`
@@ -117,6 +126,7 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.HeldBy,
 		arg.Search,
 		arg.PropertyIds,
 		arg.PropertyValues,
@@ -362,6 +372,9 @@ JOIN item_types ON item_types.id = items.type_id
 LEFT JOIN item_properties AS sort_property
   ON sort_property.item_id = items.id
  AND sort_property.property_id = $1::bigint
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+  AND approved_request.status = 'approved'
 LEFT JOIN LATERAL (
   SELECT
     CASE sort_property_definition.value_type
@@ -391,23 +404,28 @@ WHERE ($5::bigint IS NULL OR items.type_id = $5)
   AND ($7::timestamptz IS NULL OR items.created_at >= $7)
   AND ($8::timestamptz IS NULL OR items.created_at <= $8)
   AND (
-    $9::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($9::text) || '%'
+    $9::bigint IS NULL  
+    OR ($9::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = $9::bigint
+  )
+  AND (
+    $10::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($10::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($9::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($10::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($9::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($10::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($10::bigint[]),
-      unnest($11::jsonb[])
+      unnest($11::bigint[]),
+      unnest($12::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -418,15 +436,15 @@ WHERE ($5::bigint IS NULL OR items.type_id = $5)
     )
   )
 ORDER BY
-  CASE WHEN $12::bool THEN sort_key.number_key END ASC NULLS LAST,
-  CASE WHEN NOT $12::bool THEN sort_key.number_key END DESC NULLS LAST,
-  CASE WHEN $12::bool THEN sort_key.text_key END ASC NULLS LAST,
-  CASE WHEN NOT $12::bool THEN sort_key.text_key END DESC NULLS LAST,
-  CASE WHEN $12::bool THEN items.created_at END ASC,
-  CASE WHEN $12::bool THEN items.id END ASC,
-  CASE WHEN NOT $12::bool THEN items.created_at END DESC,
-  CASE WHEN NOT $12::bool THEN items.id END DESC
-LIMIT $14 OFFSET $13
+  CASE WHEN $13::bool THEN sort_key.number_key END ASC NULLS LAST,
+  CASE WHEN NOT $13::bool THEN sort_key.number_key END DESC NULLS LAST,
+  CASE WHEN $13::bool THEN sort_key.text_key END ASC NULLS LAST,
+  CASE WHEN NOT $13::bool THEN sort_key.text_key END DESC NULLS LAST,
+  CASE WHEN $13::bool THEN items.created_at END ASC,
+  CASE WHEN $13::bool THEN items.id END ASC,
+  CASE WHEN NOT $13::bool THEN items.created_at END DESC,
+  CASE WHEN NOT $13::bool THEN items.id END DESC
+LIMIT $15 OFFSET $14
 `
 
 type ListItemsParams struct {
@@ -438,6 +456,7 @@ type ListItemsParams struct {
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	HeldBy         pgtype.Int8         `json:"held_by"`
 	Search         string              `json:"search"`
 	PropertyIds    []int64             `json:"property_ids"`
 	PropertyValues []json.RawMessage   `json:"property_values"`
@@ -465,6 +484,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.HeldBy,
 		arg.Search,
 		arg.PropertyIds,
 		arg.PropertyValues,
@@ -525,6 +545,9 @@ FROM items
 JOIN item_types ON item_types.id = items.type_id
 JOIN item_properties AS item_property ON item_property.item_id = items.id
 JOIN properties ON properties.id = item_property.property_id
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+  AND approved_request.status = 'approved'
 LEFT JOIN ROWS FROM (
   unnest($1::text[]),
   unnest($2::text[]),
@@ -539,23 +562,28 @@ WHERE properties.value_type IN ('price', 'mass', 'volume')
   AND ($6::timestamptz IS NULL OR items.created_at >= $6)
   AND ($7::timestamptz IS NULL OR items.created_at <= $7)
   AND (
-    $8::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($8::text) || '%'
+    $8::bigint IS NULL  
+    OR ($8::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = $8::bigint
+  )
+  AND (
+    $9::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($9::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($8::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($9::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($8::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($9::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($9::bigint[]),
-      unnest($10::jsonb[])
+      unnest($10::bigint[]),
+      unnest($11::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -577,6 +605,7 @@ type SumItemPropertiesParams struct {
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	HeldBy         pgtype.Int8         `json:"held_by"`
 	Search         string              `json:"search"`
 	PropertyIds    []int64             `json:"property_ids"`
 	PropertyValues []json.RawMessage   `json:"property_values"`
@@ -604,6 +633,7 @@ func (q *Queries) SumItemProperties(ctx context.Context, arg SumItemPropertiesPa
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.HeldBy,
 		arg.Search,
 		arg.PropertyIds,
 		arg.PropertyValues,

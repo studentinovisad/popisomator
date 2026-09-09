@@ -13,6 +13,8 @@
 		typeFilter,
 		search = $bindable(),
 		loading,
+		heldBy,
+		onheldbychange,
 		onitemtypechange,
 		onsearch,
 		onsortopen
@@ -24,6 +26,8 @@
 		typeFilter: string;
 		search: string;
 		loading: boolean;
+		heldBy: string;
+		onheldbychange: (value: string) => void;
 		onitemtypechange: (itemTypeID: number | undefined) => void;
 		onsearch: (search: string) => void;
 		onsortopen: () => void;
@@ -47,6 +51,12 @@
 		{ value: 'all', label: 'Svi tipovi' },
 		...itemTypes.map((itemType) => ({ value: String(itemType.id), label: itemType.name }))
 	]);
+
+	let heldByOptions = [
+		{label: "Sve stavke", value: "all"},
+        {label: "Moje stavke", value: "me"},
+        {label: "Slobodne stavke", value: "nobody"}
+    ];
 </script>
 
 <div class="flex items-center justify-between gap-4">
@@ -57,6 +67,37 @@
 			<span class="px-1.5 text-line">·</span>{summed.name}: {summed.amount}{/each}
 	</p>
 	<div class="flex shrink-0 items-center gap-2">
+		<Select.Root
+			type="single"
+			value={heldBy}
+			items={heldByOptions}
+			onValueChange={(value) => onheldbychange(value)}
+		>
+			<Select.Trigger
+				class="flex h-9 w-40 items-center justify-between rounded-md border border-chrome-line bg-transparent px-3 text-sm text-on-chrome transition-colors hover:border-brand"
+				aria-label="Filtriraj stavke po korišćenju"
+			>
+				<Select.Value />
+			</Select.Trigger>
+			<Select.Portal>
+				<Select.Content
+					class="z-10 w-44 rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15"
+					sideOffset={4}
+				>
+					<Select.Viewport>
+						{#each heldByOptions as option (option.value)}
+							<Select.Item
+								value={option.value}
+								label={option.label}
+								class="cursor-pointer rounded px-3 py-2 outline-none data-highlighted:bg-brand-soft"
+							>
+								{option.label}
+							</Select.Item>
+						{/each}
+					</Select.Viewport>
+				</Select.Content>
+			</Select.Portal>
+		</Select.Root>
 		{#if itemTypes.length > 1}
 			<Select.Root
 				type="single"

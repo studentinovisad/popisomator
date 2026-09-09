@@ -16,7 +16,10 @@
 		type ItemTypeFilterableProperty,
 		type PropertyOption,
 		type PropertyValue,
-		type SortOrder
+		type SortOrder,
+
+		type HeldBy
+
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -106,6 +109,7 @@
 			];
 		});
 	});
+	let heldByValue = $state(getHeldBy(page.url) || "all")
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -125,6 +129,7 @@
 		const currentPage = getTablePage(url);
 		const selectedSortPropertyID = getSortPropertyID(url);
 		const selectedSortOrder = getSortOrder(url);
+		const heldBy = getHeldBy(url);
 		const queryKey = JSON.stringify({
 			currentPage,
 			search,
@@ -132,7 +137,8 @@
 			selectedPropertyFilters,
 			selectedSortPropertyID,
 			selectedSortOrder,
-			itemsPerPage
+			itemsPerPage,
+			heldBy
 		});
 
 		if (queryKey === inventoryQueryKey) return;
@@ -145,7 +151,8 @@
 			itemTypeID,
 			selectedPropertyFilters,
 			selectedSortPropertyID,
-			selectedSortOrder
+			selectedSortOrder,
+			heldBy
 		);
 	});
 
@@ -171,7 +178,8 @@
 		itemTypeID: number | undefined,
 		selectedPropertyFilters: Record<number, PropertyValue>,
 		selectedSortPropertyID: number | undefined,
-		selectedSortOrder: SortOrder
+		selectedSortOrder: SortOrder,
+		heldBy: HeldBy | undefined
 	) {
 		const version = ++loadVersion;
 		loadingInventory = true;
@@ -185,7 +193,8 @@
 				typeID: itemTypeID,
 				propertyFilters: selectedPropertyFilters,
 				sortPropertyID: selectedSortPropertyID,
-				order: selectedSortOrder
+				order: selectedSortOrder,
+				heldBy
 			});
 			if (version !== loadVersion) return;
 
@@ -297,6 +306,10 @@
 		updateTableQuery({ [`property.${propertyID}`]: JSON.stringify(value), page: 1 });
 	}
 
+	function heldByChange(value: string) {
+		updateTableQuery({ ['held_by']: value != "all" ? value : undefined, page: 1 });
+	}
+
 	async function loadPropertyFilterValues(propertyID: number, search: string) {
 		const itemTypeID = selectedItemTypeID;
 		if (itemTypeID === undefined) return;
@@ -331,7 +344,8 @@
 			itemTypeID,
 			getPropertyFilters(page.url),
 			getSortPropertyID(page.url),
-			getSortOrder(page.url)
+			getSortOrder(page.url),
+			heldByValue === 'me' || heldByValue === 'nobody' ? heldByValue : undefined
 		);
 	}
 
@@ -347,6 +361,11 @@
 
 	function getSortOrder(url: URL): SortOrder {
 		return getTableFilter(url, 'order') === 'asc' ? 'asc' : 'desc';
+	}
+
+	function getHeldBy(url: URL): HeldBy | undefined {
+		let val = getTableFilter(url, 'held_by')
+		return val === 'me' || val === 'nobody' ? val : undefined;
 	}
 
 	function getSelectedItemTypeID(url: URL) {
@@ -409,6 +428,8 @@
 			onitemtypechange={filterByItemType}
 			onsearch={searchItems}
 			onsortopen={() => (sortDialogOpen = true)}
+			heldBy={heldByValue}
+			onheldbychange={heldByChange}
 		/>
 		{#if selectedItemType && selectedItemType.id === selectedItemTypeID}
 			<InventoryPropertyFilters

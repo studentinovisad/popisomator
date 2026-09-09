@@ -17,6 +17,9 @@ JOIN item_types ON item_types.id = items.type_id
 LEFT JOIN item_properties AS sort_property
   ON sort_property.item_id = items.id
  AND sort_property.property_id = sqlc.narg('sort_property_id')::bigint
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+  AND approved_request.status = 'approved'
 LEFT JOIN LATERAL (
   SELECT
     CASE sort_property_definition.value_type
@@ -45,6 +48,11 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (
+    sqlc.narg('held_by')::bigint IS NULL  
+    OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = sqlc.narg('held_by')::bigint
+  )
   AND (
     sqlc.arg('search')::text = ''
     OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
@@ -86,10 +94,18 @@ LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 -- name: CountItems :one
 SELECT count(*) FROM items
 JOIN item_types ON item_types.id = items.type_id
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+  AND approved_request.status = 'approved'
 WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (
+    sqlc.narg('held_by')::bigint IS NULL  
+    OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = sqlc.narg('held_by')::bigint
+  )
   AND (
     sqlc.arg('search')::text = ''
     OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
@@ -136,6 +152,9 @@ FROM items
 JOIN item_types ON item_types.id = items.type_id
 JOIN item_properties AS item_property ON item_property.item_id = items.id
 JOIN properties ON properties.id = item_property.property_id
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+  AND approved_request.status = 'approved'
 LEFT JOIN ROWS FROM (
   unnest(sqlc.arg('unit_value_types')::text[]),
   unnest(sqlc.arg('unit_names')::text[]),
@@ -149,6 +168,11 @@ WHERE properties.value_type IN ('price', 'mass', 'volume')
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (
+    sqlc.narg('held_by')::bigint IS NULL  
+    OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = sqlc.narg('held_by')::bigint
+  )
   AND (
     sqlc.arg('search')::text = ''
     OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'

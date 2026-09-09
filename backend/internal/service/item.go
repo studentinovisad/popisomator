@@ -197,6 +197,11 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
+	heldByID := pgtype.Int8{}
+	if req.HeldByID != nil {
+		heldByID = pgtype.Int8{Int64: *req.HeldByID, Valid: true}
+	}
+
 	sortPropertyID := pgtype.Int8{}
 	if req.SortPropertyID != nil {
 		sortPropertyID = pgtype.Int8{Int64: *req.SortPropertyID, Valid: true}
@@ -224,6 +229,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Search:         req.Search,
 		PropertyIds:    propertyIDs,
 		PropertyValues: propertyValues,
+		HeldBy:         heldByID,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -244,6 +250,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitValueTypes: unitValueTypes,
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
+		HeldBy:         heldByID,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -276,6 +283,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitValueTypes: unitValueTypes,
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
+		HeldBy:         heldByID,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err

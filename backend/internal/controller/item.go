@@ -69,6 +69,19 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 		req.TypeID = &typeID
 	}
 
+	if val := query.Get("held_by"); val != "" {
+		switch val {
+		case "nobody":
+			id := int64(0)
+			req.HeldByID = &id
+		case "me":
+			req.HeldByID = &userID
+		default:
+			response.WriteError(w, http.StatusBadRequest, "invalid held_by")
+			return
+		}
+	}
+
 	for key, values := range query {
 		propertyIDText, ok := strings.CutPrefix(key, "property.")
 		if !ok {
