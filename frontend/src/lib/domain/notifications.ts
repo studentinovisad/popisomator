@@ -1,4 +1,4 @@
-import { resolve } from '$app/paths';
+import type { Pathname } from '$app/types';
 import type { Notification, UserRole } from '$lib/api';
 
 export type NotificationIconName = 'request' | 'expiring' | 'expired' | 'generic';
@@ -43,24 +43,27 @@ export function notificationIcon(notification: Notification): NotificationIconNa
 	return 'generic';
 }
 
-// Where clicking the notification takes the user, as a ready-to-use href. Item request
-// notifications land on whichever request list the recipient is allowed to see; for the managers
-// and admins who can act on it, that list is pre-filtered to the person who made the request, so
-// the row they were told about is the one in front of them. `user_id` is the filter
-// ItemRequestsList already reads off the URL.
-export function notificationHref(
+// Where clicking the notification takes the user, still to be run through resolve() by the caller
+// the way every other link in the app is.
+//
+// Item request notifications land on whichever request list the recipient is allowed to see; for the
+// managers and admins who can act on it, that list is filtered down to the person who made the
+// request, so the row they were told about is the one in front of them. `user_id` is the filter
+// ItemRequestsList already reads off the URL. Pathname does not model a query string, so that case
+// is cast - the same thing updateTableQuery does to keep a filtered link resolvable.
+export function notificationLink(
 	notification: Notification,
 	role: UserRole | undefined
-): string | null {
+): Pathname | null {
 	const itemRequest = notification.desc_item_request;
 	if (itemRequest) {
 		return role === 'admin' || role === 'manager'
-			? `${resolve('/item-requests')}?user_id=${itemRequest.user_id}`
-			: resolve('/item-requests/me');
+			? (`/item-requests?user_id=${itemRequest.user_id}` as Pathname)
+			: '/item-requests/me';
 	}
 
 	const itemExpiry = notification.desc_item_expiry;
-	if (itemExpiry) return resolve(`/items/${itemExpiry.item.id}`);
+	if (itemExpiry) return `/items/${itemExpiry.item.id}`;
 
 	return null;
 }

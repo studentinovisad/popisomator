@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import Bell from '@lucide/svelte/icons/bell';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import CalendarX from '@lucide/svelte/icons/calendar-x';
@@ -12,8 +13,8 @@
 	import { formatRequestDate } from '$lib/domain/item-requests';
 	import {
 		notificationDetail,
-		notificationHref,
 		notificationIcon,
+		notificationLink,
 		notificationTitle
 	} from '$lib/domain/notifications';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
@@ -117,7 +118,7 @@
 		<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
 			<ul class="divide-y divide-line" aria-label="Obaveštenja">
 				{#each notificationsPage.items as notification (notification.id)}
-					{@const href = notificationHref(notification, authPage.state.user?.role)}
+					{@const link = notificationLink(notification, authPage.state.user?.role)}
 					{@const detail = notificationDetail(notification)}
 					{@const icon = notificationIcon(notification)}
 					<li
@@ -139,8 +140,8 @@
 								<Bell class="size-4" />
 							{/if}
 						</span>
-						{#if href}
-							<a class="min-w-0 flex-1" {href}>
+						{#if link}
+							<a class="min-w-0 flex-1" href={resolve(link)}>
 								{@render body(notification, detail)}
 							</a>
 						{:else}

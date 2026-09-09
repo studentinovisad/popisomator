@@ -20,7 +20,12 @@
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
 	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
 	import PreparationReport from '$lib/components/admin/ItemRequestPreparationReport.svelte';
-	import { getPageMetadata, primaryNavigation, secondaryNavigation } from '$lib/domain/navigation';
+	import {
+		getPageMetadata,
+		notificationsNavigationItem,
+		primaryNavigation,
+		secondaryNavigation
+	} from '$lib/domain/navigation';
 	import { notifications } from '$lib/state/notifications.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import {
@@ -42,7 +47,7 @@
 	// Deriving the id keeps the badge poller from restarting every time a page reloads the session
 	// and hands `session.user` a fresh object.
 	let currentUserID = $derived(currentUser?.id);
-	let notificationBadgeCounts = $derived({ '/notifications': notifications.unreadCount });
+	let notificationBadgeCount = $derived(notificationsNavigationItem.badgeCount ?? 0);
 	// The bell sits in the mobile header beside the account link, so it is dropped from the bottom
 	// bar rather than appearing in both.
 	let mobileNavigation = $derived(
@@ -191,7 +196,6 @@
 					pathname={page.url.pathname}
 					role={currentUser?.role}
 					iconOnly={!sidebarExpanded}
-					badgeCounts={notificationBadgeCounts}
 					class="space-y-1"
 				/>
 				{#if currentUser}
@@ -253,14 +257,14 @@
 									: 'bg-chrome text-chrome-muted hover:bg-on-chrome/10 hover:text-on-chrome'
 							}`}
 							href={resolve('/notifications')}
-							aria-label={notifications.unreadCount > 0
-								? `Obaveštenja, ${notifications.unreadCount} nepročitanih`
-								: 'Obaveštenja'}
+							aria-label={notificationBadgeCount > 0
+								? `${notificationsNavigationItem.label}, ${notificationsNavigationItem.badgeLabel?.(notificationBadgeCount)}`
+								: notificationsNavigationItem.label}
 							aria-current={page.url.pathname === '/notifications' ? 'page' : undefined}
 						>
 							<span class="relative">
 								<Bell class="size-4" aria-hidden="true" />
-								<CountBadge count={notifications.unreadCount} class="absolute -top-1.5 -right-2" />
+								<CountBadge count={notificationBadgeCount} class="absolute -top-1.5 -right-2" />
 							</span>
 						</a>
 						<a
