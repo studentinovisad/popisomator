@@ -1,4 +1,5 @@
 import type { UserRole } from '$lib/api';
+import { notifications } from '$lib/state/notifications.svelte';
 
 export type NavigationIconName =
 	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications';
@@ -25,6 +26,13 @@ export type NavigationItem = {
 	label: string;
 	icon: NavigationIconName;
 	requiredRoles?: UserRole[];
+	// A count to pin on the item's icon, left out by items that do not have one. Where the value
+	// changes, declare it as a getter rather than a fixed number: the read then happens while the
+	// link renders, which is what keeps it up to date.
+	badgeCount?: number;
+	// How to voice that count for screen readers. The wording belongs to whatever is being counted -
+	// NavigationLinks only ever knows there is a number - so each item brings its own.
+	badgeLabel?: (count: number) => string;
 };
 
 type PageMetadata = {
@@ -128,15 +136,23 @@ export const primaryNavigation: NavigationItem[] = [
 	}
 ];
 
-export const secondaryNavigation: NavigationItem[] = [
-	// Every signed-in role has notifications; listing them all is what hides the link from signed-out
-	// visitors, who can still reach Podešavanja below.
-	{
-		path: '/notifications',
-		label: 'Obaveštenja',
-		icon: 'notifications',
-		requiredRoles: ['admin', 'manager', 'user']
+// Exported on its own as well as through secondaryNavigation, because the mobile header renders the
+// bell outside the sidebar list and should not restate the count or its wording.
+export const notificationsNavigationItem: NavigationItem = {
+	path: '/notifications',
+	label: 'Obaveštenja',
+	icon: 'notifications',
+	// Every signed-in role has notifications; listing them all is what hides the link from
+	// signed-out visitors, who can still reach Podešavanja below.
+	requiredRoles: ['admin', 'manager', 'user'],
+	get badgeCount() {
+		return notifications.unreadCount;
 	},
+	badgeLabel: (count) => `${count} nepročitanih`
+};
+
+export const secondaryNavigation: NavigationItem[] = [
+	notificationsNavigationItem,
 	{ path: '/settings', label: 'Podešavanja', icon: 'settings' }
 ];
 
