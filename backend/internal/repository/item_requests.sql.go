@@ -168,32 +168,44 @@ func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) 
 	return i, err
 }
 
-const getUserItemRequests = `-- name: GetUserItemRequests :many
-SELECT user_id, item_id, created_at, status, reason FROM item_requests
-WHERE user_id = $1
+const getItemsRequestStatuses = `-- name: GetItemsRequestStatuses :many
+SELECT 
+  item_requests.item_id, 
+  item_requests.status, 
+  item_requests.user_id, 
+  users.full_name AS user_full_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+WHERE (user_id = $1 OR item_requests.status = 'approved')
   AND item_id = ANY($2::bigint[])
 `
 
-type GetUserItemRequestsParams struct {
-	UserID  int64   `json:"user_id"`
-	ItemIds []int64 `json:"item_ids"`
+type GetItemsRequestStatusesParams struct {
+	ViewerID int64   `json:"viewer_id"`
+	ItemIds  []int64 `json:"item_ids"`
 }
 
-func (q *Queries) GetUserItemRequests(ctx context.Context, arg GetUserItemRequestsParams) ([]ItemRequest, error) {
-	rows, err := q.db.Query(ctx, getUserItemRequests, arg.UserID, arg.ItemIds)
+type GetItemsRequestStatusesRow struct {
+	ItemID       int64         `json:"item_id"`
+	Status       RequestStatus `json:"status"`
+	UserID       int64         `json:"user_id"`
+	UserFullName string        `json:"user_full_name"`
+}
+
+func (q *Queries) GetItemsRequestStatuses(ctx context.Context, arg GetItemsRequestStatusesParams) ([]GetItemsRequestStatusesRow, error) {
+	rows, err := q.db.Query(ctx, getItemsRequestStatuses, arg.ViewerID, arg.ItemIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ItemRequest
+	var items []GetItemsRequestStatusesRow
 	for rows.Next() {
-		var i ItemRequest
+		var i GetItemsRequestStatusesRow
 		if err := rows.Scan(
-			&i.UserID,
 			&i.ItemID,
-			&i.CreatedAt,
 			&i.Status,
-			&i.Reason,
+			&i.UserID,
+			&i.UserFullName,
 		); err != nil {
 			return nil, err
 		}

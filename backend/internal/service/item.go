@@ -23,17 +23,21 @@ func populateItemRequestInformation(ctx context.Context, items []dto.Item, viewe
 		itemIDs = append(itemIDs, item.ID)
 	}
 
-	itemRequests, err := db.Queries.GetUserItemRequests(ctx, repository.GetUserItemRequestsParams{
-		UserID:  viewerID,
-		ItemIds: itemIDs,
+	rows, err := db.Queries.GetItemsRequestStatuses(ctx, repository.GetItemsRequestStatusesParams{
+		ViewerID: viewerID,
+		ItemIds:  itemIDs,
 	})
 	if err != nil {
 		return err
 	}
 
-	for _, itemRequest := range itemRequests {
-		index := itemIndexes[itemRequest.ItemID]
-		items[index].RequestStatus = &itemRequest.Status
+	for _, row := range rows {
+		index := itemIndexes[row.ItemID]
+		if row.UserID == viewerID {
+			items[index].RequestStatus = &row.Status
+		} else {
+			items[index].HolderName = &row.UserFullName
+		}
 	}
 
 	return nil
@@ -197,6 +201,11 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
+	heldByID := pgtype.Int8{}
+	if req.HeldByID != nil {
+		heldByID = pgtype.Int8{Int64: *req.HeldByID, Valid: true}
+	}
+
 	sortPropertyID := pgtype.Int8{}
 	if req.SortPropertyID != nil {
 		sortPropertyID = pgtype.Int8{Int64: *req.SortPropertyID, Valid: true}
@@ -224,6 +233,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Search:         req.Search,
 		PropertyIds:    propertyIDs,
 		PropertyValues: propertyValues,
+		HeldBy:         heldByID,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -244,6 +254,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitValueTypes: unitValueTypes,
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
+		HeldBy:         heldByID,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -276,6 +287,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitValueTypes: unitValueTypes,
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
+		HeldBy:         heldByID,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err

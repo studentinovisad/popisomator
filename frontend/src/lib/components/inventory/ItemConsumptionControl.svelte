@@ -3,6 +3,7 @@
 	import { ApiError, type ConsumptionStatus, type Item } from '$lib/api';
 	import { consumptionClass, consumptionLabel, consumptionOptions } from '$lib/domain/items';
 	import { toast } from 'svelte-sonner';
+	import UserAvatar from '../app/UserAvatar.svelte';
 
 	let {
 		item,
@@ -46,7 +47,13 @@
 	}
 </script>
 
-{#if canConsume}
+{#if item.holder_name != undefined}
+	<span class="block min-w-0">
+		<p class="truncate text-xs text-muted pb-1">Trenutno koristi</p>
+		<UserAvatar name={item.holder_name} class="inline-flex size-7 shrink-0" />
+		<p class="px-1 inline-flex mt-0.5 truncate font-medium">{item.holder_name}</p>
+	</span>
+{:else if canConsume}
 	<Select.Root
 		type="single"
 		value={item.consumption}

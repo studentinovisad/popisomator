@@ -14,6 +14,7 @@ type Item struct {
 	TypeID        int64                        `json:"type_id"`
 	DerivedName   string                       `json:"derived_name,omitempty"`
 	RequestStatus *repository.RequestStatus    `json:"request_status,omitempty"`
+	HolderName    *string                      `json:"holder_name,omitempty"`
 }
 
 func ToItemDTO(item repository.Item) Item {
@@ -55,6 +56,10 @@ type ListItemsRequest struct {
 	SortPropertyID *int64 `validate:"omitempty,gt=0"`
 	Search         string `validate:"max=100"`
 	ViewerID       int64
+	// List only items held by user of ID.
+	// Held items are items which have been approved to a user via item requests.
+	// ID of 0 means to only show unheld/free items.
+	HeldByID *int64
 }
 
 type ItemsPage struct {
