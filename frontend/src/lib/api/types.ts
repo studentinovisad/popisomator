@@ -72,6 +72,7 @@ export type Item = {
 	type_id: number;
 	derived_name?: string;
 	request_status?: ItemRequestStatus;
+	holder_name?: string;
 };
 
 export type ItemsPage = {

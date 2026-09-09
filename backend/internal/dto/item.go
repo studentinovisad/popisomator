@@ -14,6 +14,7 @@ type Item struct {
 	TypeID        int64                        `json:"type_id"`
 	DerivedName   string                       `json:"derived_name,omitempty"`
 	RequestStatus *repository.RequestStatus    `json:"request_status,omitempty"`
+	HolderName    *string                      `json:"holder_name,omitempty"`
 }
 
 func ToItemDTO(item repository.Item) Item {

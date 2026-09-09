@@ -65,9 +65,15 @@ WHERE user_id = $1 AND item_id = $2;
 SELECT * FROM item_requests
 WHERE item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
--- name: GetUserItemRequests :many
-SELECT * FROM item_requests
-WHERE user_id = sqlc.arg('user_id')
+-- name: GetItemsRequestStatuses :many
+SELECT 
+  item_requests.item_id, 
+  item_requests.status, 
+  item_requests.user_id, 
+  users.full_name AS user_full_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+WHERE (user_id = sqlc.arg('viewer_id') OR item_requests.status = 'approved')
   AND item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
 -- name: ApproveItemRequest :one
