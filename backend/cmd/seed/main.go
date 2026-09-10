@@ -348,22 +348,31 @@ func main() {
 		log.Fatalf("unable to seed users: %v", err)
 	}
 
-	propIDs, err := seedProperties(ctx)
+	// Everything below runs through the same services the API does, so each call records its own
+	// audit entry. Naming an actor is what keeps those entries from all reading "Sistem": the
+	// catalog and the stock are the admin's doing, the same way they would be in the running app.
+	admin, ok := users["admin@popisomator.test"]
+	if !ok {
+		log.Fatal("seed admin was not created")
+	}
+	adminCtx := actorContext(ctx, admin.ID)
+
+	propIDs, err := seedProperties(adminCtx)
 	if err != nil {
 		log.Fatalf("unable to seed properties: %v", err)
 	}
 
-	typeID, err := seedItemType(ctx, "Hemikalija", propIDs)
+	typeID, err := seedItemType(adminCtx, "Hemikalija", propIDs)
 	if err != nil {
 		log.Fatalf("unable to seed item type: %v", err)
 	}
 
-	items, err := seedItems(ctx, typeID, propIDs)
+	items, err := seedItems(adminCtx, typeID, propIDs)
 	if err != nil {
 		log.Fatalf("unable to seed items: %v", err)
 	}
 
-	if err := seedItemRequests(ctx, users, items); err != nil {
+	if err := seedItemRequests(ctx, adminCtx, users, items); err != nil {
 		log.Fatalf("unable to seed item requests: %v", err)
 	}
 
@@ -372,6 +381,12 @@ func main() {
 	}
 
 	fmt.Println("seeding complete")
+}
+
+// actorContext attributes whatever the services do with it to userID, under the same context key
+// middleware.RequireAuth uses on a real request.
+func actorContext(ctx context.Context, userID int64) context.Context {
+	return context.WithValue(ctx, "userID", userID)
 }
 
 func seedUsers(ctx context.Context) (map[string]dto.User, error) {
@@ -562,7 +577,10 @@ func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]s
 	return items, nil
 }
 
-func seedItemRequests(ctx context.Context, users map[string]dto.User, items []seededItem) error {
+// seedItemRequests takes two contexts because a request and its approval are two different people's
+// doing: the user asks for the item, the admin grants it. Recording them under one actor would make
+// the resulting audit log a poor sample of the real thing.
+func seedItemRequests(ctx, adminCtx context.Context, users map[string]dto.User, items []seededItem) error {
 	for _, seed := range itemRequestSeeds {
 		user, ok := users[seed.Email]
 		if !ok {
@@ -573,7 +591,7 @@ func seedItemRequests(ctx context.Context, users map[string]dto.User, items []se
 		}
 
 		item := items[seed.ItemIndex].Item
-		itemRequest, err := service.CreateItemRequest(ctx, dto.ItemRequestCreateRequest{
+		itemRequest, err := service.CreateItemRequest(actorContext(ctx, user.ID), dto.ItemRequestCreateRequest{
 			UserID: user.ID,
 			ItemID: item.ID,
 			Reason: seed.Reason,
@@ -584,7 +602,7 @@ func seedItemRequests(ctx context.Context, users map[string]dto.User, items []se
 
 		requestStatus := "pending"
 		if seed.Approved {
-			if _, err := service.ApproveItemRequest(ctx, dto.ItemRequestIdentifierRequest{
+			if _, err := service.ApproveItemRequest(adminCtx, dto.ItemRequestIdentifierRequest{
 				UserID: itemRequest.UserID,
 				ItemID: itemRequest.ItemID,
 			}); err != nil {
