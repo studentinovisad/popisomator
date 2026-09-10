@@ -65,13 +65,14 @@ type Querier interface {
 	ListAuditLog(ctx context.Context, arg ListAuditLogParams) ([]AuditLog, error)
 	// Everyone who has ever made a recorded change, for the actor filter. Mirrors ListItemRequestUsers.
 	//
-	// Deleted users drop out: their actor_id is nulled, so there is no id left to filter by. Their
-	// entries stay in the log and still show the name they acted under - they just cannot be singled out
-	// by this filter any more.
+	// Driven from users rather than from audit_log: DISTINCT ON cannot skip-scan in Postgres, so
+	// reading it the other way round sorts the whole log - a table that only ever grows and is never
+	// pruned - to produce a handful of rows. EXISTS turns that into one index lookup per user against
+	// idx_audit_log_actor, so the cost tracks the number of users instead of the size of the history.
 	//
-	// The name is the most recent snapshot rather than the live one, which is why this reads off
-	// audit_log instead of joining users: it costs no join, and it is the name that matches what the
-	// entries themselves say.
+	// Deleted users drop out either way: their actor_id is nulled, so there is no id left to filter by.
+	// Their entries stay in the log and still show the name they acted under - they just cannot be
+	// singled out by this filter any more.
 	ListAuditLogActors(ctx context.Context) ([]ListAuditLogActorsRow, error)
 	ListItemPreparationRequests(ctx context.Context, userID int64) ([]ListItemPreparationRequestsRow, error)
 	ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error)
