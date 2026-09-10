@@ -424,12 +424,12 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 			return dto.Item{}, err
 		}
 
-		// PATCH /items/{id} and POST /items/{id}/consume both land here, and their controllers hand
-		// over disjoint fields: the first can only carry a type, the second only a consumption. So
-		// which action this was is read off what actually moved, which stays right even if the two
-		// endpoints are ever merged.
-		var changes []dto.AuditChange
-		action := repository.AuditActionItemUpdate
+		// PATCH /items/{id} and POST /items/{id}/consume both land here. Today their controllers hand
+		// over disjoint fields - the first can only carry a type, the second only a consumption - but
+		// the service does not require that, so each kind of change is recorded under its own action
+		// rather than one action being picked for the call. Setting both yields both entries instead
+		// of a type change mislabelled as a consumption.
+		var typeChanges, consumptionChanges []dto.AuditChange
 
 		if req.TypeID != nil {
 			var err error
@@ -450,7 +450,7 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 					return dto.Item{}, err
 				}
 
-				changes = auditDiff(changes, "type_id", dto.AuditValueTypeReference,
+				typeChanges = auditDiff(typeChanges, "type_id", dto.AuditValueTypeReference,
 					auditReference{ID: oldType.ID, Name: oldType.Name},
 					auditReference{ID: newType.ID, Name: newType.Name})
 			}
@@ -465,26 +465,32 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 				return dto.Item{}, err
 			}
 
-			action = repository.AuditActionItemConsume
-			changes = auditDiff(changes, "consumption", dto.AuditValueTypeConsumption,
+			consumptionChanges = auditDiff(consumptionChanges, "consumption", dto.AuditValueTypeConsumption,
 				string(before.Consumption), string(item.Consumption))
 		}
 
-		// An update that set every field to what it already held is not worth an entry.
-		if len(changes) > 0 {
-			derivedNames, err := queriesTx.GetItemsDerivedNames(ctx, []int64{req.ID})
+		// An update that set every field to what it already held is not worth an entry, so the name
+		// is only resolved once something actually moved.
+		if len(typeChanges) > 0 || len(consumptionChanges) > 0 {
+			label, err := itemDerivedName(ctx, queriesTx, req.ID)
 			if err != nil {
 				return dto.Item{}, err
 			}
 
-			label := ""
-			if len(derivedNames) > 0 {
-				label = derivedNames[0].DerivedName
-			}
-
-			if err := writeAudit(ctx, queriesTx, action, repository.AuditTargetTypeItem,
-				req.ID, label, changes, dto.AuditContext{}); err != nil {
-				return dto.Item{}, err
+			for _, entry := range []struct {
+				action  repository.AuditAction
+				changes []dto.AuditChange
+			}{
+				{repository.AuditActionItemUpdate, typeChanges},
+				{repository.AuditActionItemConsume, consumptionChanges},
+			} {
+				if len(entry.changes) == 0 {
+					continue
+				}
+				if err := writeAudit(ctx, queriesTx, entry.action, repository.AuditTargetTypeItem,
+					req.ID, label, entry.changes, dto.AuditContext{}); err != nil {
+					return dto.Item{}, err
+				}
 			}
 		}
 
@@ -512,6 +518,16 @@ func DeleteItem(ctx context.Context, id int64) error {
 	}
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
+
+	// Take the same lock every path that touches this item's requests takes. Without it a request
+	// created between reading them below and the DELETE would cascade away unrecorded, which is
+	// exactly the claim this function exists to name.
+	if _, err := queriesTx.LockItemForRequest(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
 
 	// Everything the audit entries need has to be read before the DELETE. An item's name is derived
 	// from its properties, and those cascade away with it, so afterwards there is nothing left to
@@ -670,8 +686,8 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 		return dto.ItemProperty{}, err
 	}
 
-	// This query upserts, so it will happily rewrite an identical value. Recording that would fill
-	// the log with edits that changed nothing.
+	// The UPDATE succeeds whether or not the value moved, so an edit that set a property to what it
+	// already held would otherwise fill the log with entries recording nothing.
 	changes := auditRawDiff(nil, "property", property.ValueType, previousValue, itemProp.PropertyValue)
 	if len(changes) > 0 {
 		label, err := itemDerivedName(ctx, queriesTx, req.ItemID)
