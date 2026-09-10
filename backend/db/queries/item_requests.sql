@@ -61,6 +61,16 @@ ORDER BY item_requests.created_at, item_requests.item_id;
 SELECT * FROM item_requests
 WHERE user_id = $1 AND item_id = $2;
 
+-- Every request standing against one item, with the requester's name. Used when an item is deleted:
+-- the rows are about to cascade away, and each person who loses their claim gets their own audit
+-- entry, so the name has to come back with them.
+-- name: ListItemRequestsForItem :many
+SELECT item_requests.user_id, item_requests.reason, item_requests.status,
+       users.full_name AS user_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+WHERE item_requests.item_id = $1;
+
 -- name: CheckItemsForRequests :many
 SELECT * FROM item_requests
 WHERE item_id = ANY(sqlc.arg('item_ids')::bigint[]);
@@ -85,5 +95,16 @@ RETURNING *;
 -- name: DeleteItemRequest :execrows
 DELETE FROM item_requests WHERE user_id = $1 AND item_id = $2;
 
--- name: DeleteNonApprovedItemRequests :execrows
-DELETE FROM item_requests WHERE item_id = $1 AND status = 'requested';
+-- Approving a request cancels every other pending one for the item. The rows come back rather than
+-- just their count, so the audit log can name each person whose request was superseded. The join to
+-- users is safe: user_id is half the primary key and carries a foreign key, so it is never null and
+-- never dangling.
+-- name: DeleteNonApprovedItemRequests :many
+WITH deleted AS (
+  DELETE FROM item_requests
+  WHERE item_id = $1 AND status = 'requested'
+  RETURNING user_id, reason
+)
+SELECT deleted.user_id, deleted.reason, users.full_name AS user_name
+FROM deleted
+JOIN users ON users.id = deleted.user_id;

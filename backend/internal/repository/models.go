@@ -12,6 +12,110 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AuditAction string
+
+const (
+	AuditActionItemCreate              AuditAction = "item_create"
+	AuditActionItemUpdate              AuditAction = "item_update"
+	AuditActionItemConsume             AuditAction = "item_consume"
+	AuditActionItemDelete              AuditAction = "item_delete"
+	AuditActionItemPropertyAdd         AuditAction = "item_property_add"
+	AuditActionItemPropertyUpdate      AuditAction = "item_property_update"
+	AuditActionItemPropertyRemove      AuditAction = "item_property_remove"
+	AuditActionItemRequestCreate       AuditAction = "item_request_create"
+	AuditActionItemRequestApprove      AuditAction = "item_request_approve"
+	AuditActionItemRequestDelete       AuditAction = "item_request_delete"
+	AuditActionItemRequestSupersede    AuditAction = "item_request_supersede"
+	AuditActionItemTypeCreate          AuditAction = "item_type_create"
+	AuditActionItemTypeUpdate          AuditAction = "item_type_update"
+	AuditActionItemTypeDelete          AuditAction = "item_type_delete"
+	AuditActionItemTypePropertyAdd     AuditAction = "item_type_property_add"
+	AuditActionItemTypePropertyUpdate  AuditAction = "item_type_property_update"
+	AuditActionItemTypePropertyRemove  AuditAction = "item_type_property_remove"
+	AuditActionItemTypePropertyReorder AuditAction = "item_type_property_reorder"
+	AuditActionPropertyCreate          AuditAction = "property_create"
+	AuditActionPropertyUpdate          AuditAction = "property_update"
+	AuditActionPropertyDelete          AuditAction = "property_delete"
+)
+
+func (e *AuditAction) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AuditAction(s)
+	case string:
+		*e = AuditAction(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AuditAction: %T", src)
+	}
+	return nil
+}
+
+type NullAuditAction struct {
+	AuditAction AuditAction `json:"audit_action"`
+	Valid       bool        `json:"valid"` // Valid is true if AuditAction is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAuditAction) Scan(value interface{}) error {
+	if value == nil {
+		ns.AuditAction, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AuditAction.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAuditAction) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AuditAction), nil
+}
+
+type AuditTargetType string
+
+const (
+	AuditTargetTypeItem     AuditTargetType = "item"
+	AuditTargetTypeItemType AuditTargetType = "item_type"
+	AuditTargetTypeProperty AuditTargetType = "property"
+)
+
+func (e *AuditTargetType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AuditTargetType(s)
+	case string:
+		*e = AuditTargetType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AuditTargetType: %T", src)
+	}
+	return nil
+}
+
+type NullAuditTargetType struct {
+	AuditTargetType AuditTargetType `json:"audit_target_type"`
+	Valid           bool            `json:"valid"` // Valid is true if AuditTargetType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAuditTargetType) Scan(value interface{}) error {
+	if value == nil {
+		ns.AuditTargetType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AuditTargetType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAuditTargetType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AuditTargetType), nil
+}
+
 type ConsumptionStatus string
 
 const (
@@ -307,6 +411,19 @@ func (ns NullUserStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.UserStatus), nil
+}
+
+type AuditLog struct {
+	ID          int64              `json:"id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ActorID     pgtype.Int8        `json:"actor_id"`
+	ActorName   string             `json:"actor_name"`
+	Action      AuditAction        `json:"action"`
+	TargetType  AuditTargetType    `json:"target_type"`
+	TargetID    int64              `json:"target_id"`
+	TargetLabel string             `json:"target_label"`
+	Changes     json.RawMessage    `json:"changes"`
+	Context     json.RawMessage    `json:"context"`
 }
 
 type Item struct {
