@@ -111,10 +111,10 @@ func (q *Queries) ListAuditLog(ctx context.Context, arg ListAuditLogParams) ([]A
 }
 
 const listAuditLogActors = `-- name: ListAuditLogActors :many
-SELECT DISTINCT ON (actor_id) actor_id::bigint AS id, actor_name AS name
-FROM audit_log
-WHERE actor_id IS NOT NULL
-ORDER BY actor_id, id DESC
+SELECT users.id, users.full_name AS name
+FROM users
+WHERE EXISTS (SELECT 1 FROM audit_log WHERE audit_log.actor_id = users.id)
+ORDER BY users.full_name, users.id
 `
 
 type ListAuditLogActorsRow struct {
@@ -124,13 +124,14 @@ type ListAuditLogActorsRow struct {
 
 // Everyone who has ever made a recorded change, for the actor filter. Mirrors ListItemRequestUsers.
 //
-// Deleted users drop out: their actor_id is nulled, so there is no id left to filter by. Their
-// entries stay in the log and still show the name they acted under - they just cannot be singled out
-// by this filter any more.
+// Driven from users rather than from audit_log: DISTINCT ON cannot skip-scan in Postgres, so
+// reading it the other way round sorts the whole log - a table that only ever grows and is never
+// pruned - to produce a handful of rows. EXISTS turns that into one index lookup per user against
+// idx_audit_log_actor, so the cost tracks the number of users instead of the size of the history.
 //
-// The name is the most recent snapshot rather than the live one, which is why this reads off
-// audit_log instead of joining users: it costs no join, and it is the name that matches what the
-// entries themselves say.
+// Deleted users drop out either way: their actor_id is nulled, so there is no id left to filter by.
+// Their entries stay in the log and still show the name they acted under - they just cannot be
+// singled out by this filter any more.
 func (q *Queries) ListAuditLogActors(ctx context.Context) ([]ListAuditLogActorsRow, error) {
 	rows, err := q.db.Query(ctx, listAuditLogActors)
 	if err != nil {
