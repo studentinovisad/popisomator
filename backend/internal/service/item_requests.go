@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
@@ -42,6 +44,12 @@ func CreateItemRequest(ctx context.Context, req dto.ItemRequestCreateRequest) (d
 	if err != nil {
 		return dto.ItemRequest{}, err
 	}
+
+	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestCreate,
+		req.ItemID, req.UserID, req.Reason, ""); err != nil {
+		return dto.ItemRequest{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return dto.ItemRequest{}, err
 	}
@@ -112,8 +120,42 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 		return dto.ItemRequest{}, err
 	}
 
-	if _, err := queriesTx.DeleteNonApprovedItemRequests(ctx, req.ItemID); err != nil {
+	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestApprove,
+		req.ItemID, req.UserID, itemRequest.Reason, ""); err != nil {
 		return dto.ItemRequest{}, err
+	}
+
+	superseded, err := queriesTx.DeleteNonApprovedItemRequests(ctx, req.ItemID)
+	if err != nil {
+		return dto.ItemRequest{}, err
+	}
+
+	// Everyone who lost their place gets their own entry. Without it their request simply disappears:
+	// the row is deleted, so nothing else in the system remembers they ever asked.
+	if len(superseded) > 0 {
+		label, err := itemDerivedName(ctx, queriesTx, req.ItemID)
+		if err != nil {
+			return dto.ItemRequest{}, err
+		}
+
+		supersedeTargets := make([]auditTarget, len(superseded))
+		for index, lost := range superseded {
+			userID := lost.UserID
+			supersedeTargets[index] = auditTarget{
+				ID:    req.ItemID,
+				Label: label,
+				Context: dto.AuditContext{
+					SubjectUserID:   &userID,
+					SubjectUserName: lost.UserName,
+					Reason:          lost.Reason,
+				},
+			}
+		}
+
+		if err := writeAuditBulk(ctx, queriesTx, repository.AuditActionItemRequestSupersede,
+			repository.AuditTargetTypeItem, supersedeTargets); err != nil {
+			return dto.ItemRequest{}, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -258,6 +300,19 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 		return err
 	}
 
+	// Read before deleting: the status is what separates turning down a pending request from taking
+	// an already approved item back, and the reason is gone with the row.
+	existing, err := queriesTx.GetItemRequest(ctx, repository.GetItemRequestParams{
+		UserID: req.UserID,
+		ItemID: req.ItemID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+
 	rowsAffected, err := queriesTx.DeleteItemRequest(ctx, repository.DeleteItemRequestParams{
 		UserID: req.UserID,
 		ItemID: req.ItemID,
@@ -268,9 +323,40 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 	if rowsAffected == 0 {
 		return ErrNotFound
 	}
-	if err := tx.Commit(ctx); err != nil {
+
+	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestDelete,
+		req.ItemID, req.UserID, existing.Reason, string(existing.Status)); err != nil {
 		return err
 	}
 
-	return nil
+	return tx.Commit(ctx)
+}
+
+// auditItemRequest records one request action. Requests are filed under the item rather than under
+// themselves: item_requests is keyed by (user_id, item_id), which a single target_id cannot hold,
+// and filing them here is also what puts them on the item's own timeline - the only place the record
+// of who held an item survives, since approving a request deletes the competing ones.
+func auditItemRequest(
+	ctx context.Context,
+	q repository.Querier,
+	action repository.AuditAction,
+	itemID, subjectUserID int64,
+	reason, requestStatus string,
+) error {
+	label, err := itemDerivedName(ctx, q, itemID)
+	if err != nil {
+		return err
+	}
+
+	subject, err := q.GetUserByID(ctx, subjectUserID)
+	if err != nil {
+		return err
+	}
+
+	return writeAudit(ctx, q, action, repository.AuditTargetTypeItem, itemID, label, nil, dto.AuditContext{
+		SubjectUserID:   &subjectUserID,
+		SubjectUserName: subject.FullName,
+		Reason:          reason,
+		RequestStatus:   requestStatus,
+	})
 }

@@ -3,7 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"slices"
+	"strconv"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
@@ -181,10 +185,24 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 
 	itemTypeDTO := dto.ToItemTypeDTO(itemType)
 
+	// The properties a type is created with are part of the type, so they go in the creation entry's
+	// context rather than each getting an item_type_property_add of its own.
+	auditProperties := make([]dto.AuditProperty, 0, len(req.Properties))
+
 	if req.Properties != nil {
 		for _, propRequest := range req.Properties {
+			var property repository.Property
 			if propRequest.DefaultValue != nil {
-				if err := validatePropertyValue(ctx, queriesTx, propRequest.ID, *propRequest.DefaultValue); err != nil {
+				if property, err = validatePropertyValue(ctx, queriesTx, propRequest.ID, *propRequest.DefaultValue); err != nil {
+					return dto.ItemType{}, err
+				}
+			} else {
+				// Without a default value nothing has looked the property up yet, but the entry
+				// still needs its name.
+				if property, err = queriesTx.GetPropertyByID(ctx, propRequest.ID); err != nil {
+					if errors.Is(err, pgx.ErrNoRows) {
+						return dto.ItemType{}, ErrInvalidReference
+					}
 					return dto.ItemType{}, err
 				}
 			}
@@ -204,9 +222,31 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 				return dto.ItemType{}, err
 			}
 
+			auditProperties = append(auditProperties, dto.AuditProperty{
+				ID:        property.ID,
+				Name:      property.Name,
+				ValueType: property.ValueType,
+			})
+
 			propDTO := dto.ToItemTypePropertyDTO(prop)
 			itemTypeDTO.Properties = append(itemTypeDTO.Properties, propDTO)
 		}
+	}
+
+	changes := auditNew(nil, "name", dto.AuditValueTypeText, itemType.Name)
+	if itemType.Description.Valid {
+		changes = auditNew(changes, "description", dto.AuditValueTypeText, itemType.Description.String)
+	}
+	if itemType.DerivedNameFormat.Valid {
+		changes = auditNew(changes, "derived_name_format", dto.AuditValueTypeText, itemType.DerivedNameFormat.String)
+	}
+	if itemType.ExpiringSoonDays.Valid {
+		changes = auditNew(changes, "expiring_soon_days", dto.AuditValueTypeCount, itemType.ExpiringSoonDays.Int16)
+	}
+
+	if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypeCreate, repository.AuditTargetTypeItemType,
+		itemType.ID, itemType.Name, changes, dto.AuditContext{Properties: auditProperties}); err != nil {
+		return dto.ItemType{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -238,6 +278,17 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 		}
 		defer tx.Rollback(ctx)
 		queriesTx := db.Queries.WithTx(tx)
+
+		// The UPDATE statements below return only the new row, so the prior state has to be read
+		// first or the audit entry has nothing to diff against.
+		before, err := queriesTx.GetItemTypeByID(ctx, req.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return dto.ItemType{}, ErrNotFound
+			}
+			return dto.ItemType{}, err
+		}
+		itemType = before
 
 		if req.Name != nil {
 			var err error
@@ -288,6 +339,21 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 			}
 		}
 
+		changes := auditDiff(nil, "name", dto.AuditValueTypeText, before.Name, itemType.Name)
+		changes = auditDiff(changes, "description", dto.AuditValueTypeText,
+			before.Description.String, itemType.Description.String)
+		changes = auditDiff(changes, "derived_name_format", dto.AuditValueTypeText,
+			before.DerivedNameFormat.String, itemType.DerivedNameFormat.String)
+		changes = auditDiff(changes, "expiring_soon_days", dto.AuditValueTypeCount,
+			before.ExpiringSoonDays.Int16, itemType.ExpiringSoonDays.Int16)
+
+		if len(changes) > 0 {
+			if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypeUpdate, repository.AuditTargetTypeItemType,
+				itemType.ID, itemType.Name, changes, dto.AuditContext{}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
 		if err := tx.Commit(ctx); err != nil {
 			return dto.ItemType{}, err
 		}
@@ -307,7 +373,23 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 }
 
 func DeleteItemType(ctx context.Context, id int64) error {
-	rowsAffected, err := db.Queries.DeleteItemType(ctx, id)
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	// Read before the delete, so the entry names the type rather than just its id.
+	existing, err := queriesTx.GetItemTypeByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	rowsAffected, err := queriesTx.DeleteItemType(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -315,7 +397,14 @@ func DeleteItemType(ctx context.Context, id int64) error {
 		return ErrNotFound
 	}
 
-	return nil
+	// Identity only, like every other deletion: the name it went by, and who removed it. What it was
+	// configured with is on its own timeline, which outlives it.
+	if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypeDelete, repository.AuditTargetTypeItemType,
+		id, existing.Name, nil, dto.AuditContext{}); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 //
@@ -341,8 +430,25 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 		return dto.ItemTypeProperty{}, err
 	}
 
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	// validatePropertyValue only runs when a default value was given, so the property is looked up
+	// unconditionally here - the entry needs its name either way.
+	property, err := queriesTx.GetPropertyByID(ctx, req.PropertyID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.ItemTypeProperty{}, ErrInvalidReference
+		}
+		return dto.ItemTypeProperty{}, err
+	}
+
 	if req.DefaultValue != nil {
-		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, *req.DefaultValue); err != nil {
+		if _, err := validatePropertyValue(ctx, queriesTx, req.PropertyID, *req.DefaultValue); err != nil {
 			return dto.ItemTypeProperty{}, err
 		}
 	}
@@ -352,7 +458,7 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 		visibility = *req.Visibility
 	}
 
-	typeProp, err := db.Queries.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
+	typeProp, err := queriesTx.AddItemTypeProperty(ctx, repository.AddItemTypePropertyParams{
 		TypeID:       req.TypeID,
 		PropertyID:   req.PropertyID,
 		DefaultValue: req.DefaultValue,
@@ -362,9 +468,33 @@ func AddItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyR
 		return dto.ItemTypeProperty{}, err
 	}
 
-	typePropDTO := dto.ToItemTypePropertyDTO(typeProp)
+	itemType, err := queriesTx.GetItemTypeByID(ctx, req.TypeID)
+	if err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
 
-	return typePropDTO, nil
+	changes := auditNew(nil, "visibility", dto.AuditValueTypeVisibility, string(visibility))
+	if typeProp.DefaultValue != nil {
+		changes = append(changes, dto.AuditChange{
+			Key:       "default_value",
+			ValueType: property.ValueType,
+			New:       *typeProp.DefaultValue,
+		})
+	}
+
+	if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypePropertyAdd, repository.AuditTargetTypeItemType,
+		req.TypeID, itemType.Name, changes, dto.AuditContext{
+			PropertyID:   &property.ID,
+			PropertyName: property.Name,
+		}); err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
+
+	return dto.ToItemTypePropertyDTO(typeProp), nil
 }
 
 func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypePropertyRequest) (dto.ItemTypeProperty, error) {
@@ -376,15 +506,35 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 		return dto.ItemTypeProperty{}, ErrNoUpdateFields
 	}
 
-	var typeProp repository.ItemTypeProperty
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	property, err := queriesTx.GetPropertyByID(ctx, req.PropertyID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.ItemTypeProperty{}, ErrInvalidReference
+		}
+		return dto.ItemTypeProperty{}, err
+	}
+
+	// Both UPDATEs return only the new row, so the pre-image is read first.
+	before, err := itemTypeProperty(ctx, queriesTx, req.TypeID, req.PropertyID)
+	if err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
+	typeProp := before
 
 	if req.DefaultValue != nil {
-		if err := validatePropertyValue(ctx, db.Queries, req.PropertyID, *req.DefaultValue); err != nil {
+		if _, err := validatePropertyValue(ctx, queriesTx, req.PropertyID, *req.DefaultValue); err != nil {
 			return dto.ItemTypeProperty{}, err
 		}
 
 		var err error
-		typeProp, err = db.Queries.UpdateItemTypeProperty_DefaultValue(ctx, repository.UpdateItemTypeProperty_DefaultValueParams{
+		typeProp, err = queriesTx.UpdateItemTypeProperty_DefaultValue(ctx, repository.UpdateItemTypeProperty_DefaultValueParams{
 			TypeID:       req.TypeID,
 			PropertyID:   req.PropertyID,
 			DefaultValue: req.DefaultValue,
@@ -396,7 +546,7 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 
 	if req.Visibility != nil {
 		var err error
-		typeProp, err = db.Queries.UpdateItemTypeProperty_Visibility(ctx, repository.UpdateItemTypeProperty_VisibilityParams{
+		typeProp, err = queriesTx.UpdateItemTypeProperty_Visibility(ctx, repository.UpdateItemTypeProperty_VisibilityParams{
 			TypeID:     req.TypeID,
 			PropertyID: req.PropertyID,
 			Visibility: *req.Visibility,
@@ -406,9 +556,47 @@ func UpdateItemTypeProperty(ctx context.Context, req dto.AddUpdateItemTypeProper
 		}
 	}
 
-	typePropDTO := dto.ToItemTypePropertyDTO(typeProp)
+	changes := auditDiff(nil, "visibility", dto.AuditValueTypeVisibility,
+		string(before.Visibility), string(typeProp.Visibility))
+	changes = auditRawDiff(changes, "default_value", property.ValueType,
+		optionalRawJSON(before.DefaultValue), optionalRawJSON(typeProp.DefaultValue))
 
-	return typePropDTO, nil
+	if len(changes) > 0 {
+		itemType, err := queriesTx.GetItemTypeByID(ctx, req.TypeID)
+		if err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
+
+		if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypePropertyUpdate, repository.AuditTargetTypeItemType,
+			req.TypeID, itemType.Name, changes, dto.AuditContext{
+				PropertyID:   &property.ID,
+				PropertyName: property.Name,
+			}); err != nil {
+			return dto.ItemTypeProperty{}, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return dto.ItemTypeProperty{}, err
+	}
+
+	return dto.ToItemTypePropertyDTO(typeProp), nil
+}
+
+// itemTypeProperty reads one property's settings on a type, for the before half of a diff.
+func itemTypeProperty(ctx context.Context, q repository.Querier, typeID, propertyID int64) (repository.ItemTypeProperty, error) {
+	rows, err := q.GetItemTypeProperties(ctx, []int64{typeID})
+	if err != nil {
+		return repository.ItemTypeProperty{}, err
+	}
+
+	for _, row := range rows {
+		if row.PropertyID == propertyID {
+			return row, nil
+		}
+	}
+
+	return repository.ItemTypeProperty{}, ErrNotFound
 }
 
 func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePropertiesRequest) error {
@@ -423,7 +611,10 @@ func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePrope
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
-	if _, err := queriesTx.LockItemType(ctx, req.TypeID); err != nil {
+	// The lock already returns the whole row, so keeping it saves looking the name up again for the
+	// audit entry.
+	itemType, err := queriesTx.LockItemType(ctx, req.TypeID)
+	if err != nil {
 		return err
 	}
 
@@ -465,23 +656,105 @@ func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePrope
 		return ErrInvalidItemTypePropertyOrder
 	}
 
-	return tx.Commit(ctx)
-}
+	// typeProperties came back in position order, so it is the old arrangement; req.PropertyIDs is
+	// the new one. Recorded as names, because a list of ids says nothing to whoever reads the log.
+	previousIDs := make([]int64, len(typeProperties))
+	for index, typeProperty := range typeProperties {
+		previousIDs[index] = typeProperty.PropertyID
+	}
 
-func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) error {
-	itemType, err := db.Queries.GetItemTypeByID(ctx, typeId)
+	propertyNames, err := propertyNamesByID(ctx, queriesTx, req.PropertyIDs)
 	if err != nil {
 		return err
 	}
-	property, err := db.Queries.GetPropertyByID(ctx, propId)
+
+	// A drag that ended where it started is not worth an entry.
+	if !slices.Equal(previousIDs, req.PropertyIDs) {
+		changes := []dto.AuditChange{{
+			Key:       "order",
+			ValueType: dto.AuditValueTypeOrder,
+			Old:       mustJSON(namesInOrder(previousIDs, propertyNames)),
+			New:       mustJSON(namesInOrder(req.PropertyIDs, propertyNames)),
+		}}
+
+		if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypePropertyReorder,
+			repository.AuditTargetTypeItemType, req.TypeID, itemType.Name, changes, dto.AuditContext{}); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+// propertyNamesByID resolves a set of property ids to their names in one round trip.
+func propertyNamesByID(ctx context.Context, q repository.Querier, propertyIDs []int64) (map[int64]string, error) {
+	rows, err := q.GetPropertiesByIDs(ctx, propertyIDs)
 	if err != nil {
+		return nil, err
+	}
+
+	names := make(map[int64]string, len(rows))
+	for _, row := range rows {
+		names[row.ID] = row.Name
+	}
+
+	return names, nil
+}
+
+// namesInOrder maps an ordering of property ids onto their names, falling back to the id for a
+// property that has since gone away.
+func namesInOrder(propertyIDs []int64, names map[int64]string) []string {
+	ordered := make([]string, len(propertyIDs))
+	for index, propertyID := range propertyIDs {
+		name, ok := names[propertyID]
+		if !ok {
+			name = strconv.FormatInt(propertyID, 10)
+		}
+		ordered[index] = name
+	}
+
+	return ordered
+}
+
+// mustJSON encodes a value that cannot fail to encode - a slice of strings - so the call sites stay
+// readable. A failure yields null rather than panicking, since a half-rendered audit entry still
+// beats taking the request down with it.
+func mustJSON(value any) json.RawMessage {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return json.RawMessage("null")
+	}
+
+	return encoded
+}
+
+func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) error {
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	itemType, err := queriesTx.GetItemTypeByID(ctx, typeId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	property, err := queriesTx.GetPropertyByID(ctx, propId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		return err
 	}
 	if derivedNameUsesProperty(itemType.DerivedNameFormat.String, property.Name) {
 		return ErrInvalidDerivedNameFormat
 	}
 
-	rowsAffected, err := db.Queries.RemoveItemTypeProperty(ctx, repository.RemoveItemTypePropertyParams{
+	rowsAffected, err := queriesTx.RemoveItemTypeProperty(ctx, repository.RemoveItemTypePropertyParams{
 		TypeID:     typeId,
 		PropertyID: propId,
 	})
@@ -492,5 +765,13 @@ func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) err
 		return ErrNotFound
 	}
 
-	return nil
+	if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypePropertyRemove,
+		repository.AuditTargetTypeItemType, typeId, itemType.Name, nil, dto.AuditContext{
+			PropertyID:   &property.ID,
+			PropertyName: property.Name,
+		}); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
