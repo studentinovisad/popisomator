@@ -95,6 +95,39 @@ func (q *Queries) GetAllProperties(ctx context.Context) ([]Property, error) {
 	return items, nil
 }
 
+const getPropertiesByIDs = `-- name: GetPropertiesByIDs :many
+SELECT id, name, value_type FROM properties
+WHERE id = ANY($1::bigint[])
+`
+
+type GetPropertiesByIDsRow struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	ValueType string `json:"value_type"`
+}
+
+// Names for a set of properties at once, so an audit entry that spans several of them - a reorder,
+// or the initial property list of a new item type - resolves them in one round trip.
+func (q *Queries) GetPropertiesByIDs(ctx context.Context, propertyIds []int64) ([]GetPropertiesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getPropertiesByIDs, propertyIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPropertiesByIDsRow
+	for rows.Next() {
+		var i GetPropertiesByIDsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.ValueType); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPropertyByID = `-- name: GetPropertyByID :one
 SELECT id, name, description, value_type, default_value FROM properties
 WHERE id = $1 LIMIT 1

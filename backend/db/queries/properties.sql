@@ -19,6 +19,12 @@ WHERE name ILIKE '%' || escape_like_pattern(sqlc.arg('search')) || '%';
 SELECT * FROM properties
 WHERE id = $1 LIMIT 1;
 
+-- Names for a set of properties at once, so an audit entry that spans several of them - a reorder,
+-- or the initial property list of a new item type - resolves them in one round trip.
+-- name: GetPropertiesByIDs :many
+SELECT id, name, value_type FROM properties
+WHERE id = ANY(sqlc.arg('property_ids')::bigint[]);
+
 -- name: CreateProperty :one
 INSERT INTO properties (name, description, value_type, default_value) VALUES ($1, $2, $3, $4) RETURNING *;
 
