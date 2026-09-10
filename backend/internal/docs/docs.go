@@ -15,6 +15,165 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/audit-log": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AuditLog"
+                ],
+                "summary": "List recorded changes (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "item_create",
+                            "item_update",
+                            "item_consume",
+                            "item_delete",
+                            "item_property_add",
+                            "item_property_update",
+                            "item_property_remove",
+                            "item_request_create",
+                            "item_request_approve",
+                            "item_request_delete",
+                            "item_request_supersede",
+                            "item_type_create",
+                            "item_type_update",
+                            "item_type_delete",
+                            "item_type_property_add",
+                            "item_type_property_update",
+                            "item_type_property_remove",
+                            "item_type_property_reorder",
+                            "property_create",
+                            "property_update",
+                            "property_delete"
+                        ],
+                        "type": "string",
+                        "description": "Filter by action",
+                        "name": "action",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "item",
+                            "item_type",
+                            "property"
+                        ],
+                        "type": "string",
+                        "description": "Filter by the kind of entity changed",
+                        "name": "target_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter to one entity's own history; requires target_type",
+                        "name": "target_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by who made the change",
+                        "name": "actor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by when the change was made, RFC3339",
+                        "name": "created_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by when the change was made, RFC3339",
+                        "name": "created_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditLogPage"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/audit-log/actors": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AuditLog"
+                ],
+                "summary": "List everyone who has made a recorded change (admin only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditActorOption"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "consumes": [
@@ -2708,6 +2867,165 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.AuditActorOption": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.AuditChange": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "description": "Key names the column that changed (\"name\", \"consumption\", \"type_id\"), or \"property\" for a\nvalue carried on an item or item type. The client maps it to a heading.",
+                    "type": "string"
+                },
+                "label": {
+                    "description": "Label is the recorded name of the user-defined property this change concerns - data out of the\nproperties table, not a translatable string. Empty for the fixed columns above, which Key\nalready identifies. Only worth setting when one entry spans several properties and the name\ncannot be read off context instead, as when an item is created with its initial values.",
+                    "type": "string"
+                },
+                "new": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "old": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "value_type": {
+                    "description": "ValueType tells the client how to render Old and New.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.AuditContext": {
+            "type": "object",
+            "properties": {
+                "batch_size": {
+                    "description": "BatchSize is how many items one bulk add produced. Each item still gets its own entry, so its\nown timeline is complete; this is what lets a feed say the add was part of a batch.",
+                    "type": "integer"
+                },
+                "cascaded": {
+                    "description": "Cascaded marks a request that was not turned down on its own but went away with the item it\nstood against. Same action either way; this is what lets the two be worded differently.",
+                    "type": "boolean"
+                },
+                "properties": {
+                    "description": "Properties is the list an item type was created with.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditProperty"
+                    }
+                },
+                "property_id": {
+                    "type": "integer"
+                },
+                "property_name": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "request_status": {
+                    "description": "RequestStatus is what the request was before it was deleted, which is what separates rejecting\na pending request from revoking an approved one.",
+                    "type": "string"
+                },
+                "subject_user_id": {
+                    "description": "The user a request concerns, who is not always the actor: an admin can request on someone\nelse's behalf, and a supersede is recorded against the person who lost their place.",
+                    "type": "integer"
+                },
+                "subject_user_name": {
+                    "type": "string"
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.AuditEntry": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.AuditAction"
+                },
+                "actor_id": {
+                    "description": "ActorID is null once that user is deleted, while ActorName still holds who it was. Both empty\nmeans there was no user behind the change at all - the seeder, or a background job - which the\nclient names in its own language rather than being handed a word from here.",
+                    "type": "integer"
+                },
+                "actor_name": {
+                    "type": "string"
+                },
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditChange"
+                    }
+                },
+                "context": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditContext"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "target_id": {
+                    "type": "integer"
+                },
+                "target_label": {
+                    "type": "string"
+                },
+                "target_type": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.AuditTargetType"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.AuditLogPage": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditEntry"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.AuditProperty": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value_type": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemRequest": {
             "type": "object",
             "required": [
@@ -2836,6 +3154,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.ConsumptionStatus"
                 },
                 "derived_name": {
+                    "type": "string"
+                },
+                "holder_name": {
                     "type": "string"
                 },
                 "id": {
@@ -3384,6 +3705,7 @@ const docTemplate = `{
             "properties": {
                 "property_ids": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "integer"
                     }
@@ -3523,6 +3845,68 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_repository.AuditAction": {
+            "type": "string",
+            "enum": [
+                "item_create",
+                "item_update",
+                "item_consume",
+                "item_delete",
+                "item_property_add",
+                "item_property_update",
+                "item_property_remove",
+                "item_request_create",
+                "item_request_approve",
+                "item_request_delete",
+                "item_request_supersede",
+                "item_type_create",
+                "item_type_update",
+                "item_type_delete",
+                "item_type_property_add",
+                "item_type_property_update",
+                "item_type_property_remove",
+                "item_type_property_reorder",
+                "property_create",
+                "property_update",
+                "property_delete"
+            ],
+            "x-enum-varnames": [
+                "AuditActionItemCreate",
+                "AuditActionItemUpdate",
+                "AuditActionItemConsume",
+                "AuditActionItemDelete",
+                "AuditActionItemPropertyAdd",
+                "AuditActionItemPropertyUpdate",
+                "AuditActionItemPropertyRemove",
+                "AuditActionItemRequestCreate",
+                "AuditActionItemRequestApprove",
+                "AuditActionItemRequestDelete",
+                "AuditActionItemRequestSupersede",
+                "AuditActionItemTypeCreate",
+                "AuditActionItemTypeUpdate",
+                "AuditActionItemTypeDelete",
+                "AuditActionItemTypePropertyAdd",
+                "AuditActionItemTypePropertyUpdate",
+                "AuditActionItemTypePropertyRemove",
+                "AuditActionItemTypePropertyReorder",
+                "AuditActionPropertyCreate",
+                "AuditActionPropertyUpdate",
+                "AuditActionPropertyDelete"
+            ]
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_repository.AuditTargetType": {
+            "type": "string",
+            "enum": [
+                "item",
+                "item_type",
+                "property"
+            ],
+            "x-enum-varnames": [
+                "AuditTargetTypeItem",
+                "AuditTargetTypeItemType",
+                "AuditTargetTypeProperty"
+            ]
         },
         "github_com_studentinovisad_popisomator_backend_internal_repository.ConsumptionStatus": {
             "type": "string",
