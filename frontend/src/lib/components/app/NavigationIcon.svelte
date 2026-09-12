@@ -7,6 +7,7 @@
 	import Settings from '@lucide/svelte/icons/settings';
 	import UsersRound from '@lucide/svelte/icons/users-round';
 	import type { NavigationIconName } from '$lib/domain/navigation';
+	import { MapPin } from '@lucide/svelte';
 
 	let { name }: { name: NavigationIconName } = $props();
 </script>
@@ -23,6 +24,8 @@
 	<Bell class="size-4 shrink-0" aria-hidden="true" />
 {:else if name === 'audit'}
 	<ScrollText class="size-4 shrink-0" aria-hidden="true" />
+{:else if name === 'locations'}
+	<MapPin class="size-4 shrink-0" aria-hidden="true" />
 {:else}
 	<Settings class="size-4 shrink-0" aria-hidden="true" />
 {/if}

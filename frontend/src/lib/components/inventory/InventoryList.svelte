@@ -9,6 +9,7 @@
 		Item,
 		ItemProperty,
 		ItemTypeOption,
+		LocationOption,
 		PropertyOption,
 		SortOrder
 	} from '$lib/api';
@@ -19,6 +20,7 @@
 		items,
 		itemTypes,
 		properties,
+		locations,
 		canManage,
 		sortPropertyID,
 		sortOrder,
@@ -29,6 +31,7 @@
 		items: Item[];
 		itemTypes: ItemTypeOption[];
 		properties: PropertyOption[];
+		locations: LocationOption[];
 		canManage: boolean;
 		// The property the list is sorted by, if any; undefined means the default newest-first order.
 		sortPropertyID: number | undefined;
@@ -40,12 +43,22 @@
 
 	let typeNames = $derived(new Map(itemTypes.map((itemType) => [itemType.id, itemType.name])));
 	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
+	let locationNames = $derived(new Map(locations.map((location) => [location.id, location.name])));
 	let sortedPropertyName = $derived(
 		sortPropertyID === undefined ? '' : (propertyNames.get(sortPropertyID) ?? '')
 	);
+	let locationsExist = $derived(locations.length > 0);
 
 	function typeName(item: Item) {
 		return typeNames.get(item.type_id) ?? 'Nepoznat tip';
+	}
+
+	function locationName(item: Item) {
+		if (item.location_id != undefined) {
+			return locationNames.get(item.location_id) ?? 'Nepoznata lokacija';
+		} else {
+			return "—";
+		}
 	}
 
 	function bgPropertyClass(property: ItemProperty) {
@@ -62,6 +75,9 @@
 	<table class="hidden min-w-full table-fixed text-left text-sm lg:table">
 		<colgroup>
 			<col class="w-64" />
+			{#if locationsExist}
+				<col class="w-48" />
+			{/if}
 			<col />
 			<col class="w-48" />
 			<col class="w-24" />
@@ -69,6 +85,9 @@
 		<thead class="border-b border-line bg-soft text-muted">
 			<tr class="h-12">
 				<th class="px-4 py-3 font-medium">Stavka</th>
+				{#if locationsExist}
+					<th class="px-4 py-3 font-medium">Lokacija</th>
+				{/if}
 				<!-- The properties of an item are one cell rather than a column each, so the header can't
 				     sort on its own: it opens the dialog that asks which property to sort by. The arrow
 				     only turns directional once a property sort is actually what's applied. -->
@@ -102,6 +121,13 @@
 							<p class="mt-0.5 truncate font-medium">{item.derived_name}</p>
 						</div>
 					</td>
+					{#if locationsExist}
+						<td class="px-4 py-3 align-middle">
+							<span>
+								{locationName(item)}
+							</span>
+						</td>
+					{/if}
 					<td class="px-4 py-3 align-middle">
 						<div class="flex flex-wrap gap-1.5">
 							{#each item.properties as property (property.id)}

@@ -29,11 +29,15 @@
 		onvaluechange?: (value: string) => void;
 	} = $props();
 
-	let query = $state('');
+	let items = $derived(options.map((option) => ({ value: String(option.id), label: option.name })));
+	let query = $derived.by(() => {
+		let q = options.find((option) => String(option.id) === value)?.name;
+		return q != undefined ? q : ''
+	});
 	let filteredOptions = $derived(
 		options.filter((option) => option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
 	);
-	let items = $derived(options.map((option) => ({ value: String(option.id), label: option.name })));
+	
 
 	function handleInput(event: Event) {
 		query = (event.currentTarget as HTMLInputElement).value;
@@ -48,6 +52,7 @@
 <Combobox.Root
 	type="single"
 	bind:value
+	inputValue={query}
 	{items}
 	{disabled}
 	allowDeselect={false}

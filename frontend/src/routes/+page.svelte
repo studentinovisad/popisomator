@@ -18,7 +18,10 @@
 		type PropertyValue,
 		type SortOrder,
 
-		type HeldBy
+		type HeldBy,
+
+		type LocationOption
+
 
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
@@ -44,6 +47,7 @@
 	let items = $state<Item[]>([]);
 	let itemTypes = $state<ItemTypeOption[]>([]);
 	let properties = $state<PropertyOption[]>([]);
+	let locations = $state<LocationOption[]>([]);
 	let selectedItemType = $state<ItemType | null>(null);
 	let itemTypeFilterableProperties = $state<ItemTypeFilterableProperty[]>([]);
 	let propertyFilterOptions = $state<Record<number, PropertyValue[]>>({});
@@ -240,12 +244,14 @@
 		inventoryError = '';
 
 		try {
-			const [nextItemTypes, nextProperties] = await Promise.all([
+			const [nextItemTypes, nextProperties, nextLocations] = await Promise.all([
 				api.getItemTypeOptions(),
-				api.getPropertyOptions()
+				api.getPropertyOptions(),
+				api.getLocationOptionsFlat(),
 			]);
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
+			locations = nextLocations;
 			const requestedTypeID = getSelectedItemTypeID(page.url);
 			if (nextItemTypes.length === 1 && requestedTypeID === undefined) {
 				updateTableQuery({ type_id: nextItemTypes[0].id });
@@ -443,6 +449,7 @@
 			{items}
 			{itemTypes}
 			{properties}
+			{locations}
 			{canManage}
 			{sortPropertyID}
 			{sortOrder}

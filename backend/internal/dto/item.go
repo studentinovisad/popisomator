@@ -15,15 +15,22 @@ type Item struct {
 	DerivedName   string                       `json:"derived_name,omitempty"`
 	RequestStatus *repository.RequestStatus    `json:"request_status,omitempty"`
 	HolderName    *string                      `json:"holder_name,omitempty"`
+	LocationID    *int64                       `json:"location_id,omitempty"`
 }
 
 func ToItemDTO(item repository.Item) Item {
-	return Item{
+	itemDTO := Item{
 		ID:          item.ID,
 		Consumption: item.Consumption,
 		Properties:  make([]ItemProperty, 0),
 		TypeID:      item.TypeID,
 	}
+
+	if item.LocationID.Valid {
+		itemDTO.LocationID = &item.LocationID.Int64
+	}
+
+	return itemDTO
 }
 
 // Property added to an item

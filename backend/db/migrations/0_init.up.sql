@@ -10,6 +10,15 @@ CREATE TABLE users (
     status user_status NOT NULL DEFAULT 'active'
 );
 
+CREATE TABLE locations (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  parent_id BIGINT REFERENCES locations(id) ON DELETE CASCADE CHECK(parent_id != id)
+);
+
+CREATE INDEX idx_locations_parent_id ON locations(parent_id);
+
 CREATE TYPE consumption_status AS ENUM ('not_consumed', 'partially_consumed', 'fully_consumed', 'damaged');
 
 CREATE TABLE properties (
@@ -47,7 +56,8 @@ CREATE TABLE items (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     consumption consumption_status NOT NULL DEFAULT 'not_consumed',
-    type_id BIGINT NOT NULL REFERENCES item_types(id) ON DELETE RESTRICT
+    type_id BIGINT NOT NULL REFERENCES item_types(id) ON DELETE RESTRICT,
+    location_id BIGINT REFERENCES locations(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_items_type_id ON items(type_id);

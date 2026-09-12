@@ -140,7 +140,7 @@ const createItems = `-- name: CreateItems :many
 INSERT INTO items (type_id) 
 SELECT ($1) 
 FROM generate_series(1, $2::integer)
-RETURNING id, created_at, consumption, type_id
+RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type CreateItemsParams struct {
@@ -162,6 +162,7 @@ func (q *Queries) CreateItems(ctx context.Context, arg CreateItemsParams) ([]Ite
 			&i.CreatedAt,
 			&i.Consumption,
 			&i.TypeID,
+			&i.LocationID,
 		); err != nil {
 			return nil, err
 		}
@@ -186,7 +187,7 @@ func (q *Queries) DeleteItem(ctx context.Context, id int64) (int64, error) {
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT id, created_at, consumption, type_id FROM items
+SELECT id, created_at, consumption, type_id, location_id FROM items
 WHERE id = $1 LIMIT 1
 `
 
@@ -198,6 +199,7 @@ func (q *Queries) GetItemByID(ctx context.Context, id int64) (Item, error) {
 		&i.CreatedAt,
 		&i.Consumption,
 		&i.TypeID,
+		&i.LocationID,
 	)
 	return i, err
 }
@@ -367,7 +369,7 @@ func (q *Queries) ListItemTypePropertyValues(ctx context.Context, arg ListItemTy
 }
 
 const listItems = `-- name: ListItems :many
-SELECT items.id, items.created_at, items.consumption, items.type_id FROM items
+SELECT items.id, items.created_at, items.consumption, items.type_id, items.location_id FROM items
 JOIN item_types ON item_types.id = items.type_id
 LEFT JOIN item_properties AS sort_property
   ON sort_property.item_id = items.id
@@ -504,6 +506,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 			&i.CreatedAt,
 			&i.Consumption,
 			&i.TypeID,
+			&i.LocationID,
 		); err != nil {
 			return nil, err
 		}
@@ -680,7 +683,7 @@ func (q *Queries) UpdateItemProperty(ctx context.Context, arg UpdateItemProperty
 }
 
 const updateItem_Consumption = `-- name: UpdateItem_Consumption :one
-UPDATE items SET consumption = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id
+UPDATE items SET consumption = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type UpdateItem_ConsumptionParams struct {
@@ -696,12 +699,13 @@ func (q *Queries) UpdateItem_Consumption(ctx context.Context, arg UpdateItem_Con
 		&i.CreatedAt,
 		&i.Consumption,
 		&i.TypeID,
+		&i.LocationID,
 	)
 	return i, err
 }
 
 const updateItem_Type = `-- name: UpdateItem_Type :one
-UPDATE items SET type_id = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id
+UPDATE items SET type_id = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type UpdateItem_TypeParams struct {
@@ -717,6 +721,7 @@ func (q *Queries) UpdateItem_Type(ctx context.Context, arg UpdateItem_TypeParams
 		&i.CreatedAt,
 		&i.Consumption,
 		&i.TypeID,
+		&i.LocationID,
 	)
 	return i, err
 }
