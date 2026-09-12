@@ -13,7 +13,11 @@ import type {
 	Property,
 	PropertyOption,
 	UpdateItemTypeRequest,
-	UpdatePropertyRequest
+	UpdatePropertyRequest,
+	CreateLocationRequest,
+	LocationOption,
+	Location,
+	UpdateLocationRequest
 } from '$lib/api/types';
 
 export const catalogApi = {
@@ -70,5 +74,13 @@ export const catalogApi = {
 		request<Property>('/properties', jsonRequest('POST', payload)),
 	updateProperty: (id: number, payload: UpdatePropertyRequest) =>
 		request<Property>(`/properties/${id}`, jsonRequest('PATCH', payload)),
-	deleteProperty: (id: number) => request<void>(`/properties/${id}`, { method: 'DELETE' })
+	deleteProperty: (id: number) => request<void>(`/properties/${id}`, { method: 'DELETE' }),
+	createLocation: (payload: CreateLocationRequest) =>
+		request<Property>('/locations', jsonRequest('POST', payload)),
+	getLocationOptions: () => request<LocationOption[]>('/locations'),
+	getLocationOptionsFlat: () => request<LocationOption[]>('/locations/flat'),
+	getLocation: (id: number) => request<Location>(`/locations/${id}`),
+	updateLocation: (id: number, payload: UpdateLocationRequest) =>
+		request<Location>(`/locations/${id}`, jsonRequest('PATCH', payload)),
+	deleteLocation: (id: number) => request<void>(`/locations/${id}`, { method: 'DELETE' }),
 };

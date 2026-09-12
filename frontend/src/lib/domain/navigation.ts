@@ -2,7 +2,7 @@ import type { UserRole } from '$lib/api';
 import { notifications } from '$lib/state/notifications.svelte';
 
 export type NavigationIconName =
-	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications';
+	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications' | 'locations';
 
 export type AppPath =
 	| '/'
@@ -16,6 +16,8 @@ export type AppPath =
 	| '/catalog/item-types/new'
 	| '/catalog/properties'
 	| '/catalog/properties/new'
+	| '/locations'
+	| '/locations/new'
 	| '/notifications'
 	| '/settings'
 	| '/login'
@@ -53,6 +55,11 @@ const itemTypeEditPageMetadata: PageMetadata = {
 const propertyEditPageMetadata: PageMetadata = {
 	title: 'Izmeni svojstvo',
 	description: 'Izmenite naziv, opis i podrazumevanu vrednost svojstva.'
+};
+
+const locationEditPageMetadata: PageMetadata = {
+	title: 'Izmeni lokaciju',
+	description: 'Izmenite detalje o lokaciji i roditeljsku lokaciju.'
 };
 
 export const pageMetadata: Record<AppPath, PageMetadata> = {
@@ -100,6 +107,14 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Novo svojstvo',
 		description: 'Odaberite tip vrednosti i opcionalnu podrazumevanu vrednost.'
 	},
+	'/locations': {
+		title: 'Lokacije',
+		description: 'Upravljajte lokacijama na kojima se mogu nalaziti stavke.'
+	},
+	'/locations/new': {
+		title: 'Nova lokacija',
+		description: 'Odaberite ime lokacije i roditeljsku lokaciju.'
+	},
 	'/notifications': {
 		title: 'Obaveštenja',
 		description: 'Pregledajte obaveštenja o zahtevima i rokovima stavki.'
@@ -132,6 +147,12 @@ export const primaryNavigation: NavigationItem[] = [
 		path: '/catalog/item-types',
 		label: 'Katalog',
 		icon: 'catalog',
+		requiredRoles: ['admin']
+	},
+	{
+		path: '/locations',
+		label: 'Lokacije',
+		icon: 'locations',
 		requiredRoles: ['admin']
 	}
 ];
@@ -178,6 +199,14 @@ export function getPageMetadata(pathname: string): PageMetadata {
 
 	if (pathname.startsWith('/catalog/properties/')) {
 		return propertyEditPageMetadata;
+	}
+
+	if (pathname === '/locations/new') {
+		return pageMetadata['/locations/new'];
+	}
+
+	if (pathname.startsWith('/locations/')) {
+		return locationEditPageMetadata;
 	}
 
 	return pageMetadata[pathname as AppPath] ?? fallbackPageMetadata;

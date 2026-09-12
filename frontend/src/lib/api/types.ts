@@ -73,6 +73,7 @@ export type Item = {
 	derived_name?: string;
 	request_status?: ItemRequestStatus;
 	holder_name?: string;
+	location_id: number;
 };
 
 export type ItemsPage = {
@@ -209,6 +210,29 @@ export type CreatePropertyRequest = {
 export type UpdatePropertyRequest = Partial<
 	Pick<CreatePropertyRequest, 'name' | 'description' | 'default_value'>
 >;
+
+export type Location = {
+	id: number;
+	name: string;
+	description?: string;
+	parent_id?: number;
+}
+
+export type LocationOption = Pick<Location, 'id' | 'name'> & {
+	children: LocationOption[];
+}
+
+export type CreateLocationRequest = {
+	name: string;
+	description?: string;
+	parent_id?: number | null;
+};
+
+export type UpdateLocationRequest = {
+	name?: string;
+	description?: string;
+	parent_id?: number | null;
+};
 
 export type ItemRequest = {
 	user_id: number;

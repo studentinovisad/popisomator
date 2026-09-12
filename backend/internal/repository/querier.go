@@ -15,9 +15,11 @@ type Querier interface {
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
 	ApproveItemRequest(ctx context.Context, arg ApproveItemRequestParams) (ItemRequest, error)
 	CheckItemsForRequests(ctx context.Context, itemIds []int64) ([]ItemRequest, error)
+	CheckLocationCycle(ctx context.Context, arg CheckLocationCycleParams) (bool, error)
 	CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error)
 	CountItemTypes(ctx context.Context, search string) (int64, error)
 	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
+	CountLocations(ctx context.Context, search string) (int64, error)
 	CountNotifications(ctx context.Context, recipientID int64) (int64, error)
 	CountProperties(ctx context.Context, search string) (int64, error)
 	CountUnreadNotifications(ctx context.Context, recipientID int64) (int64, error)
@@ -25,6 +27,7 @@ type Querier interface {
 	CreateItemRequest(ctx context.Context, arg CreateItemRequestParams) (ItemRequest, error)
 	CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error)
 	CreateItems(ctx context.Context, arg CreateItemsParams) ([]Item, error)
+	CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error)
 	CreateNotificationDescriptors_ItemExpiry(ctx context.Context, arg CreateNotificationDescriptors_ItemExpiryParams) ([]NotifdescItemExpiry, error)
 	CreateNotificationDescriptors_ItemRequest(ctx context.Context, arg CreateNotificationDescriptors_ItemRequestParams) ([]NotifdescItemRequest, error)
 	CreateNotifications(ctx context.Context, arg CreateNotificationsParams) ([]Notification, error)
@@ -33,6 +36,7 @@ type Querier interface {
 	DeleteItem(ctx context.Context, id int64) (int64, error)
 	DeleteItemRequest(ctx context.Context, arg DeleteItemRequestParams) (int64, error)
 	DeleteItemType(ctx context.Context, id int64) (int64, error)
+	DeleteLocation(ctx context.Context, id int64) (int64, error)
 	DeleteNonApprovedItemRequests(ctx context.Context, itemID int64) (int64, error)
 	DeleteNotification(ctx context.Context, arg DeleteNotificationParams) (int64, error)
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
@@ -47,6 +51,7 @@ type Querier interface {
 	GetItemTypesByItemIDs(ctx context.Context, itemIds []int64) ([]GetItemTypesByItemIDsRow, error)
 	GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error)
 	GetItemsRequestStatuses(ctx context.Context, arg GetItemsRequestStatusesParams) ([]GetItemsRequestStatusesRow, error)
+	GetLocationByID(ctx context.Context, id int64) (Location, error)
 	GetPropertyByID(ctx context.Context, id int64) (Property, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
@@ -69,6 +74,7 @@ type Querier interface {
 	// ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
 	// null keys too, and so land last whichever direction is asked for.
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
+	ListLocationOptions(ctx context.Context) ([]ListLocationOptionsRow, error)
 	// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
 	// bulk-inserted, so a whole batch shares one created_at.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
@@ -97,6 +103,9 @@ type Querier interface {
 	UpdateItemType_Name(ctx context.Context, arg UpdateItemType_NameParams) (ItemType, error)
 	UpdateItem_Consumption(ctx context.Context, arg UpdateItem_ConsumptionParams) (Item, error)
 	UpdateItem_Type(ctx context.Context, arg UpdateItem_TypeParams) (Item, error)
+	UpdateLocation_Description(ctx context.Context, arg UpdateLocation_DescriptionParams) error
+	UpdateLocation_Name(ctx context.Context, arg UpdateLocation_NameParams) error
+	UpdateLocation_ParentID(ctx context.Context, arg UpdateLocation_ParentIDParams) error
 	UpdateProperty_DefaultValue(ctx context.Context, arg UpdateProperty_DefaultValueParams) error
 	UpdateProperty_Description(ctx context.Context, arg UpdateProperty_DescriptionParams) error
 	UpdateProperty_Name(ctx context.Context, arg UpdateProperty_NameParams) error
