@@ -54,7 +54,6 @@ const docTemplate = `{
                             "item_request_create",
                             "item_request_approve",
                             "item_request_delete",
-                            "item_request_supersede",
                             "item_type_create",
                             "item_type_update",
                             "item_type_delete",
@@ -2914,10 +2913,6 @@ const docTemplate = `{
                     "description": "BatchSize is how many items one bulk add produced. Each item still gets its own entry, so its\nown timeline is complete; this is what lets a feed say the add was part of a batch.",
                     "type": "integer"
                 },
-                "cascaded": {
-                    "description": "Cascaded marks a request that was not turned down on its own but went away with the item it\nstood against. Same action either way; this is what lets the two be worded differently.",
-                    "type": "boolean"
-                },
                 "properties": {
                     "description": "Properties is the list an item type was created with.",
                     "type": "array",
@@ -2935,11 +2930,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "request_status": {
-                    "description": "RequestStatus is what the request was before it was deleted, which is what separates rejecting\na pending request from revoking an approved one.",
+                    "description": "RequestStatus is what the request was before it was deleted, which is what separates rejecting\na pending request from revoking an approved one.\n\nOnly decisions are recorded. A request cancelled because someone else's was approved, or\nbecause the item went away, gets nothing of its own - not even a count: the entry for the\napproval or the deletion sits above that person's own request entry, and reading the two\ntogether already says their claim is gone. This is an audit log, not a record of every state\nthe system passed through.",
                     "type": "string"
                 },
                 "subject_user_id": {
-                    "description": "The user a request concerns, who is not always the actor: an admin can request on someone\nelse's behalf, and a supersede is recorded against the person who lost their place.",
+                    "description": "The user a request concerns, who is not always the actor: an admin can request on someone\nelse's behalf, and can turn down or revoke a request that was never theirs.",
                     "type": "integer"
                 },
                 "subject_user_name": {
@@ -3859,7 +3854,6 @@ const docTemplate = `{
                 "item_request_create",
                 "item_request_approve",
                 "item_request_delete",
-                "item_request_supersede",
                 "item_type_create",
                 "item_type_update",
                 "item_type_delete",
@@ -3882,7 +3876,6 @@ const docTemplate = `{
                 "AuditActionItemRequestCreate",
                 "AuditActionItemRequestApprove",
                 "AuditActionItemRequestDelete",
-                "AuditActionItemRequestSupersede",
                 "AuditActionItemTypeCreate",
                 "AuditActionItemTypeUpdate",
                 "AuditActionItemTypeDelete",

@@ -519,16 +519,6 @@ func DeleteItem(ctx context.Context, id int64) error {
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
-	// Take the same lock every path that touches this item's requests takes. Without it a request
-	// created between reading them below and the DELETE would cascade away unrecorded, which is
-	// exactly the claim this function exists to name.
-	if _, err := queriesTx.LockItemForRequest(ctx, id); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		return err
-	}
-
 	// Everything the audit entries need has to be read before the DELETE. An item's name is derived
 	// from its properties, and those cascade away with it, so afterwards there is nothing left to
 	// identify the item by.
@@ -558,41 +548,14 @@ func DeleteItem(ctx context.Context, id int64) error {
 		return err
 	}
 
-	// Requests standing against this item cascade away with it, silently cancelling someone's claim.
-	// Read them while they still exist so each person who loses one is named.
-	requests, err := queriesTx.ListItemRequestsForItem(ctx, id)
-	if err != nil {
-		return err
-	}
-
+	// Requests standing against this item cascade away with it and are not recorded: this entry sits
+	// above each of their own request entries, so the history already says their claim is gone.
 	rowsAffected, err := queriesTx.DeleteItem(ctx, id)
 	if err != nil {
 		return err
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
-	}
-
-	// Written before the deletion entry so that, sharing one now(), the id tiebreaker leaves the
-	// deletion at the top of the feed with the claims it cancelled underneath.
-	cascadeTargets := make([]auditTarget, len(requests))
-	for index, request := range requests {
-		userID := request.UserID
-		cascadeTargets[index] = auditTarget{
-			ID:    id,
-			Label: label,
-			Context: dto.AuditContext{
-				SubjectUserID:   &userID,
-				SubjectUserName: request.UserName,
-				Reason:          request.Reason,
-				RequestStatus:   string(request.Status),
-				Cascaded:        true,
-			},
-		}
-	}
-	if err := writeAuditBulk(ctx, queriesTx, repository.AuditActionItemRequestDelete,
-		repository.AuditTargetTypeItem, cascadeTargets); err != nil {
-		return err
 	}
 
 	if err := writeAudit(ctx, queriesTx, repository.AuditActionItemDelete, repository.AuditTargetTypeItem,
