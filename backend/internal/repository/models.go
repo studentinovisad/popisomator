@@ -314,6 +314,7 @@ type Item struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	Consumption ConsumptionStatus  `json:"consumption"`
 	TypeID      int64              `json:"type_id"`
+	LocationID  pgtype.Int8        `json:"location_id"`
 }
 
 type ItemProperty struct {
@@ -344,6 +345,13 @@ type ItemTypeProperty struct {
 	DefaultValue *json.RawMessage   `json:"default_value"`
 	Visibility   PropertyVisibility `json:"visibility"`
 	Position     int32              `json:"position"`
+}
+
+type Location struct {
+	ID          int64       `json:"id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	ParentID    pgtype.Int8 `json:"parent_id"`
 }
 
 type NotifdescItemExpiry struct {

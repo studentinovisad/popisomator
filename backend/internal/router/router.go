@@ -98,6 +98,34 @@ func New() *http.ServeMux {
 		middleware.Handle(controller.RemoveItemProperty),
 	))
 
+	// Locations
+	mux.Handle("POST /locations", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.CreateLocation),
+	))
+	mux.Handle("GET /locations", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetLocationOptions),
+	))
+	mux.Handle("GET /locations/flat", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetLocationOptionsFlat),
+	))
+	mux.Handle("GET /locations/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.GetLocation),
+	))
+	mux.Handle("PATCH /locations/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.Handle(controller.UpdateLocation),
+	))
+	mux.Handle("DELETE /locations/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.DeleteLocation),
+	))
+
 	// Properties
 	mux.Handle("POST /properties", middleware.Chain(
 		middleware.RequireAuth,
