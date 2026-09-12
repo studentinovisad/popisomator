@@ -18,7 +18,7 @@ import (
 // @Security CookieAuth
 // @Param limit query int false "Page size (default 20, max 50)"
 // @Param offset query int false "Page offset (default 0)"
-// @Param action query string false "Filter by action" Enums(item_create, item_update, item_consume, item_delete, item_property_add, item_property_update, item_property_remove, item_request_create, item_request_approve, item_request_delete, item_request_supersede, item_type_create, item_type_update, item_type_delete, item_type_property_add, item_type_property_update, item_type_property_remove, item_type_property_reorder, property_create, property_update, property_delete)
+// @Param action query string false "Filter by action" Enums(item_create, item_update, item_consume, item_delete, item_property_add, item_property_update, item_property_remove, item_request_create, item_request_approve, item_request_delete, item_type_create, item_type_update, item_type_delete, item_type_property_add, item_type_property_update, item_type_property_remove, item_type_property_reorder, property_create, property_update, property_delete)
 // @Param target_type query string false "Filter by the kind of entity changed" Enums(item, item_type, property)
 // @Param target_id query int false "Filter to one entity's own history; requires target_type"
 // @Param actor_id query int false "Filter by who made the change"

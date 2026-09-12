@@ -1,5 +1,10 @@
--- name: GetAllProperties :many
-SELECT * FROM properties;
+-- Every property, or just the ones named. The filter is optional so one query serves both the full
+-- catalogue and the audit path, which resolves a handful of names at once for an entry spanning
+-- several properties - a reorder, or the initial list of a new item type.
+-- name: GetProperties :many
+SELECT * FROM properties
+WHERE sqlc.narg('property_ids')::bigint[] IS NULL
+   OR id = ANY(sqlc.narg('property_ids')::bigint[]);
 
 -- name: ListPropertyOptions :many
 SELECT id, name, value_type, default_value FROM properties
@@ -18,12 +23,6 @@ WHERE name ILIKE '%' || escape_like_pattern(sqlc.arg('search')) || '%';
 -- name: GetPropertyByID :one
 SELECT * FROM properties
 WHERE id = $1 LIMIT 1;
-
--- Names for a set of properties at once, so an audit entry that spans several of them - a reorder,
--- or the initial property list of a new item type - resolves them in one round trip.
--- name: GetPropertiesByIDs :many
-SELECT id, name, value_type FROM properties
-WHERE id = ANY(sqlc.arg('property_ids')::bigint[]);
 
 -- name: CreateProperty :one
 INSERT INTO properties (name, description, value_type, default_value) VALUES ($1, $2, $3, $4) RETURNING *;

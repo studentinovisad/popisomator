@@ -125,37 +125,11 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 		return dto.ItemRequest{}, err
 	}
 
-	superseded, err := queriesTx.DeleteNonApprovedItemRequests(ctx, req.ItemID)
-	if err != nil {
+	// Approving one request cancels every other pending one for the item. Those are not recorded:
+	// this entry sits above each of their own request entries, so reading the item's history already
+	// says whose claim it ended.
+	if _, err := queriesTx.DeleteNonApprovedItemRequests(ctx, req.ItemID); err != nil {
 		return dto.ItemRequest{}, err
-	}
-
-	// Everyone who lost their place gets their own entry. Without it their request simply disappears:
-	// the row is deleted, so nothing else in the system remembers they ever asked.
-	if len(superseded) > 0 {
-		label, err := itemDerivedName(ctx, queriesTx, req.ItemID)
-		if err != nil {
-			return dto.ItemRequest{}, err
-		}
-
-		supersedeTargets := make([]auditTarget, len(superseded))
-		for index, lost := range superseded {
-			userID := lost.UserID
-			supersedeTargets[index] = auditTarget{
-				ID:    req.ItemID,
-				Label: label,
-				Context: dto.AuditContext{
-					SubjectUserID:   &userID,
-					SubjectUserName: lost.UserName,
-					Reason:          lost.Reason,
-				},
-			}
-		}
-
-		if err := writeAuditBulk(ctx, queriesTx, repository.AuditActionItemRequestSupersede,
-			repository.AuditTargetTypeItem, supersedeTargets); err != nil {
-			return dto.ItemRequest{}, err
-		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

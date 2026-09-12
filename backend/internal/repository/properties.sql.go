@@ -65,12 +65,17 @@ func (q *Queries) DeleteProperty(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const getAllProperties = `-- name: GetAllProperties :many
+const getProperties = `-- name: GetProperties :many
 SELECT id, name, description, value_type, default_value FROM properties
+WHERE $1::bigint[] IS NULL
+   OR id = ANY($1::bigint[])
 `
 
-func (q *Queries) GetAllProperties(ctx context.Context) ([]Property, error) {
-	rows, err := q.db.Query(ctx, getAllProperties)
+// Every property, or just the ones named. The filter is optional so one query serves both the full
+// catalogue and the audit path, which resolves a handful of names at once for an entry spanning
+// several properties - a reorder, or the initial list of a new item type.
+func (q *Queries) GetProperties(ctx context.Context, propertyIds []int64) ([]Property, error) {
+	rows, err := q.db.Query(ctx, getProperties, propertyIds)
 	if err != nil {
 		return nil, err
 	}
@@ -85,39 +90,6 @@ func (q *Queries) GetAllProperties(ctx context.Context) ([]Property, error) {
 			&i.ValueType,
 			&i.DefaultValue,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getPropertiesByIDs = `-- name: GetPropertiesByIDs :many
-SELECT id, name, value_type FROM properties
-WHERE id = ANY($1::bigint[])
-`
-
-type GetPropertiesByIDsRow struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	ValueType string `json:"value_type"`
-}
-
-// Names for a set of properties at once, so an audit entry that spans several of them - a reorder,
-// or the initial property list of a new item type - resolves them in one round trip.
-func (q *Queries) GetPropertiesByIDs(ctx context.Context, propertyIds []int64) ([]GetPropertiesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, getPropertiesByIDs, propertyIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetPropertiesByIDsRow
-	for rows.Next() {
-		var i GetPropertiesByIDsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.ValueType); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -91,7 +91,7 @@ func writeAudit(
 
 // writeAuditBulk records one action against several targets in a single statement, the way
 // CreateNotifications inserts one row per recipient. Writing nothing is not an error: a bulk add of
-// zero items and an approval that superseded no one both legitimately have no targets.
+// zero items legitimately has no targets.
 func writeAuditBulk(
 	ctx context.Context,
 	q repository.Querier,

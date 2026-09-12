@@ -75,11 +75,6 @@ definitions:
           BatchSize is how many items one bulk add produced. Each item still gets its own entry, so its
           own timeline is complete; this is what lets a feed say the add was part of a batch.
         type: integer
-      cascaded:
-        description: |-
-          Cascaded marks a request that was not turned down on its own but went away with the item it
-          stood against. Same action either way; this is what lets the two be worded differently.
-        type: boolean
       properties:
         description: Properties is the list an item type was created with.
         items:
@@ -95,11 +90,17 @@ definitions:
         description: |-
           RequestStatus is what the request was before it was deleted, which is what separates rejecting
           a pending request from revoking an approved one.
+
+          Only decisions are recorded. A request cancelled because someone else's was approved, or
+          because the item went away, gets nothing of its own - not even a count: the entry for the
+          approval or the deletion sits above that person's own request entry, and reading the two
+          together already says their claim is gone. This is an audit log, not a record of every state
+          the system passed through.
         type: string
       subject_user_id:
         description: |-
           The user a request concerns, who is not always the actor: an admin can request on someone
-          else's behalf, and a supersede is recorded against the person who lost their place.
+          else's behalf, and can turn down or revoke a request that was never theirs.
         type: integer
       subject_user_name:
         type: string
@@ -723,7 +724,6 @@ definitions:
     - item_request_create
     - item_request_approve
     - item_request_delete
-    - item_request_supersede
     - item_type_create
     - item_type_update
     - item_type_delete
@@ -746,7 +746,6 @@ definitions:
     - AuditActionItemRequestCreate
     - AuditActionItemRequestApprove
     - AuditActionItemRequestDelete
-    - AuditActionItemRequestSupersede
     - AuditActionItemTypeCreate
     - AuditActionItemTypeUpdate
     - AuditActionItemTypeDelete
@@ -863,7 +862,6 @@ paths:
         - item_request_create
         - item_request_approve
         - item_request_delete
-        - item_request_supersede
         - item_type_create
         - item_type_update
         - item_type_delete

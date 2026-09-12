@@ -182,8 +182,8 @@ type WriteAuditEntriesParams struct {
 }
 
 // One action against several targets in a single statement, the way CreateNotifications inserts one
-// row per recipient. Used by CreateItem, which makes up to 100 items in a call, and by
-// ApproveItemRequest, which supersedes every other pending request for the item at once.
+// row per recipient. Used by CreateItem, which makes up to 100 items in a call and gives each its
+// own entry so that its timeline starts with its creation.
 func (q *Queries) WriteAuditEntries(ctx context.Context, arg WriteAuditEntriesParams) error {
 	_, err := q.db.Exec(ctx, writeAuditEntries,
 		arg.ActorID,

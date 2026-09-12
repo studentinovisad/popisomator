@@ -63,16 +63,19 @@ type AuditContext struct {
 	PropertyName string `json:"property_name,omitempty"`
 
 	// The user a request concerns, who is not always the actor: an admin can request on someone
-	// else's behalf, and a supersede is recorded against the person who lost their place.
+	// else's behalf, and can turn down or revoke a request that was never theirs.
 	SubjectUserID   *int64 `json:"subject_user_id,omitempty"`
 	SubjectUserName string `json:"subject_user_name,omitempty"`
 	Reason          string `json:"reason,omitempty"`
 	// RequestStatus is what the request was before it was deleted, which is what separates rejecting
 	// a pending request from revoking an approved one.
+	//
+	// Only decisions are recorded. A request cancelled because someone else's was approved, or
+	// because the item went away, gets nothing of its own - not even a count: the entry for the
+	// approval or the deletion sits above that person's own request entry, and reading the two
+	// together already says their claim is gone. This is an audit log, not a record of every state
+	// the system passed through.
 	RequestStatus string `json:"request_status,omitempty"`
-	// Cascaded marks a request that was not turned down on its own but went away with the item it
-	// stood against. Same action either way; this is what lets the two be worded differently.
-	Cascaded bool `json:"cascaded,omitempty"`
 
 	// Properties is the list an item type was created with.
 	Properties []AuditProperty `json:"properties,omitempty"`
@@ -166,7 +169,6 @@ var auditActions = map[repository.AuditAction]struct{}{
 	repository.AuditActionItemRequestCreate:       {},
 	repository.AuditActionItemRequestApprove:      {},
 	repository.AuditActionItemRequestDelete:       {},
-	repository.AuditActionItemRequestSupersede:    {},
 	repository.AuditActionItemTypeCreate:          {},
 	repository.AuditActionItemTypeUpdate:          {},
 	repository.AuditActionItemTypeDelete:          {},

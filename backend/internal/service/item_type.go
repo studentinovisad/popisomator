@@ -663,18 +663,44 @@ func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePrope
 		previousIDs[index] = typeProperty.PropertyID
 	}
 
-	propertyNames, err := propertyNamesByID(ctx, queriesTx, req.PropertyIDs)
-	if err != nil {
-		return err
-	}
-
 	// A drag that ended where it started is not worth an entry.
 	if !slices.Equal(previousIDs, req.PropertyIDs) {
+		properties, err := queriesTx.GetProperties(ctx, req.PropertyIDs)
+		if err != nil {
+			return err
+		}
+		propertyNames := make(map[int64]string, len(properties))
+		for _, property := range properties {
+			propertyNames[property.ID] = property.Name
+		}
+
+		// Falls back to the id for a property that has since gone away, so the entry still reads as
+		// an ordering rather than losing a position.
+		asNames := func(propertyIDs []int64) json.RawMessage {
+			ordered := make([]string, len(propertyIDs))
+			for index, propertyID := range propertyIDs {
+				name, ok := propertyNames[propertyID]
+				if !ok {
+					name = strconv.FormatInt(propertyID, 10)
+				}
+				ordered[index] = name
+			}
+
+			// A slice of strings cannot fail to encode; null on the impossible path still beats
+			// taking the request down.
+			encoded, err := json.Marshal(ordered)
+			if err != nil {
+				return json.RawMessage("null")
+			}
+
+			return encoded
+		}
+
 		changes := []dto.AuditChange{{
 			Key:       "order",
 			ValueType: dto.AuditValueTypeOrder,
-			Old:       mustJSON(namesInOrder(previousIDs, propertyNames)),
-			New:       mustJSON(namesInOrder(req.PropertyIDs, propertyNames)),
+			Old:       asNames(previousIDs),
+			New:       asNames(req.PropertyIDs),
 		}}
 
 		if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypePropertyReorder,
@@ -684,48 +710,6 @@ func ReorderItemTypeProperties(ctx context.Context, req dto.ReorderItemTypePrope
 	}
 
 	return tx.Commit(ctx)
-}
-
-// propertyNamesByID resolves a set of property ids to their names in one round trip.
-func propertyNamesByID(ctx context.Context, q repository.Querier, propertyIDs []int64) (map[int64]string, error) {
-	rows, err := q.GetPropertiesByIDs(ctx, propertyIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	names := make(map[int64]string, len(rows))
-	for _, row := range rows {
-		names[row.ID] = row.Name
-	}
-
-	return names, nil
-}
-
-// namesInOrder maps an ordering of property ids onto their names, falling back to the id for a
-// property that has since gone away.
-func namesInOrder(propertyIDs []int64, names map[int64]string) []string {
-	ordered := make([]string, len(propertyIDs))
-	for index, propertyID := range propertyIDs {
-		name, ok := names[propertyID]
-		if !ok {
-			name = strconv.FormatInt(propertyID, 10)
-		}
-		ordered[index] = name
-	}
-
-	return ordered
-}
-
-// mustJSON encodes a value that cannot fail to encode - a slice of strings - so the call sites stay
-// readable. A failure yields null rather than panicking, since a half-rendered audit entry still
-// beats taking the request down with it.
-func mustJSON(value any) json.RawMessage {
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return json.RawMessage("null")
-	}
-
-	return encoded
 }
 
 func RemoveItemTypeProperty(ctx context.Context, typeId int64, propId int64) error {

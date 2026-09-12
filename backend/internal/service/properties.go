@@ -35,7 +35,8 @@ func validatePropertyValue(ctx context.Context, q repository.Querier, propertyID
 }
 
 func GetAllProperties(ctx context.Context) ([]dto.Property, error) {
-	props, err := db.Queries.GetAllProperties(ctx)
+	// nil names no ids, which the query reads as no filter.
+	props, err := db.Queries.GetProperties(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
