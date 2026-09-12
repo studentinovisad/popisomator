@@ -140,6 +140,9 @@ export type ItemType = ItemTypeOption & {
 	description: string;
 	properties: ItemTypeProperty[];
 	derived_name_format: string;
+	// How many days ahead of its date an expiry on this type counts as expiring soon. Null where no
+	// window is set, which is how the backend records 'never mark anything as expiring soon'.
+	expiring_soon_days: number | null;
 };
 
 export type ItemTypesPage = {
@@ -154,10 +157,11 @@ export type CreateItemTypeRequest = {
 	description: string;
 	derived_name_format: string;
 	properties: ItemTypeProperty[];
+	expiring_soon_days?: number;
 };
 
 export type UpdateItemTypeRequest = Partial<
-	Pick<ItemType, 'name' | 'description' | 'derived_name_format'>
+	Pick<ItemType, 'name' | 'description' | 'derived_name_format' | 'expiring_soon_days'>
 >;
 
 export type AddUpdateItemTypePropertyRequest = {

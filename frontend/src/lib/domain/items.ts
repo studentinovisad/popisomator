@@ -130,6 +130,11 @@ export function displayJson(
 	}
 }
 
+// What a new item type starts its expiring-soon window at, and how far that window can be set. The
+// backend decides which items the window then marks - see the expiry branch of populateItemDetails.
+export const defaultExpiringSoonDays = 14;
+export const maximumExpiringSoonDays = 180;
+
 export function defaultJsonValue(
 	valueType: PropertyValueType,
 	value: PropertyValue | null

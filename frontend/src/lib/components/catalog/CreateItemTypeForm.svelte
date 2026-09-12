@@ -10,9 +10,14 @@
 		type PropertyValue,
 		type PropertyVisibility
 	} from '$lib/api';
+	import ExpiringSoonDaysInput from '$lib/components/catalog/ExpiringSoonDaysInput.svelte';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import MultiOptionCombobox from '$lib/components/shared/MultiOptionCombobox.svelte';
-	import { defaultJsonValue, propertyValueTypeLabel } from '$lib/domain/items';
+	import {
+		defaultExpiringSoonDays,
+		defaultJsonValue,
+		propertyValueTypeLabel
+	} from '$lib/domain/items';
 	import { requiredTextError } from '$lib/domain/form-validation';
 	import { Button, Label, Portal, Separator, Tabs } from 'bits-ui';
 	import { dndzone, setAriaStrings, type DndEvent } from 'svelte-dnd-action';
@@ -40,6 +45,7 @@
 	let name = $state('');
 	let description = $state('');
 	let derivedNameFormat = $state('');
+	let expiringSoonDays = $state(defaultExpiringSoonDays);
 	let comboboxSelectedPropertyValues = $state<string[]>([]);
 	let selectedPropertyIDs = $state<number[]>([]);
 	let orderedProperties = $state<PropertyOption[]>([]);
@@ -61,6 +67,9 @@
 	let activeProperty = $derived(
 		selectedProperties.find((property) => property.id === activePropertyID) ?? null
 	);
+	let hasExpiryProperty = $derived(
+		selectedProperties.some((property) => property.value_type === 'expiry')
+	);
 	let originalProperties = $derived(
 		new Map(itemType?.properties.map((property) => [property.id, property]))
 	);
@@ -78,6 +87,9 @@
 		name = itemType?.name ?? '';
 		description = itemType?.description ?? '';
 		derivedNameFormat = itemType?.derived_name_format ?? '';
+		// A type with no window stored has none by intent - it is what the backend writes when the
+		// count is cleared - so it opens at nought rather than back at the default.
+		expiringSoonDays = itemType ? (itemType.expiring_soon_days ?? 0) : defaultExpiringSoonDays;
 		comboboxSelectedPropertyValues =
 			itemType?.properties.map((property) => String(property.id)) ?? [];
 		selectedPropertyIDs = itemType?.properties.map((property) => property.id) ?? [];
@@ -240,6 +252,7 @@
 					name,
 					description,
 					derived_name_format: derivedNameFormat,
+					expiring_soon_days: expiringSoonDays,
 					properties: selectedPropertyIDs.map((id) => ({
 						id,
 						default_value: defaultValues[id],
@@ -247,7 +260,11 @@
 					}))
 				});
 			} else {
-				await api.updateItemType(itemType.id, { name, description });
+				await api.updateItemType(itemType.id, {
+					name,
+					description,
+					expiring_soon_days: expiringSoonDays
+				});
 
 				const defaultValueUpdates: Promise<unknown>[] = [];
 				for (const propertyID of selectedPropertyIDs) {
@@ -558,6 +575,20 @@
 						</p>
 					{/if}
 				</div>
+				<!-- Only types that record an expiry have anything to warn about, and which properties
+				     they record was settled on the step before. -->
+				{#if hasExpiryProperty}
+					<Separator.Root class="h-px bg-line" decorative />
+					<div>
+						<Label.Root class="text-sm font-medium text-ink" for="item-type-expiring-soon-days">
+							Upozorenje pred istek roka
+						</Label.Root>
+						<p class="mt-1 text-sm text-muted">
+							Koliko dana pre isteka roka stavke ovog tipa dobijaju žutu oznaku.
+						</p>
+						<ExpiringSoonDaysInput id="item-type-expiring-soon-days" bind:days={expiringSoonDays} />
+					</div>
+				{/if}
 			</div>
 		</Tabs.Content>
 	</Tabs.Root>
