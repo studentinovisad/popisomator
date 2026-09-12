@@ -65,12 +65,17 @@ func (q *Queries) DeleteProperty(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const getAllProperties = `-- name: GetAllProperties :many
+const getProperties = `-- name: GetProperties :many
 SELECT id, name, description, value_type, default_value FROM properties
+WHERE $1::bigint[] IS NULL
+   OR id = ANY($1::bigint[])
 `
 
-func (q *Queries) GetAllProperties(ctx context.Context) ([]Property, error) {
-	rows, err := q.db.Query(ctx, getAllProperties)
+// Every property, or just the ones named. The filter is optional so one query serves both the full
+// catalogue and the audit path, which resolves a handful of names at once for an entry spanning
+// several properties - a reorder, or the initial list of a new item type.
+func (q *Queries) GetProperties(ctx context.Context, propertyIds []int64) ([]Property, error) {
+	rows, err := q.db.Query(ctx, getProperties, propertyIds)
 	if err != nil {
 		return nil, err
 	}
