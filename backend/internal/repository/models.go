@@ -25,7 +25,6 @@ const (
 	AuditActionItemRequestCreate       AuditAction = "item_request_create"
 	AuditActionItemRequestApprove      AuditAction = "item_request_approve"
 	AuditActionItemRequestDelete       AuditAction = "item_request_delete"
-	AuditActionItemRequestSupersede    AuditAction = "item_request_supersede"
 	AuditActionItemTypeCreate          AuditAction = "item_type_create"
 	AuditActionItemTypeUpdate          AuditAction = "item_type_update"
 	AuditActionItemTypeDelete          AuditAction = "item_type_delete"

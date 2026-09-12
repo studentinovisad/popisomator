@@ -133,45 +133,16 @@ func (q *Queries) DeleteItemRequest(ctx context.Context, arg DeleteItemRequestPa
 	return result.RowsAffected(), nil
 }
 
-const deleteNonApprovedItemRequests = `-- name: DeleteNonApprovedItemRequests :many
-WITH deleted AS (
-  DELETE FROM item_requests
-  WHERE item_id = $1 AND status = 'requested'
-  RETURNING user_id, reason
-)
-SELECT deleted.user_id, deleted.reason, users.full_name AS user_name
-FROM deleted
-JOIN users ON users.id = deleted.user_id
+const deleteNonApprovedItemRequests = `-- name: DeleteNonApprovedItemRequests :execrows
+DELETE FROM item_requests WHERE item_id = $1 AND status = 'requested'
 `
 
-type DeleteNonApprovedItemRequestsRow struct {
-	UserID   int64  `json:"user_id"`
-	Reason   string `json:"reason"`
-	UserName string `json:"user_name"`
-}
-
-// Approving a request cancels every other pending one for the item. The rows come back rather than
-// just their count, so the audit log can name each person whose request was superseded. The join to
-// users is safe: user_id is half the primary key and carries a foreign key, so it is never null and
-// never dangling.
-func (q *Queries) DeleteNonApprovedItemRequests(ctx context.Context, itemID int64) ([]DeleteNonApprovedItemRequestsRow, error) {
-	rows, err := q.db.Query(ctx, deleteNonApprovedItemRequests, itemID)
+func (q *Queries) DeleteNonApprovedItemRequests(ctx context.Context, itemID int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNonApprovedItemRequests, itemID)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	defer rows.Close()
-	var items []DeleteNonApprovedItemRequestsRow
-	for rows.Next() {
-		var i DeleteNonApprovedItemRequestsRow
-		if err := rows.Scan(&i.UserID, &i.Reason, &i.UserName); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return result.RowsAffected(), nil
 }
 
 const getItemRequest = `-- name: GetItemRequest :one
@@ -408,49 +379,6 @@ func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsPara
 			&i.Reason,
 			&i.UserName,
 			&i.ItemName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listItemRequestsForItem = `-- name: ListItemRequestsForItem :many
-SELECT item_requests.user_id, item_requests.reason, item_requests.status,
-       users.full_name AS user_name
-FROM item_requests
-JOIN users ON users.id = item_requests.user_id
-WHERE item_requests.item_id = $1
-`
-
-type ListItemRequestsForItemRow struct {
-	UserID   int64         `json:"user_id"`
-	Reason   string        `json:"reason"`
-	Status   RequestStatus `json:"status"`
-	UserName string        `json:"user_name"`
-}
-
-// Every request standing against one item, with the requester's name. Used when an item is deleted:
-// the rows are about to cascade away, and each person who loses their claim gets their own audit
-// entry, so the name has to come back with them.
-func (q *Queries) ListItemRequestsForItem(ctx context.Context, itemID int64) ([]ListItemRequestsForItemRow, error) {
-	rows, err := q.db.Query(ctx, listItemRequestsForItem, itemID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListItemRequestsForItemRow
-	for rows.Next() {
-		var i ListItemRequestsForItemRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.Reason,
-			&i.Status,
-			&i.UserName,
 		); err != nil {
 			return nil, err
 		}

@@ -16,8 +16,8 @@ VALUES (
 );
 
 -- One action against several targets in a single statement, the way CreateNotifications inserts one
--- row per recipient. Used by CreateItem, which makes up to 100 items in a call, and by
--- ApproveItemRequest, which supersedes every other pending request for the item at once.
+-- row per recipient. Used by CreateItem, which makes up to 100 items in a call and gives each its
+-- own entry so that its timeline starts with its creation.
 -- name: WriteAuditEntries :exec
 INSERT INTO audit_log (actor_id, actor_name, action, target_type, target_id, target_label, changes, context)
 SELECT

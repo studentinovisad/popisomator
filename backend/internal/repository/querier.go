@@ -34,16 +34,11 @@ type Querier interface {
 	DeleteItem(ctx context.Context, id int64) (int64, error)
 	DeleteItemRequest(ctx context.Context, arg DeleteItemRequestParams) (int64, error)
 	DeleteItemType(ctx context.Context, id int64) (int64, error)
-	// Approving a request cancels every other pending one for the item. The rows come back rather than
-	// just their count, so the audit log can name each person whose request was superseded. The join to
-	// users is safe: user_id is half the primary key and carries a foreign key, so it is never null and
-	// never dangling.
-	DeleteNonApprovedItemRequests(ctx context.Context, itemID int64) ([]DeleteNonApprovedItemRequestsRow, error)
+	DeleteNonApprovedItemRequests(ctx context.Context, itemID int64) (int64, error)
 	DeleteNotification(ctx context.Context, arg DeleteNotificationParams) (int64, error)
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
 	DeleteUser(ctx context.Context, id int64) (int64, error)
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
-	GetAllProperties(ctx context.Context) ([]Property, error)
 	GetItemByID(ctx context.Context, id int64) (Item, error)
 	GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error)
 	GetItemRequest(ctx context.Context, arg GetItemRequestParams) (ItemRequest, error)
@@ -52,9 +47,10 @@ type Querier interface {
 	GetItemTypesByItemIDs(ctx context.Context, itemIds []int64) ([]GetItemTypesByItemIDsRow, error)
 	GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error)
 	GetItemsRequestStatuses(ctx context.Context, arg GetItemsRequestStatusesParams) ([]GetItemsRequestStatusesRow, error)
-	// Names for a set of properties at once, so an audit entry that spans several of them - a reorder,
-	// or the initial property list of a new item type - resolves them in one round trip.
-	GetPropertiesByIDs(ctx context.Context, propertyIds []int64) ([]GetPropertiesByIDsRow, error)
+	// Every property, or just the ones named. The filter is optional so one query serves both the full
+	// catalogue and the audit path, which resolves a handful of names at once for an entry spanning
+	// several properties - a reorder, or the initial list of a new item type.
+	GetProperties(ctx context.Context, propertyIds []int64) ([]Property, error)
 	GetPropertyByID(ctx context.Context, id int64) (Property, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
@@ -77,10 +73,6 @@ type Querier interface {
 	ListItemPreparationRequests(ctx context.Context, userID int64) ([]ListItemPreparationRequestsRow, error)
 	ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error)
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
-	// Every request standing against one item, with the requester's name. Used when an item is deleted:
-	// the rows are about to cascade away, and each person who loses their claim gets their own audit
-	// entry, so the name has to come back with them.
-	ListItemRequestsForItem(ctx context.Context, itemID int64) ([]ListItemRequestsForItemRow, error)
 	ListItemTypeFilterableProperties(ctx context.Context, typeID int64) ([]ListItemTypeFilterablePropertiesRow, error)
 	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
 	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]json.RawMessage, error)
@@ -129,8 +121,8 @@ type Querier interface {
 	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error)
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	// One action against several targets in a single statement, the way CreateNotifications inserts one
-	// row per recipient. Used by CreateItem, which makes up to 100 items in a call, and by
-	// ApproveItemRequest, which supersedes every other pending request for the item at once.
+	// row per recipient. Used by CreateItem, which makes up to 100 items in a call and gives each its
+	// own entry so that its timeline starts with its creation.
 	WriteAuditEntries(ctx context.Context, arg WriteAuditEntriesParams) error
 	// The actor's display name is snapshotted here rather than looked up first, so recording a change
 	// costs no extra round trip. An empty actor_name means there was no user behind the change at all -
