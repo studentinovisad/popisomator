@@ -308,3 +308,98 @@ export type ListNotificationsParams = {
 	limit?: number;
 	offset?: number;
 };
+
+export type AuditAction =
+	| 'item_create'
+	| 'item_update'
+	| 'item_consume'
+	| 'item_delete'
+	| 'item_property_add'
+	| 'item_property_update'
+	| 'item_property_remove'
+	| 'item_request_create'
+	| 'item_request_approve'
+	| 'item_request_delete'
+	| 'item_type_create'
+	| 'item_type_update'
+	| 'item_type_delete'
+	| 'item_type_property_add'
+	| 'item_type_property_update'
+	| 'item_type_property_remove'
+	| 'item_type_property_reorder'
+	| 'property_create'
+	| 'property_update'
+	| 'property_delete';
+
+export type AuditTargetType = 'item' | 'item_type' | 'property';
+
+// One field that moved. old and new stay raw JSON so a recorded property value can be rendered with
+// the same helper a live one goes through. Nothing here is worded for a reader: key and value_type
+// are identifiers the frontend turns into Serbian.
+export type AuditChange = {
+	key: string;
+	// The recorded name of a user-defined property, when one entry spans several of them. Absent for
+	// the fixed columns, which key already identifies.
+	label?: string;
+	value_type?: string;
+	old?: unknown;
+	new?: unknown;
+};
+
+export type AuditProperty = {
+	id: number;
+	name: string;
+	value_type: string;
+};
+
+export type AuditContext = {
+	type_id?: number;
+	type_name?: string;
+	batch_size?: number;
+	property_id?: number;
+	property_name?: string;
+	subject_user_id?: number;
+	subject_user_name?: string;
+	reason?: string;
+	request_status?: string;
+	properties?: AuditProperty[];
+};
+
+export type AuditEntry = {
+	id: number;
+	created_at: string;
+	// Null once that user is deleted, while actor_name still holds who it was. Both empty means there
+	// was no user behind the change at all - the seeder, or a background job.
+	actor_id: number | null;
+	actor_name: string;
+	action: AuditAction;
+	target_type: AuditTargetType;
+	// Still set after the target is gone, which is why an entry outlives what it describes.
+	target_id: number;
+	target_label: string;
+	changes: AuditChange[];
+	context: AuditContext;
+};
+
+export type AuditLogPage = {
+	items: AuditEntry[];
+	limit: number;
+	offset: number;
+	total: number;
+};
+
+export type AuditActorOption = {
+	id: number;
+	name: string;
+};
+
+export type ListAuditLogParams = {
+	limit?: number;
+	offset?: number;
+	action?: AuditAction;
+	targetType?: AuditTargetType;
+	targetID?: number;
+	actorID?: number;
+	createdFrom?: string;
+	createdTo?: string;
+};

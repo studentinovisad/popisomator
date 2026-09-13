@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import History from '@lucide/svelte/icons/history';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { onMount } from 'svelte';
@@ -18,6 +19,7 @@
 	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
 	import ItemPropertiesForm from '$lib/components/catalog/ItemPropertiesForm.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
+	import { auditHistoryLink } from '$lib/domain/audit-log';
 	import { displayJson } from '$lib/domain/items';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import { toast } from 'svelte-sonner';
@@ -35,6 +37,9 @@
 	let canManage = $derived(
 		authPage.state.user?.role === 'admin' || authPage.state.user?.role === 'manager'
 	);
+	// Reading the log is admin-only on the backend, so the link is too - a manager following it would
+	// only reach a 403.
+	let canReadAuditLog = $derived(authPage.state.user?.role === 'admin');
 	let propertyNames = $derived(new Map(properties.map((property) => [property.id, property.name])));
 
 	onMount(() => {
@@ -169,11 +174,21 @@
 							onconsumptionchange={(_, status) => void changeConsumption(status)}
 							onrequest={requestItemUsage}
 						/>
+						{#if canReadAuditLog}
+							<a
+								class="inline-grid size-8 place-items-center rounded text-muted transition-colors hover:bg-soft hover:text-ink sm:ml-auto"
+								href={resolve(auditHistoryLink('item', item.id))}
+								aria-label="Prikaži istoriju izmena stavke"
+								title="Istorija izmena"
+							>
+								<History class="size-4" aria-hidden="true" />
+							</a>
+						{/if}
 						{#if canManage}
 							<Button.Root
-								class={`inline-grid size-8 place-items-center rounded transition-colors sm:ml-auto ${
+								class={`inline-grid size-8 place-items-center rounded transition-colors ${
 									editing ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-soft hover:text-ink'
-								}`}
+								} ${canReadAuditLog ? '' : 'sm:ml-auto'}`}
 								type="button"
 								onclick={() => (editing = !editing)}
 								aria-label={editing ? 'Zatvori izmenu stavke' : 'Izmeni stavku'}
