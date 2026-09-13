@@ -64,7 +64,7 @@
 				<tr class="h-12">
 					<th class="px-4 py-3 font-medium">Ime</th>
 					<th class="px-4 py-3 font-medium">Email</th>
-					<th class="px-4 py-3 text-right font-medium">Radnje</th>
+					<th class="sr-only">Radnje</th>
 				</tr>
 			</thead>
 			<tbody class="text-ink">
