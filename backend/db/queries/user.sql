@@ -26,6 +26,12 @@ INSERT INTO users (email, password_hash, full_name, role, status) VALUES ($1, $2
 -- name: UpdateUserRole :one
 UPDATE users SET role = $2 WHERE id = $1 RETURNING *;
 
+-- name: UpdateUserEmail :one
+UPDATE users SET email = $2 WHERE id = $1 RETURNING *;
+
+-- name: UpdateUserFullName :one
+UPDATE users SET full_name = $2 WHERE id = $1 RETURNING *;
+
 -- name: UpdateUserStatus :one
 UPDATE users SET status = $2 WHERE id = $1 RETURNING *;
 

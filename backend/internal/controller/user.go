@@ -2,14 +2,11 @@ package controller
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/pagination"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
@@ -34,6 +31,34 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 	user, err := service.GetUserDetails(r.Context(), id)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "error fetching details")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, user)
+}
+
+// GetUser godoc
+// @Summary Get a user by ID (admin only)
+// @Tags Users
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "User ID"
+// @Success 200 {object} dto.User
+// @Failure 400 {object} response.Error "invalid user ID"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "user not found"
+// @Router /users/{id} [get]
+func GetUser(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id < 1 {
+		response.WriteError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	user, err := service.GetUserDetails(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err, "couldn't get user")
 		return
 	}
 
@@ -97,7 +122,7 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser godoc
-// @Summary Update a user's role/status (admin only)
+// @Summary Update a user's details, role, or status (admin only)
 // @Tags Users
 // @Accept json
 // @Produce json
@@ -127,18 +152,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := service.UpdateUser(r.Context(), id, req)
 	if err != nil {
-		var validationErrs validator.ValidationErrors
-		if errors.As(err, &validationErrs) {
-			response.WriteError(w, http.StatusBadRequest, "validation failed")
-			return
-		}
-		if errors.Is(err, pgx.ErrNoRows) {
-			response.WriteError(w, http.StatusNotFound, "user not found")
-			return
-		}
-
-		response.WriteError(w, http.StatusInternalServerError, "error updating user")
-		log.Printf("error updating user: %v", err)
+		writeServiceError(w, err, "couldn't update user")
 		return
 	}
 

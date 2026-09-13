@@ -11,8 +11,10 @@ type User struct {
 }
 
 type UpdateUserRequest struct {
-	Role   *string `json:"role" validate:"omitempty,oneof=admin manager user"`
-	Status *string `json:"status" validate:"omitempty,oneof=active requested"`
+	Email    *string `json:"email" validate:"omitempty,email"`
+	FullName *string `json:"full_name" validate:"omitempty,max=200"`
+	Role     *string `json:"role" validate:"omitempty,oneof=admin manager user"`
+	Status   *string `json:"status" validate:"omitempty,oneof=active requested"`
 }
 
 type UsersPage struct {
