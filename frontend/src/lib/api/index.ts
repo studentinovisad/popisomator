@@ -1,3 +1,4 @@
+import { auditLogApi } from '$lib/api/audit-log';
 import { catalogApi } from '$lib/api/catalog';
 import { itemRequestsApi } from '$lib/api/item-requests';
 import { itemsApi } from '$lib/api/items';
@@ -12,5 +13,6 @@ export const api = {
 	...itemsApi,
 	...catalogApi,
 	...itemRequestsApi,
-	...notificationsApi
+	...notificationsApi,
+	...auditLogApi
 };

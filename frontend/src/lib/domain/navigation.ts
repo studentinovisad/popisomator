@@ -2,7 +2,7 @@ import type { UserRole } from '$lib/api';
 import { notifications } from '$lib/state/notifications.svelte';
 
 export type NavigationIconName =
-	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications';
+	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications' | 'audit';
 
 export type AppPath =
 	| '/'
@@ -12,6 +12,7 @@ export type AppPath =
 	| '/account'
 	| '/admin/users'
 	| '/admin/users/pending'
+	| '/admin/audit-log'
 	| '/catalog/item-types'
 	| '/catalog/item-types/new'
 	| '/catalog/properties'
@@ -80,6 +81,10 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Zahtevi za registraciju',
 		description: 'Odobrite ili odbijte zahteve za pristup sistemu.'
 	},
+	'/admin/audit-log': {
+		title: 'Dnevnik izmena',
+		description: 'Pregledajte ko je, kada i šta promenio u sistemu.'
+	},
 	'/item-requests': {
 		title: 'Zahtevi',
 		description: 'Odobrite ili odbijte zahteve korisnika za korišćenje stavki.'
@@ -128,6 +133,7 @@ export const primaryNavigation: NavigationItem[] = [
 	},
 	{ path: '/item-requests/me', label: 'Moji zahtevi', icon: 'requests', requiredRoles: ['user'] },
 	{ path: '/admin/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] },
+	{ path: '/admin/audit-log', label: 'Dnevnik', icon: 'audit', requiredRoles: ['admin'] },
 	{
 		path: '/catalog/item-types',
 		label: 'Katalog',
@@ -157,6 +163,13 @@ export const secondaryNavigation: NavigationItem[] = [
 ];
 
 export function getPageMetadata(pathname: string): PageMetadata {
+	if (pathname.startsWith('/admin/audit-log/')) {
+		return {
+			title: 'Izmena',
+			description: 'Pregledajte šta je tačno promenjeno, ko je to uradio i kada.'
+		};
+	}
+
 	if (pathname.startsWith('/items/') && pathname !== '/items/new') {
 		return {
 			title: 'Stavka',

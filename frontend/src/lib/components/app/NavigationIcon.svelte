@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Bell from '@lucide/svelte/icons/bell';
+	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Boxes from '@lucide/svelte/icons/boxes';
 	import ClipboardCheck from '@lucide/svelte/icons/clipboard-check';
@@ -20,6 +21,8 @@
 	<ClipboardCheck class="size-4 shrink-0" aria-hidden="true" />
 {:else if name === 'notifications'}
 	<Bell class="size-4 shrink-0" aria-hidden="true" />
+{:else if name === 'audit'}
+	<ScrollText class="size-4 shrink-0" aria-hidden="true" />
 {:else}
 	<Settings class="size-4 shrink-0" aria-hidden="true" />
 {/if}
