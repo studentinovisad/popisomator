@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
@@ -259,6 +262,18 @@ func ListAuditLog(ctx context.Context, req dto.ListAuditLogRequest) (dto.AuditLo
 		Offset: req.Offset,
 		Total:  total,
 	}, nil
+}
+
+func GetAuditLogEntry(ctx context.Context, id int64) (dto.AuditEntry, error) {
+	entry, err := db.Queries.GetAuditLogEntry(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.AuditEntry{}, ErrNotFound
+		}
+		return dto.AuditEntry{}, err
+	}
+
+	return dto.ToAuditEntryDTO(entry)
 }
 
 func ListAuditLogActors(ctx context.Context) ([]dto.AuditActorOption, error) {

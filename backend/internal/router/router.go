@@ -239,6 +239,11 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("admin"),
 		middleware.Handle(controller.ListAuditLogActors),
 	))
+	mux.Handle("GET /audit-log/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.GetAuditLogEntry),
+	))
 
 	// Notifications
 	mux.Handle("GET /notifications", middleware.Chain(

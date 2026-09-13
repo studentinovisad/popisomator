@@ -173,6 +173,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/audit-log/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AuditLog"
+                ],
+                "summary": "Get one recorded change (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Audit log entry ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditEntry"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid entry id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "consumes": [

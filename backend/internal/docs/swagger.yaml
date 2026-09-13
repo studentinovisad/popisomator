@@ -923,6 +923,42 @@ paths:
       summary: List recorded changes (admin only)
       tags:
       - AuditLog
+  /audit-log/{id}:
+    get:
+      parameters:
+      - description: Audit log entry ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.AuditEntry'
+        "400":
+          description: invalid entry id
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get one recorded change (admin only)
+      tags:
+      - AuditLog
   /audit-log/actors:
     get:
       produces:
