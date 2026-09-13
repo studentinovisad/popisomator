@@ -32,7 +32,7 @@
 			{#if hasPendingUsers}
 				<a
 					class="pending-requests-link inline-flex h-9 items-center rounded-md border border-brand bg-brand-soft px-3 text-sm font-medium text-brand transition-colors hover:border-brand hover:bg-brand-soft"
-					href={resolve('/admin/users/pending')}
+					href={resolve('/users/pending')}
 				>
 					Zahtevi
 				</a>

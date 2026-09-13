@@ -42,6 +42,8 @@ export type CreateUserRequest = RegistrationRequest & {
 };
 
 export type UpdateUserRequest = {
+	email?: string;
+	full_name?: string;
 	role?: UserRole;
 	status?: UserStatus;
 };

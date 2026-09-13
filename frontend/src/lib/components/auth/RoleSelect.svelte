@@ -7,12 +7,14 @@
 		id,
 		value = $bindable<UserRole>(),
 		ariaLabel,
+		compact = false,
 		disabled = false,
 		onvaluechange
 	}: {
 		id?: string;
 		value: UserRole;
 		ariaLabel: string;
+		compact?: boolean;
 		disabled?: boolean;
 		onvaluechange?: (value: UserRole) => void;
 	} = $props();
@@ -27,7 +29,9 @@
 >
 	<Select.Trigger
 		{id}
-		class="flex w-full items-center justify-between rounded-md border border-line bg-surface px-3 py-2 text-left text-ink hover:border-muted disabled:cursor-not-allowed disabled:opacity-50"
+		class={`flex w-full items-center justify-between rounded-md border border-line bg-surface px-3 text-left text-sm text-ink hover:border-muted disabled:cursor-not-allowed disabled:opacity-50 ${
+			compact ? 'h-8' : 'h-10'
+		}`}
 		aria-label={ariaLabel}
 		{disabled}
 	>
@@ -43,7 +47,7 @@
 					<Select.Item
 						value={role.value}
 						label={role.label}
-						class="cursor-pointer rounded px-3 py-2 outline-none data-highlighted:bg-brand-soft"
+						class="cursor-pointer rounded px-3 py-2 text-sm outline-none data-highlighted:bg-brand-soft"
 					>
 						{role.label}
 					</Select.Item>

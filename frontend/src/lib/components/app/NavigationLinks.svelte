@@ -24,7 +24,7 @@
 		return (
 			pathname === path ||
 			(path === '/' && pathname.startsWith('/items/')) ||
-			(path === '/admin/users' && pathname.startsWith('/admin/users/')) ||
+			(path === '/users' && pathname.startsWith('/users/')) ||
 			(path === '/catalog/item-types' && pathname.startsWith('/catalog/'))
 		);
 	}

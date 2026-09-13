@@ -3,10 +3,18 @@
 	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
 	import RoleSelect from '$lib/components/auth/RoleSelect.svelte';
 	import { emailError, passwordError, requiredTextError } from '$lib/domain/form-validation';
-	import { Button, Label } from 'bits-ui';
+	import { Button, Label, Portal } from 'bits-ui';
+	import Plus from '@lucide/svelte/icons/plus';
+	import X from '@lucide/svelte/icons/x';
 	import { toast } from 'svelte-sonner';
 
-	let { oncreated }: { oncreated: () => void } = $props();
+	let {
+		oncreated,
+		oncancel
+	}: {
+		oncreated: () => void;
+		oncancel?: () => void;
+	} = $props();
 
 	let fieldErrors = $state<{ fullName?: string; email?: string; password?: string }>({});
 	let creating = $state(false);
@@ -50,7 +58,32 @@
 	}
 </script>
 
-<form class="grid gap-4 sm:grid-cols-2" novalidate onsubmit={createUser}>
+<Portal to="#page-header-actions">
+	<Button.Root
+		class="inline-grid size-10 place-items-center rounded-md bg-brand text-on-brand hover:bg-brand-strong disabled:opacity-60"
+		disabled={creating}
+		form="create-user-form"
+		type="submit"
+		aria-label="Dodaj korisnika"
+		title="Dodaj korisnika"
+	>
+		<Plus class="size-4" aria-hidden="true" />
+	</Button.Root>
+	{#if oncancel}
+		<Button.Root
+			class="inline-grid size-10 place-items-center rounded-md border border-line bg-surface text-ink hover:border-brand/40 hover:bg-brand-soft hover:text-brand disabled:opacity-60"
+			disabled={creating}
+			type="button"
+			onclick={oncancel}
+			aria-label="Otkaži dodavanje"
+			title="Otkaži dodavanje"
+		>
+			<X class="size-4" aria-hidden="true" />
+		</Button.Root>
+	{/if}
+</Portal>
+
+<form id="create-user-form" class="grid gap-4 sm:grid-cols-2" novalidate onsubmit={createUser}>
 	<div class="block">
 		<Label.Root class="text-sm font-medium text-ink" for="new-user-full-name">
 			Ime i prezime
@@ -110,14 +143,5 @@
 	<div class="block">
 		<Label.Root class="text-sm font-medium text-ink" for="new-user-role">Uloga</Label.Root>
 		<div class="mt-1"><RoleSelect id="new-user-role" bind:value={role} ariaLabel="Uloga" /></div>
-	</div>
-	<div class="sm:col-span-2">
-		<Button.Root
-			class="rounded-md bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-strong disabled:opacity-60"
-			disabled={creating}
-			type="submit"
-		>
-			{creating ? 'Čuvanje…' : 'Dodaj korisnika'}
-		</Button.Root>
 	</div>
 </form>
