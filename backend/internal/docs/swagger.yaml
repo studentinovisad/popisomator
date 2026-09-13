@@ -674,6 +674,11 @@ definitions:
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.UpdateUserRequest:
     properties:
+      email:
+        type: string
+      full_name:
+        maxLength: 200
+        type: string
       role:
         enum:
         - admin
@@ -2597,6 +2602,41 @@ paths:
       summary: Delete a user (admin only)
       tags:
       - Users
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.User'
+        "400":
+          description: invalid user ID
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Get a user by ID (admin only)
+      tags:
+      - Users
     patch:
       consumes:
       - application/json
@@ -2637,7 +2677,7 @@ paths:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
       security:
       - CookieAuth: []
-      summary: Update a user's role/status (admin only)
+      summary: Update a user's details, role, or status (admin only)
       tags:
       - Users
   /users/me:
