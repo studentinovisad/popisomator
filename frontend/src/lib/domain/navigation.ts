@@ -95,7 +95,7 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		description: 'Odobrite ili odbijte zahteve korisnika za korišćenje stavki.'
 	},
 	'/catalog/item-types': {
-		title: 'Tipovi stavki',
+		title: 'Katalog',
 		description: 'Upravljajte tipovima stavki i njihovim pripadajućim svojstvima.'
 	},
 	'/catalog/item-types/new': {
