@@ -49,6 +49,11 @@ WHERE (sqlc.narg('action')::audit_action IS NULL OR action = sqlc.narg('action')
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
+-- One entry on its own, for the page that shows a single change in full. The row already carries its
+-- diff and context, so nothing else has to be resolved to render it.
+-- name: GetAuditLogEntry :one
+SELECT * FROM audit_log WHERE id = $1;
+
 -- name: CountAuditLog :one
 SELECT count(*) FROM audit_log
 WHERE (sqlc.narg('action')::audit_action IS NULL OR action = sqlc.narg('action'))

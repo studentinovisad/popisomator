@@ -39,6 +39,9 @@ type Querier interface {
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
 	DeleteUser(ctx context.Context, id int64) (int64, error)
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
+	// One entry on its own, for the page that shows a single change in full. The row already carries its
+	// diff and context, so nothing else has to be resolved to render it.
+	GetAuditLogEntry(ctx context.Context, id int64) (AuditLog, error)
 	GetItemByID(ctx context.Context, id int64) (Item, error)
 	GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error)
 	GetItemRequest(ctx context.Context, arg GetItemRequestParams) (ItemRequest, error)

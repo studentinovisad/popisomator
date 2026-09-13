@@ -113,6 +113,36 @@ func ListAuditLog(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, auditLog)
 }
 
+// GetAuditLogEntry godoc
+// @Summary Get one recorded change (admin only)
+// @Tags AuditLog
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Audit log entry ID"
+// @Success 200 {object} dto.AuditEntry
+// @Failure 400 {object} response.Error "invalid entry id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /audit-log/{id} [get]
+func GetAuditLogEntry(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid entry id")
+		return
+	}
+
+	// Code pattern required for swaggo to not fail
+	var entry dto.AuditEntry
+	entry, err = service.GetAuditLogEntry(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err, "couldn't get the audit log entry")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, entry)
+}
+
 // ListAuditLogActors godoc
 // @Summary List everyone who has made a recorded change (admin only)
 // @Tags AuditLog

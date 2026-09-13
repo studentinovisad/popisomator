@@ -45,6 +45,30 @@ func (q *Queries) CountAuditLog(ctx context.Context, arg CountAuditLogParams) (i
 	return count, err
 }
 
+const getAuditLogEntry = `-- name: GetAuditLogEntry :one
+SELECT id, created_at, actor_id, actor_name, action, target_type, target_id, target_label, changes, context FROM audit_log WHERE id = $1
+`
+
+// One entry on its own, for the page that shows a single change in full. The row already carries its
+// diff and context, so nothing else has to be resolved to render it.
+func (q *Queries) GetAuditLogEntry(ctx context.Context, id int64) (AuditLog, error) {
+	row := q.db.QueryRow(ctx, getAuditLogEntry, id)
+	var i AuditLog
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.ActorID,
+		&i.ActorName,
+		&i.Action,
+		&i.TargetType,
+		&i.TargetID,
+		&i.TargetLabel,
+		&i.Changes,
+		&i.Context,
+	)
+	return i, err
+}
+
 const listAuditLog = `-- name: ListAuditLog :many
 SELECT id, created_at, actor_id, actor_name, action, target_type, target_id, target_label, changes, context FROM audit_log
 WHERE ($1::audit_action IS NULL OR action = $1)
