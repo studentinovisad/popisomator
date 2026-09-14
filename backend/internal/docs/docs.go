@@ -393,9 +393,25 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "integer",
-                        "description": "Filter by requester ID",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by requester IDs",
                         "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by request creation time, RFC3339",
+                        "name": "created_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by request creation time, RFC3339",
+                        "name": "created_to",
                         "in": "query"
                     }
                 ],
@@ -750,7 +766,7 @@ const docTemplate = `{
                 "tags": [
                     "ItemRequests"
                 ],
-                "summary": "Get pending item requests to prepare for one user (manager/admin only)",
+                "summary": "Get item requests to prepare for one user (manager/admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -758,6 +774,38 @@ const docTemplate = `{
                         "name": "user_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Restrict report to item IDs",
+                        "name": "item_id",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "requested",
+                            "approved"
+                        ],
+                        "type": "string",
+                        "description": "Filter by item request status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by request creation time, RFC3339",
+                        "name": "created_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by request creation time, RFC3339",
+                        "name": "created_to",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3759,6 +3807,9 @@ const docTemplate = `{
                 },
                 "requested_at": {
                     "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus"
                 },
                 "type_name": {
                     "type": "string"
