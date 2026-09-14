@@ -24,6 +24,7 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 		response.WriteError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, service.ErrInvalidReference),
 		errors.Is(err, service.ErrNoUpdateFields),
+		errors.Is(err, service.ErrInvalidUserDetails),
 		errors.Is(err, service.ErrInvalidDerivedNameFormat),
 		errors.Is(err, service.ErrDerivedNamePropertyInUse),
 		errors.Is(err, service.ErrInvalidItemTypePropertyOrder),

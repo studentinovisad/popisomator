@@ -10,8 +10,9 @@ export type AppPath =
 	| '/item-requests'
 	| '/item-requests/me'
 	| '/account'
-	| '/admin/users'
-	| '/admin/users/pending'
+	| '/users'
+	| '/users/new'
+	| '/users/pending'
 	| '/admin/audit-log'
 	| '/catalog/item-types'
 	| '/catalog/item-types/new'
@@ -73,11 +74,15 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		title: 'Moj nalog',
 		description: 'Pregledajte podatke svog naloga.'
 	},
-	'/admin/users': {
+	'/users': {
 		title: 'Korisnici',
 		description: 'Upravljajte pristupom i ulogama korisnika sistema.'
 	},
-	'/admin/users/pending': {
+	'/users/new': {
+		title: 'Novi korisnik',
+		description: 'Napravite nalog i dodelite mu početnu ulogu.'
+	},
+	'/users/pending': {
 		title: 'Zahtevi za registraciju',
 		description: 'Odobrite ili odbijte zahteve za pristup sistemu.'
 	},
@@ -90,7 +95,7 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 		description: 'Odobrite ili odbijte zahteve korisnika za korišćenje stavki.'
 	},
 	'/catalog/item-types': {
-		title: 'Tipovi stavki',
+		title: 'Katalog',
 		description: 'Upravljajte tipovima stavki i njihovim pripadajućim svojstvima.'
 	},
 	'/catalog/item-types/new': {
@@ -132,7 +137,7 @@ export const primaryNavigation: NavigationItem[] = [
 		requiredRoles: ['manager', 'admin']
 	},
 	{ path: '/item-requests/me', label: 'Moji zahtevi', icon: 'requests', requiredRoles: ['user'] },
-	{ path: '/admin/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] },
+	{ path: '/users', label: 'Korisnici', icon: 'users', requiredRoles: ['admin'] },
 	{ path: '/admin/audit-log', label: 'Dnevnik', icon: 'audit', requiredRoles: ['admin'] },
 	{
 		path: '/catalog/item-types',
@@ -163,6 +168,10 @@ export const secondaryNavigation: NavigationItem[] = [
 ];
 
 export function getPageMetadata(pathname: string): PageMetadata {
+	if (pathname === '/users/new') {
+		return pageMetadata['/users/new'];
+	}
+
 	if (pathname.startsWith('/admin/audit-log/')) {
 		return {
 			title: 'Izmena',
@@ -174,6 +183,13 @@ export function getPageMetadata(pathname: string): PageMetadata {
 		return {
 			title: 'Stavka',
 			description: 'Pregledajte podatke, svojstva i stanje odabrane stavke.'
+		};
+	}
+
+	if (pathname.startsWith('/users/') && pathname !== '/users/pending') {
+		return {
+			title: 'Korisnik',
+			description: 'Pregledajte i izmenite podatke odabranog korisnika.'
 		};
 	}
 

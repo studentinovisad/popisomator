@@ -42,6 +42,8 @@ export type CreateUserRequest = RegistrationRequest & {
 };
 
 export type UpdateUserRequest = {
+	email?: string;
+	full_name?: string;
 	role?: UserRole;
 	status?: UserStatus;
 };
@@ -91,7 +93,7 @@ export type ItemsPage = {
 export type ItemPropertyTotal = {
 	property_id: number;
 	value_type: PropertyValueType;
-	value: {};
+	value: object;
 	// How many of the matched items carried the property; compare with ItemsPage.total.
 	value_count: number;
 };

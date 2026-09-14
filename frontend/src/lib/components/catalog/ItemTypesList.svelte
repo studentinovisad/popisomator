@@ -40,7 +40,7 @@
 				<th class="px-4 py-3 font-medium">Naziv</th>
 				<th class="px-4 py-3 font-medium">Opis</th>
 				<th class="px-4 py-3 font-medium">Svojstva</th>
-				<th class="px-4 py-3 text-right font-medium">Radnje</th>
+				<th class="sr-only">Radnje</th>
 			</tr>
 		</thead>
 		<tbody class="text-ink">

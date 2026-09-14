@@ -161,6 +161,52 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 	return items, nil
 }
 
+const updateUserEmail = `-- name: UpdateUserEmail :one
+UPDATE users SET email = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
+`
+
+type UpdateUserEmailParams struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+}
+
+func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserEmail, arg.ID, arg.Email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FullName,
+		&i.Role,
+		&i.Status,
+	)
+	return i, err
+}
+
+const updateUserFullName = `-- name: UpdateUserFullName :one
+UPDATE users SET full_name = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
+`
+
+type UpdateUserFullNameParams struct {
+	ID       int64  `json:"id"`
+	FullName string `json:"full_name"`
+}
+
+func (q *Queries) UpdateUserFullName(ctx context.Context, arg UpdateUserFullNameParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserFullName, arg.ID, arg.FullName)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FullName,
+		&i.Role,
+		&i.Status,
+	)
+	return i, err
+}
+
 const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, password_hash, full_name, role, status
 `

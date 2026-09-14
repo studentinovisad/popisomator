@@ -17,7 +17,7 @@
 	onMount(() => void authPage.load());
 
 	function returnToUsers() {
-		void goto(resolve('/admin/users'));
+		void goto(resolve('/users'));
 	}
 </script>
 
@@ -34,7 +34,7 @@
 		<Portal to="#page-header-actions">
 			<a
 				class="inline-flex size-10 items-center justify-center rounded-md border border-line bg-surface text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
-				href={resolve('/admin/users')}
+				href={resolve('/users')}
 				aria-label="Nazad na korisnike"
 				title="Nazad na korisnike"
 			>

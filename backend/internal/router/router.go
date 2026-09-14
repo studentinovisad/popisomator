@@ -43,6 +43,11 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.UserDetailsPersonal),
 	))
+	mux.Handle("GET /users/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("admin"),
+		middleware.Handle(controller.GetUser),
+	))
 	mux.Handle("PATCH /users/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("admin"),

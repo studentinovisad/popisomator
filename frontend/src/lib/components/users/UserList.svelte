@@ -1,13 +1,13 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { api, ApiError, type User, type UserRole } from '$lib/api';
+	import { api, type User } from '$lib/api';
 	import UsersMobileList from '$lib/components/users/UsersMobileList.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import UsersTable from '$lib/components/users/UsersTable.svelte';
 	import UsersToolbar from '$lib/components/users/UsersToolbar.svelte';
-	import { createServerPagination } from '$lib/state/server-pagination.svelte';
-	import { toast } from 'svelte-sonner';
 	import { roleFilterOptions, type UserRoleFilter } from '$lib/domain/users';
+	import { createServerPagination } from '$lib/state/server-pagination.svelte';
 	import {
 		getTableFilter,
 		getTablePage,
@@ -15,19 +15,10 @@
 		updateTableQuery
 	} from '$lib/state/table-query';
 
-	let {
-		refreshKey,
-		currentUserID,
-		onloaderror
-	}: {
-		refreshKey: number;
-		currentUserID: number;
-		onloaderror?: (message: string) => void;
-	} = $props();
+	let { onloaderror }: { onloaderror?: (message: string) => void } = $props();
 
 	let pendingUsersTotal = $state(0);
 	let search = $state('');
-	let previousRefreshKey = $state<number | undefined>();
 	const usersPage = createServerPagination<User, { role: UserRoleFilter }>({
 		initialFilters: { role: 'all' },
 		loadPage: ({ limit, offset, search, role }) =>
@@ -53,13 +44,8 @@
 		usersPage.sync({ page: getTablePage(url), search: nextSearch, filters: { role } });
 	});
 
-	$effect(() => {
-		if (previousRefreshKey === refreshKey) return;
-
-		const shouldReloadUsers = previousRefreshKey !== undefined;
-		previousRefreshKey = refreshKey;
+	onMount(() => {
 		void loadPendingUsersTotal();
-		if (shouldReloadUsers) void usersPage.load(usersPage.offset);
 	});
 
 	$effect(() => {
@@ -72,18 +58,6 @@
 			pendingUsersTotal = page.total;
 		} catch {
 			pendingUsersTotal = 0;
-		}
-	}
-
-	async function updateRole(user: User, nextRole: UserRole) {
-		try {
-			const updatedUser = await api.updateUser(user.id, { role: nextRole });
-			usersPage.items = usersPage.items.map((listedUser) =>
-				listedUser.id === user.id ? updatedUser : listedUser
-			);
-			toast.success('Uloga korisnika je promenjena.');
-		} catch (reason) {
-			toast.error(reason instanceof ApiError ? reason.message : 'Uloga nije promenjena.');
 		}
 	}
 
@@ -112,8 +86,8 @@
 		onsearch={searchUsers}
 	/>
 	<div class="-mx-4 mt-4 border-y border-line bg-surface sm:-mx-6">
-		<UsersMobileList users={usersPage.items} {currentUserID} onrolechange={updateRole} />
-		<UsersTable users={usersPage.items} {currentUserID} onrolechange={updateRole} />
+		<UsersMobileList users={usersPage.items} />
+		<UsersTable users={usersPage.items} />
 	</div>
 	<PaginationFooter
 		total={usersPage.total}

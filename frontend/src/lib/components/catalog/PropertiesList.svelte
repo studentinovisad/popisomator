@@ -33,7 +33,7 @@
 				<th class="px-4 py-3 font-medium">Naziv</th>
 				<th class="px-4 py-3 font-medium">Tip</th>
 				<th class="px-4 py-3 font-medium">Podrazumevana vrednost</th>
-				<th class="px-4 py-3 text-right font-medium">Radnje</th>
+				<th class="sr-only">Radnje</th>
 			</tr>
 		</thead>
 		<tbody class="text-ink">

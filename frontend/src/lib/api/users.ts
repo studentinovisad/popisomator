@@ -24,6 +24,7 @@ export const usersApi = {
 	createUser: (payload: CreateUserRequest) => request<User>('/users', jsonRequest('POST', payload)),
 	register: (payload: RegistrationRequest) =>
 		request<User>('/auth/register', jsonRequest('POST', payload)),
+	getUser: (id: number) => request<User>(`/users/${id}`),
 	updateUser: (id: number, payload: UpdateUserRequest) =>
 		request<User>(`/users/${id}`, jsonRequest('PATCH', payload)),
 	deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' })

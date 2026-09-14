@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
@@ -64,18 +65,53 @@ func ListUsers(ctx context.Context, request dto.ListUsersRequest) (dto.UsersPage
 }
 
 func UpdateUser(ctx context.Context, id int64, req dto.UpdateUserRequest) (dto.User, error) {
+	if req.Email != nil {
+		email := strings.TrimSpace(*req.Email)
+		if email == "" {
+			return dto.User{}, ErrInvalidUserDetails
+		}
+		req.Email = &email
+	}
+	if req.FullName != nil {
+		fullName := strings.TrimSpace(*req.FullName)
+		if fullName == "" {
+			return dto.User{}, ErrInvalidUserDetails
+		}
+		req.FullName = &fullName
+	}
+
 	if err := dto.Validate(req); err != nil {
 		return dto.User{}, err
 	}
 
 	var user repository.User
-	if req.Role != nil || req.Status != nil {
+	if req.Email != nil || req.FullName != nil || req.Role != nil || req.Status != nil {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return dto.User{}, err
 		}
 		defer tx.Rollback(ctx)
 		queriesTx := db.Queries.WithTx(tx)
+
+		if req.Email != nil {
+			var err error
+			if user, err = queriesTx.UpdateUserEmail(ctx, repository.UpdateUserEmailParams{
+				ID:    id,
+				Email: *req.Email,
+			}); err != nil {
+				return dto.User{}, err
+			}
+		}
+
+		if req.FullName != nil {
+			var err error
+			if user, err = queriesTx.UpdateUserFullName(ctx, repository.UpdateUserFullNameParams{
+				ID:       id,
+				FullName: *req.FullName,
+			}); err != nil {
+				return dto.User{}, err
+			}
+		}
 
 		if req.Role != nil {
 			var err error

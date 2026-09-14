@@ -1,36 +1,31 @@
 <script lang="ts">
-	import type { User, UserRole } from '$lib/api';
-	import RoleSelect from '$lib/components/auth/RoleSelect.svelte';
+	import Eye from '@lucide/svelte/icons/eye';
+	import { resolve } from '$app/paths';
+	import type { User } from '$lib/api';
+	import { userRoleLabel } from '$lib/domain/users';
 
-	let {
-		users,
-		currentUserID,
-		onrolechange
-	}: {
-		users: User[];
-		currentUserID: number;
-		onrolechange: (user: User, role: UserRole) => void;
-	} = $props();
+	let { users }: { users: User[] } = $props();
 </script>
 
 <ul class="divide-y divide-line lg:hidden" aria-label="Korisnici">
 	{#each users as user (user.id)}
 		<li class="px-4 py-3">
-			<div class="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-4">
+			<div class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2">
 				<div class="min-w-0">
 					<p class="truncate text-sm font-medium text-ink" title={user.full_name}>
 						{user.full_name}
 					</p>
 					<p class="mt-0.5 truncate text-sm text-muted" title={user.email}>{user.email}</p>
 				</div>
-				<div>
-					<RoleSelect
-						value={user.role}
-						ariaLabel={`Uloga za ${user.full_name}`}
-						disabled={user.id === currentUserID}
-						onvaluechange={(role) => onrolechange(user, role)}
-					/>
-				</div>
+				<a
+					class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
+					href={resolve(`/users/${user.id}`)}
+					aria-label={`Pregledaj korisnika ${user.full_name}`}
+					title="Pregledaj"
+				>
+					<Eye class="size-4" aria-hidden="true" />
+				</a>
+				<span class="col-span-2 text-sm text-muted">{userRoleLabel(user.role)}</span>
 			</div>
 		</li>
 	{/each}

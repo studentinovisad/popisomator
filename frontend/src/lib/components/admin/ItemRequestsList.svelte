@@ -253,7 +253,7 @@
 					<th class="px-4 py-3 font-medium">Korisnik</th>
 					<th class="px-4 py-3 font-medium">Razlog</th>
 					<th class="px-4 py-3 font-medium">Status</th>
-					<th class="px-4 py-3 text-right font-medium">Radnje</th>
+					<th class="sr-only">Radnje</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-line text-ink">
