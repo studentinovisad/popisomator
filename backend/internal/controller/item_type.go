@@ -410,3 +410,34 @@ func RemoveItemTypeProperty(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+// GetItemTypeStock godoc
+// @Summary Break an item type's stock down by group
+// @Description Groups every item of the type by its rendered derived name and counts how many of
+// @Description each are available - untouched, and not held under an approved request. Groups at or
+// @Description below the type's low_stock_count are flagged; a type without one flags nothing.
+// @Tags ItemTypes
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "Item Type ID"
+// @Success 200 {object} dto.ItemTypeStock
+// @Failure 400 {object} response.Error "invalid type id"
+// @Failure 401 {object} response.Error "not logged in"
+// @Failure 403 {object} response.Error "forbidden"
+// @Failure 404 {object} response.Error "not found"
+// @Router /item-types/{id}/stock [get]
+func GetItemTypeStock(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid type id")
+		return
+	}
+
+	stock, err := service.ListItemStock(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err, "couldn't get stock")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, stock)
+}
