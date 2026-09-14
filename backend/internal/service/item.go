@@ -430,7 +430,7 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 	}
 
 	var item repository.Item
-	if req.TypeID != nil || req.Consumption != nil {
+	if req.TypeID != nil || req.Consumption != nil || req.LocationIDSet {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return dto.Item{}, err
