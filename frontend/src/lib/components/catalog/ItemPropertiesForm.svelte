@@ -17,10 +17,12 @@
 		item,
 		itemType,
 		properties,
+		selectedLocationID,
 		onsaved
 	}: {
 		item: Item;
 		itemType: ItemType;
+		selectedLocationID: string;
 		properties: PropertyOption[];
 		onsaved: () => void;
 	} = $props();
@@ -78,6 +80,14 @@
 
 		try {
 			const changes: Promise<unknown>[] = [];
+
+			let newLocationID = selectedLocationID.trim().length > 0 ? Number(selectedLocationID) : null;
+			if (item.location_id != newLocationID) {
+				changes.push(api.updateItem(item.id, {
+					location_id: newLocationID
+				}));
+			}
+
 			for (const propertyID of editablePropertyIDs) {
 				const wasSelected = originalValues.has(propertyID);
 				const isSelected = selectedPropertyIDs.includes(propertyID);
@@ -96,10 +106,10 @@
 					changes.push(api.updateItemProperty(item.id, propertyID, value));
 			}
 			await Promise.all(changes);
-			if (changes.length > 0) toast.success('Svojstva stavke su sačuvana.');
+			if (changes.length > 0) toast.success('Izmene stavke su sačuvane.');
 			onsaved();
 		} catch (reason) {
-			toast.error(reason instanceof ApiError ? reason.message : 'Svojstva stavke nisu sačuvana.');
+			toast.error(reason instanceof ApiError ? reason.message : 'Izmene stavke nisu sačuvane.');
 		} finally {
 			saving = false;
 		}
@@ -163,7 +173,7 @@
 			disabled={saving}
 			type="submit"
 		>
-			{saving ? 'Čuvanje…' : 'Sačuvaj svojstva'}
+			{saving ? 'Čuvanje…' : 'Sačuvaj izmene'}
 		</Button.Root>
 	</div>
 </form>

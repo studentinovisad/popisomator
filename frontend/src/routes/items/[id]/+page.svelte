@@ -14,6 +14,7 @@
 		type ConsumptionStatus,
 		type Item,
 		type ItemType,
+		type LocationOption,
 		type PropertyOption
 	} from '$lib/api';
 	import ItemConsumptionControl from '$lib/components/inventory/ItemConsumptionControl.svelte';
@@ -23,12 +24,18 @@
 	import { displayJson } from '$lib/domain/items';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import { toast } from 'svelte-sonner';
+	import OptionCombobox from '$lib/components/shared/OptionCombobox.svelte';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Stavka trenutno nije dostupna.' });
 
 	let item = $state<Item | null>(null);
 	let itemType = $state<ItemType | null>(null);
 	let properties = $state<PropertyOption[]>([]);
+	let locations = $state<LocationOption[]>([]);
+	let selectedLocationID = $state('');
+	let locationName = $derived(
+		locations.find((location) => location.id == item?.location_id)?.name || 'Nema lokaciju'
+	);
 	let loading = $state(false);
 	let loadError = $state('');
 	let editing = $state(false);
@@ -64,13 +71,16 @@
 		loadError = '';
 		try {
 			const nextItem = await api.getItem(id);
-			const [nextItemType, nextProperties] = await Promise.all([
+			const [nextItemType, nextProperties, nextLocations] = await Promise.all([
 				api.getItemType(nextItem.type_id),
-				api.getPropertyOptions()
+				api.getPropertyOptions(),
+				api.getLocationOptionsFlat(),
 			]);
 			item = nextItem;
 			itemType = nextItemType;
 			properties = nextProperties;
+			locations = nextLocations;
+			selectedLocationID = item.location_id != undefined ? String(item.location_id) : '';
 		} catch (reason) {
 			loadError =
 				reason instanceof ApiError && reason.status === 404
@@ -166,6 +176,21 @@
 							{item.derived_name || typeName()}
 						</h2>
 					</div>
+					{#if locations.length > 0}
+						{#if editing && canManage}
+							<div class="mt-2">
+								<OptionCombobox
+									id="new-location"
+									options={locations}
+									bind:value={selectedLocationID}
+									placeholder="Odaberite lokaciju"
+									clearable
+								/>
+							</div>
+						{:else}
+							<p class="mt-1 text-sm text-muted">{locationName}</p>
+						{/if}
+					{/if}
 					<div class="mt-3 flex min-w-0 items-center gap-2">
 						<ItemConsumptionControl
 							{item}
@@ -210,12 +235,11 @@
 						{/if}
 					</div>
 				</div>
-
 				<section class="mt-3" aria-labelledby="item-properties-heading">
 					<h3 id="item-properties-heading" class="text-base font-semibold text-ink">Svojstva</h3>
 					<div class="mt-3">
 						{#if editing && canManage && itemType}
-							<ItemPropertiesForm {item} {itemType} {properties} onsaved={propertiesSaved} />
+							<ItemPropertiesForm {item} {itemType} {properties} {selectedLocationID} onsaved={propertiesSaved} />
 						{:else if item.properties.length}
 							<dl class="divide-y divide-line border-y border-line">
 								{#each item.properties as property (property.id)}

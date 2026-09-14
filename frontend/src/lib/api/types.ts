@@ -73,7 +73,7 @@ export type Item = {
 	derived_name?: string;
 	request_status?: ItemRequestStatus;
 	holder_name?: string;
-	location_id: number;
+	location_id?: number;
 };
 
 export type ItemsPage = {
@@ -112,11 +112,13 @@ export type ListItemsParams = PageRequest & {
 
 export type UpdateItemRequest = {
 	type_id?: number;
+	location_id?: number | null;
 	consumption?: ConsumptionStatus;
 };
 
 export type CreateItemRequest = {
 	type_id: number;
+	location_id?: number;
 	properties: ItemProperty[];
 	amount: number;
 };
