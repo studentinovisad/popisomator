@@ -1,9 +1,16 @@
 <script lang="ts">
+	import Check from '@lucide/svelte/icons/check';
 	import type { ItemRequestPreparationReport } from '$lib/api';
 	import { consumptionLabel, displayJson } from '$lib/domain/items';
 	import { SvelteMap } from 'svelte/reactivity';
 
-	let { report }: { report: ItemRequestPreparationReport } = $props();
+	let {
+		report,
+		pageBreakAfter = false
+	}: {
+		report: ItemRequestPreparationReport;
+		pageBreakAfter?: boolean;
+	} = $props();
 	type PreparationItem = ItemRequestPreparationReport['items'][number];
 
 	type LocationGroup = {
@@ -78,6 +85,7 @@
 </script>
 
 <article
+	class:page-break-after={pageBreakAfter}
 	class="preparation-report mx-auto max-w-3xl px-6 py-10 text-ink sm:px-10"
 	aria-hidden="true"
 >
@@ -100,8 +108,14 @@
 							{@const sections = propertySections(item)}
 							<li class="break-inside-avoid py-4 first:pt-3">
 								<div class="grid grid-cols-[1.5rem_minmax(0,1fr)_8rem] gap-x-3">
-									<span class="row-start-1 block size-6 self-center rounded-sm border border-ink"
-									></span>
+									<span
+										class="row-start-1 grid size-6 place-items-center self-center rounded-sm border border-ink"
+										aria-label={item.status === 'approved' ? 'Odobreno' : 'Na čekanju'}
+									>
+										{#if item.status === 'approved'}
+											<Check class="size-4" aria-hidden="true" />
+										{/if}
+									</span>
 									<div class="row-start-1 min-w-0">
 										<p class="text-xs text-muted">{item.type_name}</p>
 										<p class="mt-0.5 font-medium">{item.name}</p>
@@ -195,6 +209,10 @@
 			--color-faint: #737370;
 			--color-line: #e2e2df;
 			--color-soft: #f0f0ee;
+		}
+
+		.page-break-after {
+			break-after: page;
 		}
 	}
 </style>

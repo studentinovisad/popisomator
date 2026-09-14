@@ -55,7 +55,7 @@
 			(item) => item.path !== '/notifications'
 		)
 	);
-	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
+	let preparationReports = $state<ItemRequestPreparationReport[]>([]);
 
 	// svelte-ignore state_referenced_locally
 	if (!data.sidebarExpanded) {
@@ -65,8 +65,8 @@
 	let activePage = $derived(getPageMetadata(page.url.pathname));
 
 	setContext<PreparationReportPrintContext>(preparationReportPrintContextKey, {
-		setPreparationReport: (report) => {
-			preparationReport = report;
+		setPreparationReports: (reports) => {
+			preparationReports = reports;
 		},
 		print: () => window.print()
 	});
@@ -368,8 +368,10 @@
 	</nav>
 </div>
 
-{#if preparationReport}
-	<PreparationReport report={preparationReport} />
+{#if preparationReports.length > 0}
+	{#each preparationReports as report, index (report.user.id)}
+		<PreparationReport {report} pageBreakAfter={index < preparationReports.length - 1} />
+	{/each}
 {/if}
 
 {#snippet sonnerInfoIcon()}

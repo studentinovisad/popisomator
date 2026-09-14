@@ -2,7 +2,7 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Printer from '@lucide/svelte/icons/printer';
 	import { Button, Select } from 'bits-ui';
-	import { getContext, onDestroy, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import {
 		api,
@@ -12,11 +12,15 @@
 		type ItemRequestUserOption
 	} from '$lib/api';
 	import RegistrationApproval from '$lib/components/auth/RegistrationApproval.svelte';
+	import MultiOptionCombobox from '$lib/components/shared/MultiOptionCombobox.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
 	import {
+		itemRequestDateFilterOptions,
+		itemRequestDateRange,
 		itemRequestStatusClass,
 		itemRequestStatusFilterOptions,
 		itemRequestStatusLabel,
+		type ItemRequestDateFilter,
 		type ItemRequestStatusFilter
 	} from '$lib/domain/item-requests';
 	import { createServerPagination } from '$lib/state/server-pagination.svelte';
@@ -29,36 +33,40 @@
 
 	const printContext = getContext<PreparationReportPrintContext>(preparationReportPrintContextKey);
 	let { onloaderror }: { onloaderror?: (message: string) => void } = $props();
+	type PreparationReportTarget = {
+		userID: number;
+		itemIDs?: number[];
+	};
 
 	const requestsPage = createServerPagination<
 		ItemRequestSummary,
-		{ status: ItemRequestStatusFilter; userID: string }
+		{ status: ItemRequestStatusFilter; userIDs: string[]; date: ItemRequestDateFilter }
 	>({
-		initialFilters: { status: 'all', userID: 'all' },
-		loadPage: ({ limit, offset, status, userID }) =>
+		initialFilters: { status: 'all', userIDs: [], date: 'all' },
+		loadPage: ({ limit, offset, status, userIDs, date }) =>
 			api.listItemRequests({
 				limit,
 				offset,
 				status: status === 'all' ? undefined : status,
-				userID: userID === 'all' ? undefined : Number(userID)
+				userIDs: userIDs.map(Number),
+				...itemRequestDateRange(date)
 			}),
 		unavailableMessage: 'Zahtevi nisu učitani.'
 	});
 
 	let requestUsers = $state<ItemRequestUserOption[]>([]);
-	let preparationReport = $state<ItemRequestPreparationReport | null>(null);
+	let preparationReports = $state<ItemRequestPreparationReport[]>([]);
 	let preparationLoading = $state(false);
 	let preparationRequestVersion = 0;
-	const userFilterOptions = $derived([
-		{ value: 'all', label: 'Svi korisnici' },
-		...requestUsers.map((user) => ({ value: String(user.id), label: user.name }))
-	]);
 
 	onMount(() => {
 		void loadRequestUsers();
 	});
 
-	onDestroy(() => printContext.setPreparationReport(null));
+	onDestroy(() => {
+		preparationRequestVersion += 1;
+		printContext.setPreparationReports([]);
+	});
 
 	$effect(() => {
 		const url = page.url;
@@ -66,34 +74,25 @@
 		const status = itemRequestStatusFilterOptions.some((option) => option.value === requestedStatus)
 			? (requestedStatus as ItemRequestStatusFilter)
 			: 'all';
-		const requestedUserID = getTableFilter(url, 'user_id');
-		const parsedUserID = Number(requestedUserID);
-		const userID = Number.isSafeInteger(parsedUserID) && parsedUserID > 0 ? requestedUserID : 'all';
+		const userIDs = [...new Set(url.searchParams.getAll('user_id'))].filter((userID) => {
+			const parsedUserID = Number(userID);
+			return Number.isSafeInteger(parsedUserID) && parsedUserID > 0;
+		});
+		const requestedDate = getTableFilter(url, 'date');
+		const date = itemRequestDateFilterOptions.some((option) => option.value === requestedDate)
+			? (requestedDate as ItemRequestDateFilter)
+			: 'all';
 
-		requestsPage.sync({ page: getTablePage(url), filters: { status, userID } });
+		requestsPage.sync({ page: getTablePage(url), filters: { status, userIDs, date } });
+		preparationRequestVersion += 1;
+		preparationReports = [];
+		printContext.setPreparationReports([]);
+		preparationLoading = false;
 	});
 
 	$effect(() => {
 		if (requestsPage.error) onloaderror?.(requestsPage.error);
 	});
-
-	$effect(() => {
-		const userID =
-			requestsPage.filters.userID === 'all' ? undefined : Number(requestsPage.filters.userID);
-		refreshPreparationReport(userID);
-	});
-
-	function refreshPreparationReport(userID?: number) {
-		const version = ++preparationRequestVersion;
-		preparationReport = null;
-		printContext.setPreparationReport(null);
-		preparationLoading = false;
-
-		if (!userID) return;
-
-		preparationLoading = true;
-		void loadPreparationReport(userID, version);
-	}
 
 	async function loadRequestUsers() {
 		try {
@@ -103,17 +102,43 @@
 		}
 	}
 
-	async function loadPreparationReport(userID: number, version: number) {
+	async function printPreparationReports() {
+		const targets = preparationReportTargets;
+		if (targets.length === 0) return;
+
+		const status = requestsPage.filters.status;
+		const date = requestsPage.filters.date;
+		const version = ++preparationRequestVersion;
+		preparationLoading = true;
+		preparationReports = [];
+		printContext.setPreparationReports([]);
+
 		try {
-			const report = await api.getItemRequestPreparationReport(userID);
+			const reports = await Promise.all(
+				targets.map(({ userID, itemIDs }) =>
+					api.getItemRequestPreparationReport(userID, {
+						itemIDs,
+						status: status === 'all' ? undefined : status,
+						...itemRequestDateRange(date)
+					})
+				)
+			);
 			if (version === preparationRequestVersion) {
-				preparationReport = report;
-				printContext.setPreparationReport(report);
+				preparationReports = reports.filter((report) => report.items.length > 0);
+				printContext.setPreparationReports(preparationReports);
+				if (preparationReports.length === 0) {
+					toast.info('Nema zahteva za štampu.');
+					return;
+				}
+
+				await tick();
+				if (version === preparationRequestVersion) printContext.print();
 			}
-		} catch {
+		} catch (reason) {
 			if (version === preparationRequestVersion) {
-				preparationReport = null;
-				printContext.setPreparationReport(null);
+				preparationReports = [];
+				printContext.setPreparationReports([]);
+				toast.error(reason instanceof ApiError ? reason.message : 'Izveštaj nije učitan.');
 			}
 		} finally {
 			if (version === preparationRequestVersion) preparationLoading = false;
@@ -129,7 +154,6 @@
 			}
 			toast.success(approve ? 'Zahtev je odobren.' : 'Zahtev je odbijen.');
 			requestsPage.reloadAfterDelete();
-			refreshPreparationReport(selectedUserID);
 		} catch (reason) {
 			toast.error(reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.');
 		}
@@ -139,50 +163,90 @@
 		updateTableQuery({ status: status === 'all' ? undefined : status, page: 1 });
 	}
 
-	function filterByUser(userID: string) {
-		updateTableQuery({ user_id: userID === 'all' ? undefined : userID, page: 1 });
+	function filterByUsers(userIDs: string[]) {
+		updateTableQuery({ user_id: userIDs, page: 1 });
+	}
+
+	function filterByDate(date: ItemRequestDateFilter) {
+		updateTableQuery({ date: date === 'all' ? undefined : date, page: 1 });
 	}
 
 	function goToPage(nextPage: number) {
 		updateTableQuery({ page: nextPage });
 	}
 
-	let selectedUserID = $derived(
-		requestsPage.filters.userID === 'all' ? undefined : Number(requestsPage.filters.userID)
+	let selectedUserIDs = $derived(requestsPage.filters.userIDs.map(Number));
+	let preparationReportTargets = $derived(
+		getPreparationReportTargets(selectedUserIDs, requestsPage.items)
 	);
+
+	function getPreparationReportTargets(
+		selectedUserIDs: number[],
+		shownRequests: ItemRequestSummary[]
+	): PreparationReportTarget[] {
+		if (selectedUserIDs.length > 0) return selectedUserIDs.map((userID) => ({ userID }));
+
+		const targets: PreparationReportTarget[] = [];
+		for (const itemRequest of shownRequests) {
+			let target = targets.find(({ userID }) => userID === itemRequest.user_id);
+			if (!target) {
+				target = { userID: itemRequest.user_id, itemIDs: [] };
+				targets.push(target);
+			}
+			target.itemIDs?.push(itemRequest.item_id);
+		}
+
+		return targets;
+	}
 </script>
 
 <section aria-labelledby="item-requests-heading">
 	<h2 id="item-requests-heading" class="sr-only">Zahtevi za stavke</h2>
-	<div class="flex items-center justify-between gap-4">
-		<p class="font-mono text-xs font-medium tracking-wide text-muted">
+	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+		<p
+			class="min-w-0 font-mono text-xs leading-relaxed font-medium tracking-wide text-balance text-muted"
+		>
 			UKUPNO: {requestsPage.total}
 		</p>
-		<div class="flex items-center gap-2">
-			{#if selectedUserID}
-				<Button.Root
-					type="button"
-					class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft"
-					disabled={!preparationReport || preparationLoading}
-					onclick={() => printContext.print()}
-					aria-label="Štampaj pripremu"
-					title={preparationLoading ? 'Učitavanje pripreme…' : 'Štampaj pripremu'}
+		<div
+			class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end"
+		>
+			<Button.Root
+				type="button"
+				class="order-last col-span-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft sm:order-none sm:w-auto"
+				disabled={requestsPage.items.length === 0 || requestsPage.loading || preparationLoading}
+				onclick={() => void printPreparationReports()}
+				aria-label="Štampaj"
+				title={preparationLoading ? 'Učitavanje izveštaja…' : 'Štampaj'}
+			>
+				<Printer class="size-4" aria-hidden="true" />
+				<span>Štampaj</span>
+			</Button.Root>
+			<div class="order-first col-span-2 w-full sm:order-none sm:w-64">
+				<label class="sr-only" for="item-request-user-filter"
+					>Filtriraj zahteve po korisnicima</label
 				>
-					<Printer class="size-4" aria-hidden="true" />
-					<span class="max-sm:sr-only"
-						>{preparationLoading ? 'Učitavanje…' : 'Štampaj pripremu'}</span
-					>
-				</Button.Root>
-			{/if}
+				<MultiOptionCombobox
+					id="item-request-user-filter"
+					options={requestUsers}
+					values={requestsPage.filters.userIDs}
+					placeholder="Svi korisnici"
+					emptyMessage="Nema korisnika sa zahtevima."
+					selectedLabel="Izabrani korisnici"
+					showSelected={false}
+					showSelectedInMenu
+					onvaluechange={filterByUsers}
+				/>
+			</div>
 			<Select.Root
 				type="single"
-				value={requestsPage.filters.userID}
-				items={userFilterOptions}
-				onValueChange={(value) => filterByUser(value)}
+				value={requestsPage.filters.date}
+				items={itemRequestDateFilterOptions}
+				onValueChange={(value) => filterByDate(value as ItemRequestDateFilter)}
 			>
 				<Select.Trigger
-					class="flex h-9 w-44 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
-					aria-label="Filtriraj zahteve po korisniku"
+					class="flex h-9 w-full items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 sm:w-44"
+					aria-label="Filtriraj zahteve po datumu"
 				>
 					<Select.Value />
 				</Select.Trigger>
@@ -192,7 +256,7 @@
 						sideOffset={4}
 					>
 						<Select.Viewport>
-							{#each userFilterOptions as option (option.value)}
+							{#each itemRequestDateFilterOptions as option (option.value)}
 								<Select.Item
 									value={option.value}
 									label={option.label}
@@ -212,7 +276,7 @@
 				onValueChange={(value) => filterByStatus(value as ItemRequestStatusFilter)}
 			>
 				<Select.Trigger
-					class="flex h-9 w-40 items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40"
+					class="flex h-9 w-full items-center justify-between rounded-md border border-line bg-surface px-3 text-sm text-ink transition-colors hover:border-brand/40 sm:w-40"
 					aria-label="Filtriraj zahteve po statusu"
 				>
 					<Select.Value />
