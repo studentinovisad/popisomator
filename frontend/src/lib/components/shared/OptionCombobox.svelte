@@ -37,10 +37,7 @@
 	} = $props();
 
 	let items = $derived(options.map((option) => ({ value: String(option.id), label: option.name })));
-	let query = $derived.by(() => {
-		let q = options.find((option) => String(option.id) === value)?.name;
-		return q != undefined ? q : ''
-	});
+	let query = $derived(options.find((option) => String(option.id) === value)?.name || '');
 	let filteredOptions = $derived(
 		options.filter((option) => option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
 	);
