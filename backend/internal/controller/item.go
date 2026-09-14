@@ -23,6 +23,7 @@ import (
 // @Param offset query int false "Page offset (default 0)"
 // @Param search query string false "Filter by derived item name substring (max 100 chars)"
 // @Param type_id query int false "Filter by item type ID"
+// @Param location_id query int false "Filter by location ID"
 // @Param property.{id} query string false "Exact value filter for an item-type property (max 100 chars)"
 // @Param consumption query []string false "Filter by consumption status (comma-separated)" collectionFormat(csv) Enums(not_consumed, partially_consumed, fully_consumed, damaged)
 // @Param created_from query string false "Filter by creation time, RFC3339"

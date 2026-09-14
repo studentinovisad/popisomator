@@ -1532,6 +1532,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Filter by location ID",
+                        "name": "location_id",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Exact value filter for an item-type property (max 100 chars)",
                         "name": "property.{id}",
@@ -2182,6 +2188,14 @@ const docTemplate = `{
                     "Locations"
                 ],
                 "summary": "List all location options flat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Location ID and it's children to exclude",
+                        "name": "exclude",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

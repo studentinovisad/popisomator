@@ -9,18 +9,32 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
-func GetLocationOptionsFlat(ctx context.Context) ([]dto.LocationOption, error) {
+func GetLocationOptionsFlat(ctx context.Context, idToExclude *int64) ([]dto.LocationOption, error) {
 	locations, err := db.Queries.ListLocationOptions(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	locationOptionsDTO := make([]dto.LocationOption, len(locations))
-	for i, location := range locations {
-		locationOptionsDTO[i] = dto.LocationOption{
-			ID:       location.ID,
-			Name:     location.Name,
-			Children: nil,
+	excludedIDs := make(map[int64]struct{}, 0)
+	if idToExclude != nil {
+		children, err := db.Queries.GetLocationChildren(ctx, *idToExclude)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, child := range children {
+			excludedIDs[child.ID] = struct{}{}
+		}
+	}
+
+	locationOptionsDTO := make([]dto.LocationOption, 0, len(locations))
+	for _, location := range locations {
+		if _, exists := excludedIDs[location.ID]; !exists {
+			locationOptionsDTO = append(locationOptionsDTO, dto.LocationOption{
+				ID:       location.ID,
+				Name:     location.Name,
+				Children: nil,
+			})
 		}
 	}
 

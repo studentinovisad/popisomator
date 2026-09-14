@@ -45,11 +45,24 @@ func CreateLocation(w http.ResponseWriter, r *http.Request) {
 // @Tags Locations
 // @Produce json
 // @Security CookieAuth
+// @Param exclude query int false "Location ID and it's children to exclude"
 // @Success 200 {array} dto.LocationOption
 // @Failure 401 {object} response.Error "not logged in"
 // @Router /locations/flat [get]
 func GetLocationOptionsFlat(w http.ResponseWriter, r *http.Request) {
-	locations, err := service.GetLocationOptionsFlat(r.Context())
+	query := r.URL.Query()
+
+	var exclude *int64
+	if val := query.Get("exclude"); val != "" {
+		excludeID, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid 'exclude' ID")
+			return
+		}
+		exclude = &excludeID
+	}
+
+	locations, err := service.GetLocationOptionsFlat(r.Context(), exclude)
 	if err != nil {
 		writeServiceError(w, err, "couldn't get location options")
 		return

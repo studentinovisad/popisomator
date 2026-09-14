@@ -1855,6 +1855,10 @@ paths:
         in: query
         name: type_id
         type: integer
+      - description: Filter by location ID
+        in: query
+        name: location_id
+        type: integer
       - description: Exact value filter for an item-type property (max 100 chars)
         in: query
         name: property.{id}
@@ -2377,6 +2381,11 @@ paths:
       - Locations
   /locations/flat:
     get:
+      parameters:
+      - description: Location ID and it's children to exclude
+        in: query
+        name: exclude
+        type: integer
       produces:
       - application/json
       responses:
