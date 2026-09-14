@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { LocationOption } from '$lib/api';
     import LocationBlock from '$lib/components/catalog/LocationBlock.svelte';
-	import { Ellipsis } from '@lucide/svelte';
+	import { Ellipsis, Eye, Pencil, Trash2 } from '@lucide/svelte';
 	import { DropdownMenu } from 'bits-ui';
 
     let {
@@ -38,12 +38,20 @@
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
                 <DropdownMenu.Content class="z-40 max-h-64 w-(--bits-combobox-anchor-width) overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-lg shadow-black/15">
+                     <a href={`/?location_id=${location.id}`}>
+                        <DropdownMenu.Item class="flex items-center cursor-pointer rounded px-3 py-2 text-sm text-ink outline-none data-highlighted:bg-brand-soft">
+                            <Eye class="size-4 mr-2"/>
+                            Prikaži stavke unutra
+                        </DropdownMenu.Item>
+                    </a>
                     <a href={`/locations/${location.id}`}>
-                        <DropdownMenu.Item class="cursor-pointer rounded px-3 py-2 text-sm text-ink outline-none data-highlighted:bg-brand-soft">
+                        <DropdownMenu.Item class="flex items-center cursor-pointer rounded px-3 py-2 text-sm text-ink outline-none data-highlighted:bg-brand-soft">
+                            <Pencil class="size-4 mr-2"/>
                             Izmeni
                         </DropdownMenu.Item>
                     </a>
-                    <DropdownMenu.Item onclick={() => deletelocation(location)} class="cursor-pointer rounded px-3 py-2 text-sm text-ink outline-none data-highlighted:bg-brand-soft">
+                    <DropdownMenu.Item onclick={() => deletelocation(location)} class="flex items-center cursor-pointer rounded px-3 py-2 text-sm text-danger outline-none data-highlighted:bg-danger-soft">
+                        <Trash2 class="size-4 mr-2"/>
                         Obriši
                     </DropdownMenu.Item>
                 </DropdownMenu.Content>
