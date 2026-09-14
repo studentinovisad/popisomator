@@ -110,7 +110,8 @@ type UpdateItemRequest struct {
 }
 
 func (r *UpdateItemRequest) UnmarshalJSON(data []byte) error {
-	var request UpdateItemRequest
+	type requestAlias UpdateItemRequest
+	var request requestAlias
 	if err := json.Unmarshal(data, &request); err != nil {
 		return err
 	}
