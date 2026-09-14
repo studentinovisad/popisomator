@@ -1,20 +1,24 @@
 <script lang="ts">
 	import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
 	import { Button, Select } from 'bits-ui';
-	import type { ItemPropertyTotal, ItemTypeOption, PropertyOption } from '$lib/api';
+	import type { ItemPropertyTotal, ItemTypeOption, LocationOption, PropertyOption } from '$lib/api';
 	import TableSearch from '$lib/components/shared/TableSearch.svelte';
 	import { displayJson } from '$lib/domain/items';
+	import OptionCombobox from '../shared/OptionCombobox.svelte';
 
 	let {
 		total,
 		propertyTotals = [],
 		properties = [],
 		itemTypes,
+		locations,
+		locationFilter,
 		typeFilter,
 		search = $bindable(),
 		loading,
 		heldBy,
 		onheldbychange,
+		onlocationchange,
 		onitemtypechange,
 		onsearch,
 		onsortopen
@@ -23,11 +27,14 @@
 		propertyTotals?: ItemPropertyTotal[];
 		properties?: PropertyOption[];
 		itemTypes: ItemTypeOption[];
+		locations: LocationOption[];
+		locationFilter: string | undefined;
 		typeFilter: string;
 		search: string;
 		loading: boolean;
 		heldBy: string;
 		onheldbychange: (value: string) => void;
+		onlocationchange: (locationID: string) => void;
 		onitemtypechange: (itemTypeID: number | undefined) => void;
 		onsearch: (search: string) => void;
 		onsortopen: () => void;
@@ -67,6 +74,18 @@
 			<span class="px-1.5 text-line">·</span>{summed.name}: {summed.amount}{/each}
 	</p>
 	<div class="flex shrink-0 items-center gap-2">
+		{#if locations.length > 0}
+			<OptionCombobox
+				id="parent-location"
+				options={locations}
+				bind:value={locationFilter}
+				onvaluechange={onlocationchange}
+				clearable
+				height="9"
+				bgColor="transparent"
+				placeholder="Lokacija stavki"
+			/>
+		{/if}
 		<Select.Root
 			type="single"
 			value={heldBy}

@@ -51,6 +51,7 @@ func ToItemPropertyDTO(itemProp repository.ItemProperty) ItemProperty {
 
 type ListItemsRequest struct {
 	TypeID          *int64
+	LocationID      *int64
 	PropertyFilters map[int64]json.RawMessage
 	Consumption     []repository.ConsumptionStatus `validate:"omitempty,dive,oneof=not_consumed partially_consumed fully_consumed damaged"`
 	CreatedFrom     *time.Time

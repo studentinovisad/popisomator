@@ -11,31 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const checkLocationCycle = `-- name: CheckLocationCycle :one
-WITH RECURSIVE ancestors AS (
-    SELECT id, parent_id FROM locations l WHERE l.id = cast($2 as bigint)
-    UNION ALL
-    SELECT l.id, l.parent_id
-    FROM locations l
-    JOIN ancestors a ON l.id = a.parent_id
-)
-SELECT EXISTS (
-  SELECT 1 FROM ancestors a WHERE a.id = cast($1 as bigint)
-) AS would_create_cycle
-`
-
-type CheckLocationCycleParams struct {
-	LocationID int64 `json:"location_id"`
-	ParentID   int64 `json:"parent_id"`
-}
-
-func (q *Queries) CheckLocationCycle(ctx context.Context, arg CheckLocationCycleParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkLocationCycle, arg.LocationID, arg.ParentID)
-	var would_create_cycle bool
-	err := row.Scan(&would_create_cycle)
-	return would_create_cycle, err
-}
-
 const countLocations = `-- name: CountLocations :one
 SELECT count(*) FROM locations
 WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
@@ -99,6 +74,44 @@ func (q *Queries) GetLocationByID(ctx context.Context, id int64) (Location, erro
 		&i.ParentID,
 	)
 	return i, err
+}
+
+const getLocationChildren = `-- name: GetLocationChildren :many
+WITH RECURSIVE children AS (
+    SELECT l.id, l.parent_id 
+      FROM locations l 
+      WHERE l.id = $1::bigint
+    UNION ALL
+    SELECT l.id, l.parent_id
+      FROM locations l
+      JOIN children c ON l.parent_id = c.id
+)
+SELECT id, parent_id FROM children
+`
+
+type GetLocationChildrenRow struct {
+	ID       int64       `json:"id"`
+	ParentID pgtype.Int8 `json:"parent_id"`
+}
+
+func (q *Queries) GetLocationChildren(ctx context.Context, parentID int64) ([]GetLocationChildrenRow, error) {
+	rows, err := q.db.Query(ctx, getLocationChildren, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLocationChildrenRow
+	for rows.Next() {
+		var i GetLocationChildrenRow
+		if err := rows.Scan(&i.ID, &i.ParentID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listLocationOptions = `-- name: ListLocationOptions :many

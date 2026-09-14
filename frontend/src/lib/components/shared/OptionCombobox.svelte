@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { X } from '@lucide/svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { Combobox } from 'bits-ui';
 
@@ -15,6 +16,9 @@
 		emptyMessage = 'Nema odgovarajućih opcija.',
 		disabled = false,
 		invalid = false,
+		clearable = false,
+		height = "10",
+		bgColor = "surface",
 		describedBy,
 		onvaluechange
 	}: {
@@ -25,6 +29,9 @@
 		emptyMessage?: string;
 		disabled?: boolean;
 		invalid?: boolean;
+		clearable?: boolean;
+		height?: string;
+		bgColor?: string;
 		describedBy?: string;
 		onvaluechange?: (value: string) => void;
 	} = $props();
@@ -47,6 +54,12 @@
 		query = options.find((option) => String(option.id) === nextValue)?.name ?? '';
 		onvaluechange?.(nextValue);
 	}
+
+	function clear() {
+		query = '';
+		value = '';
+		onvaluechange?.(value);
+	}
 </script>
 
 <Combobox.Root
@@ -61,12 +74,22 @@
 	<div class="relative">
 		<Combobox.Input
 			{id}
-			class={`block h-10 w-full rounded-md border border-line bg-surface py-0 pr-10 pl-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand ${invalid ? 'field-invalid' : ''}`}
+			class={`block h-${height} w-full rounded-md border border-line bg-${bgColor} py-0 pr-10 pl-3 text-sm text-ink placeholder:text-muted hover:border-brand focus-visible:border-brand ${invalid ? 'field-invalid' : ''}`}
 			{placeholder}
 			aria-invalid={invalid}
 			aria-describedby={describedBy}
 			oninput={handleInput}
 		/>
+		{#if value && clearable}
+			<button
+				type="button"
+				class="absolute top-1/2 right-8 grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded text-muted hover:text-ink focus-visible:text-brand focus-visible:outline-none"
+				onclick={clear}
+				aria-label={`Poništi`}
+			>
+				<X class="size-3.5" aria-hidden="true" />
+			</button>
+		{/if}
 		<Combobox.Trigger
 			class="group absolute inset-y-0 right-0 grid w-10 cursor-pointer place-items-center rounded-r-md text-muted outline-none hover:text-ink focus-visible:ring-1 focus-visible:ring-brand disabled:cursor-not-allowed"
 			aria-label="Prikaži opcije"

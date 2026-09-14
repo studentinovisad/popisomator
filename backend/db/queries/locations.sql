@@ -15,17 +15,17 @@ ORDER BY name;
 SELECT count(*) FROM locations
 WHERE name ILIKE '%' || escape_like_pattern(sqlc.arg('search')) || '%';
 
--- name: CheckLocationCycle :one
-WITH RECURSIVE ancestors AS (
-    SELECT id, parent_id FROM locations l WHERE l.id = cast(sqlc.arg(parent_id) as bigint)
+-- name: GetLocationChildren :many
+WITH RECURSIVE children AS (
+    SELECT l.id, l.parent_id 
+      FROM locations l 
+      WHERE l.id = sqlc.arg(parent_id)::bigint
     UNION ALL
     SELECT l.id, l.parent_id
-    FROM locations l
-    JOIN ancestors a ON l.id = a.parent_id
+      FROM locations l
+      JOIN children c ON l.parent_id = c.id
 )
-SELECT EXISTS (
-  SELECT 1 FROM ancestors a WHERE a.id = cast(sqlc.arg(location_id) as bigint)
-) AS would_create_cycle;
+SELECT * FROM children;
 
 -- name: UpdateLocation_Name :exec
 UPDATE locations SET name = $2 WHERE id = $1;

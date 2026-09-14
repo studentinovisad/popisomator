@@ -102,6 +102,7 @@ export type HeldBy = 'nobody' | 'me';
 
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
+	locationID?: number;
 	propertyFilters?: Record<number, PropertyValue>;
 	// Property to order the items by. Left out, they come back newest first.
 	sortPropertyID?: number;

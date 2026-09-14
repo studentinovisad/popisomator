@@ -235,6 +235,18 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		typeID = pgtype.Int8{Int64: *req.TypeID, Valid: true}
 	}
 
+	var locationIDs []int64
+	if req.LocationID != nil {
+		locationIDs = make([]int64, 0)
+		children, err := db.Queries.GetLocationChildren(ctx, *req.LocationID)
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+		for _, child := range children {
+			locationIDs = append(locationIDs, child.ID)
+		}
+	}
+
 	createdFrom := pgtype.Timestamptz{}
 	if req.CreatedFrom != nil {
 		createdFrom = pgtype.Timestamptz{Time: *req.CreatedFrom, Valid: true}
@@ -278,6 +290,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		PropertyIds:    propertyIDs,
 		PropertyValues: propertyValues,
 		HeldBy:         heldByID,
+		LocationIds:    locationIDs,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -299,6 +312,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
 		HeldBy:         heldByID,
+		LocationIds:    locationIDs,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -332,6 +346,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
 		HeldBy:         heldByID,
+		LocationIds:    locationIDs,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err

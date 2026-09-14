@@ -69,6 +69,15 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 		req.TypeID = &typeID
 	}
 
+	if val := query.Get("location_id"); val != "" {
+		locationID, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid location_id")
+			return
+		}
+		req.LocationID = &locationID
+	}
+
 	if val := query.Get("held_by"); val != "" {
 		switch val {
 		case "nobody":

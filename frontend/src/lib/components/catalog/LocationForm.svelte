@@ -147,6 +147,7 @@
 					id="parent-location"
 					options={filteredLocationOptions}
 					bind:value={parentLocationID}
+					clearable
 					placeholder="Odaberite lokaciju"
 				/>
 			</div>

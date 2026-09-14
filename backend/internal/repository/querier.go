@@ -15,7 +15,6 @@ type Querier interface {
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
 	ApproveItemRequest(ctx context.Context, arg ApproveItemRequestParams) (ItemRequest, error)
 	CheckItemsForRequests(ctx context.Context, itemIds []int64) ([]ItemRequest, error)
-	CheckLocationCycle(ctx context.Context, arg CheckLocationCycleParams) (bool, error)
 	CountAuditLog(ctx context.Context, arg CountAuditLogParams) (int64, error)
 	CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error)
 	CountItemTypes(ctx context.Context, search string) (int64, error)
@@ -55,6 +54,7 @@ type Querier interface {
 	GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error)
 	GetItemsRequestStatuses(ctx context.Context, arg GetItemsRequestStatusesParams) ([]GetItemsRequestStatusesRow, error)
 	GetLocationByID(ctx context.Context, id int64) (Location, error)
+	GetLocationChildren(ctx context.Context, parentID int64) ([]GetLocationChildrenRow, error)
 	// Every property, or just the ones named. The filter is optional so one query serves both the full
 	// catalogue and the audit path, which resolves a handful of names at once for an entry spanning
 	// several properties - a reorder, or the initial list of a new item type.

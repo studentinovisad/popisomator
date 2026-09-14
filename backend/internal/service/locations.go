@@ -123,15 +123,14 @@ func UpdateLocation(ctx context.Context, req dto.UpdateLocationRequest) (dto.Loc
 	if req.ParentIDSet {
 		parentID := pgtype.Int8{Valid: false}
 		if req.ParentID != nil {
-			res, err := db.Queries.CheckLocationCycle(ctx, repository.CheckLocationCycleParams{
-				LocationID: req.ID,
-				ParentID:   *req.ParentID,
-			})
+			rows, err := db.Queries.GetLocationChildren(ctx, req.ID)
 			if err != nil {
 				return dto.Location{}, err
 			}
-			if res == true {
-				return dto.Location{}, ErrLocationCycleDetected
+			for _, row := range rows {
+				if row.ID == *req.ParentID {
+					return dto.Location{}, ErrLocationCycleDetected
+				}
 			}
 
 			parentID = pgtype.Int8{Int64: *req.ParentID, Valid: true}
