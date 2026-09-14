@@ -271,7 +271,8 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 	}
 
 	var itemType repository.ItemType
-	if req.Name != nil || req.Description != nil || req.DerivedNameFormat != nil {
+	if req.Name != nil || req.Description != nil || req.DerivedNameFormat != nil ||
+		req.ExpiringSoonDays != nil {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return dto.ItemType{}, err
