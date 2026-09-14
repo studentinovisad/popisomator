@@ -59,9 +59,6 @@ type chemicalRow struct {
 	// ExpiryOffsetDays is ExpiryDate expressed as days from today, kept alongside it so the expiry
 	// state of an item can be told without parsing the date back out again.
 	ExpiryOffsetDays int
-	Location         string
-	Cabinet          string
-	Box              string
 }
 
 // generateChemicalRows fabricates a chemical inventory shaped like a real one. Chemical names are
@@ -154,21 +151,9 @@ func generateChemicalRows() []chemicalRow {
 	// warning states rather than being uniformly fresh - without that, an expiry notification has
 	// nothing truthful to point at. Cycled by index, so reruns produce the same inventory.
 	expiryOffsetDays := []int{-45, 6, 120, -12, 40, 2, 200, -3, 70, 11, -21, 25, 9, 320, -7, 55}
-	placements := []struct {
-		location string
-		cabinet  string
-		box      string
-	}{
-		{"Laboratorija A", "Ormar za rastvarače", "Kutija A-1"},
-		{"Laboratorija A", "Ormar za kiseline", "Kutija A-2"},
-		{"Laboratorija A", "Ormar za soli", ""},
-		{"Laboratorija B", "Polica 1", "Kutija B-1"},
-		{"Centralni magacin", "", ""},
-	}
 
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
-		placement := placements[i%len(placements)]
 		expiryOffset := expiryOffsetDays[i%len(expiryOffsetDays)]
 		expiryDate := time.Now().AddDate(0, 0, expiryOffset).Format(time.DateOnly)
 		row := chemicalRow{
@@ -176,9 +161,6 @@ func generateChemicalRows() []chemicalRow {
 			CASNumber:        chemical.cas,
 			Manufacturer:     manufacturers[i%len(manufacturers)],
 			Purity:           purities[i%len(purities)],
-			Location:         placement.location,
-			Cabinet:          placement.cabinet,
-			Box:              placement.box,
 			PackageCount:     packageCounts[i%len(packageCounts)],
 			ExpiryDate:       expiryDate,
 			ExpiryOffsetDays: expiryOffset,
@@ -326,9 +308,6 @@ var propertyDefs = []propertyDef{
 	{"mass", "Masa", "mass", repository.PropertyVisibilityOverview},
 	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
 	{"expiry_date", "Istek roka", "expiry", repository.PropertyVisibilityOverview},
-	{"cabinet", "Ormar", "string", repository.PropertyVisibilityOverview},
-	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
-	{"location", "Lokacija", "string", repository.PropertyVisibilityOverview},
 }
 
 type locationSeed struct {
@@ -909,9 +888,6 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 		return dto.PTVolume{Amount: scaleMeasureAmount(packageVolume.Amount), Unit: packageVolume.Unit}
 	})
 	addString("expiry_date", row.ExpiryDate)
-	addString("cabinet", row.Cabinet)
-	addString("box", row.Box)
-	addString("location", row.Location)
 
 	return properties
 }
