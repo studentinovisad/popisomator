@@ -78,7 +78,11 @@ export const catalogApi = {
 	createLocation: (payload: CreateLocationRequest) =>
 		request<Property>('/locations', jsonRequest('POST', payload)),
 	getLocationOptions: () => request<LocationOption[]>('/locations'),
-	getLocationOptionsFlat: () => request<LocationOption[]>('/locations/flat'),
+	getLocationOptionsFlat: (excludeID: number | undefined = undefined) => {
+		const query = new URLSearchParams();
+		if (excludeID) query.set('exclude', String(excludeID));
+		return request<LocationOption[]>(`/locations/flat?${query}`);
+	},
 	getLocation: (id: number) => request<Location>(`/locations/${id}`),
 	updateLocation: (id: number, payload: UpdateLocationRequest) =>
 		request<Location>(`/locations/${id}`, jsonRequest('PATCH', payload)),

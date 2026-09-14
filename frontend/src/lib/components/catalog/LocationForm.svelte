@@ -28,7 +28,6 @@
 		oncancel?: () => void;
 	} = $props();
 
-	let filteredLocationOptions = $derived(locationOptions.filter((option) => option.id != location?.id))
 	let name = $state('');
 	let description = $state('');
 	let hasParentLocation = $state(false);
@@ -145,7 +144,7 @@
 			<div class="mt-4">
 				<OptionCombobox
 					id="parent-location"
-					options={filteredLocationOptions}
+					options={locationOptions}
 					bind:value={parentLocationID}
 					clearable
 					placeholder="Odaberite lokaciju"

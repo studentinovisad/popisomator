@@ -36,7 +36,7 @@
 		try {
 			const [nextLocation, nextLocationOptions] = await Promise.all([
 				api.getLocation(id),
-				api.getLocationOptionsFlat()
+				api.getLocationOptionsFlat(id)
 			]);
 			location = nextLocation;
 			locationOptions = nextLocationOptions;
