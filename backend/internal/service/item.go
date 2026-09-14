@@ -128,6 +128,11 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 		return nil, err
 	}
 
+	locationID := pgtype.Int8{Valid: false}
+	if req.LocationID != nil {
+		locationID = pgtype.Int8{Int64: *req.LocationID, Valid: true}
+	}
+
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
@@ -136,8 +141,9 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 	queriesTx := db.Queries.WithTx(tx)
 
 	items, err := queriesTx.CreateItems(ctx, repository.CreateItemsParams{
-		TypeID: req.TypeID,
-		Amount: req.Amount,
+		TypeID:     req.TypeID,
+		Amount:     req.Amount,
+		LocationID: locationID,
 	})
 	if err != nil {
 		return nil, err
@@ -491,6 +497,21 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 					req.ID, label, entry.changes, dto.AuditContext{}); err != nil {
 					return dto.Item{}, err
 				}
+			}
+		}
+
+		if req.LocationIDSet {
+			locationID := pgtype.Int8{Valid: false}
+			if req.LocationID != nil {
+				locationID = pgtype.Int8{Int64: *req.LocationID, Valid: true}
+			}
+
+			var err error
+			if item, err = queriesTx.UpdateItem_Location(ctx, repository.UpdateItem_LocationParams{
+				ID:         req.ID,
+				LocationID: locationID,
+			}); err != nil {
+				return dto.Item{}, err
 			}
 		}
 

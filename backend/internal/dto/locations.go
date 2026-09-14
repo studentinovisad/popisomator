@@ -46,8 +46,7 @@ type UpdateLocationRequest struct {
 }
 
 func (r *UpdateLocationRequest) UnmarshalJSON(data []byte) error {
-	type requestAlias UpdateLocationRequest
-	var request requestAlias
+	var request UpdateLocationRequest
 	if err := json.Unmarshal(data, &request); err != nil {
 		return err
 	}

@@ -97,13 +97,32 @@ type CreateItemRequest struct {
 	Properties []ItemProperty `json:"properties" validate:"dive"`
 	TypeID     int64          `json:"type_id" validate:"required,gt=0"`
 	Amount     int32          `json:"amount" validate:"required,gt=0,lte=100"`
+	LocationID *int64         `json:"location_id" validate:"omitempty,gt=0"`
 }
 
 type UpdateItemRequest struct {
-	ID          int64   `json:"id" validate:"required"`
-	TypeID      *int64  `json:"type_id" validate:"omitempty,gt=0"`
-	Consumption *string `json:"consumption" validate:"omitempty,oneof=not_consumed partially_consumed fully_consumed damaged"`
-	ViewerID    int64   `json:"-"`
+	ID            int64   `json:"id" validate:"required"`
+	TypeID        *int64  `json:"type_id" validate:"omitempty,gt=0"`
+	Consumption   *string `json:"consumption" validate:"omitempty,oneof=not_consumed partially_consumed fully_consumed damaged"`
+	LocationID    *int64  `json:"location_id" validate:"omitempty,gt=0"`
+	LocationIDSet bool    `json:"-"`
+	ViewerID      int64   `json:"-"`
+}
+
+func (r *UpdateItemRequest) UnmarshalJSON(data []byte) error {
+	var request UpdateItemRequest
+	if err := json.Unmarshal(data, &request); err != nil {
+		return err
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+
+	*r = UpdateItemRequest(request)
+	_, r.LocationIDSet = fields["location_id"]
+	return nil
 }
 
 type AddUpdateItemPropertyRequest struct {

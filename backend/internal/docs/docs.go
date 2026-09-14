@@ -3376,6 +3376,9 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 100
                 },
+                "location_id": {
+                    "type": "integer"
+                },
                 "properties": {
                     "type": "array",
                     "items": {
@@ -4124,6 +4127,9 @@ const docTemplate = `{
                     ]
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "location_id": {
                     "type": "integer"
                 },
                 "type_id": {

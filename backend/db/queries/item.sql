@@ -204,8 +204,8 @@ GROUP BY properties.id, properties.value_type, currency
 ORDER BY properties.id, currency;
 
 -- name: CreateItems :many
-INSERT INTO items (type_id) 
-SELECT ($1) 
+INSERT INTO items (type_id, location_id) 
+SELECT $1, $2 
 FROM generate_series(1, sqlc.arg(amount)::integer)
 RETURNING *;
 
@@ -214,6 +214,9 @@ UPDATE items SET type_id = $2 WHERE id = $1 RETURNING *;
 
 -- name: UpdateItem_Consumption :one
 UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
+
+-- name: UpdateItem_Location :one
+UPDATE items SET location_id = $2 WHERE id = $1 RETURNING *;
 
 -- name: DeleteItem :execrows
 DELETE FROM items WHERE id = $1;

@@ -3369,6 +3369,9 @@
                     "type": "integer",
                     "maximum": 100
                 },
+                "location_id": {
+                    "type": "integer"
+                },
                 "properties": {
                     "type": "array",
                     "items": {
@@ -4117,6 +4120,9 @@
                     ]
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "location_id": {
                     "type": "integer"
                 },
                 "type_id": {

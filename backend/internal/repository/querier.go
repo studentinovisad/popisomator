@@ -123,6 +123,7 @@ type Querier interface {
 	UpdateItemType_ExpiringSoonDays(ctx context.Context, arg UpdateItemType_ExpiringSoonDaysParams) (ItemType, error)
 	UpdateItemType_Name(ctx context.Context, arg UpdateItemType_NameParams) (ItemType, error)
 	UpdateItem_Consumption(ctx context.Context, arg UpdateItem_ConsumptionParams) (Item, error)
+	UpdateItem_Location(ctx context.Context, arg UpdateItem_LocationParams) (Item, error)
 	UpdateItem_Type(ctx context.Context, arg UpdateItem_TypeParams) (Item, error)
 	UpdateLocation_Description(ctx context.Context, arg UpdateLocation_DescriptionParams) error
 	UpdateLocation_Name(ctx context.Context, arg UpdateLocation_NameParams) error

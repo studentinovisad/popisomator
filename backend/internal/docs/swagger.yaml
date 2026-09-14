@@ -165,6 +165,8 @@ definitions:
       amount:
         maximum: 100
         type: integer
+      location_id:
+        type: integer
       properties:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
@@ -669,6 +671,8 @@ definitions:
         - damaged
         type: string
       id:
+        type: integer
+      location_id:
         type: integer
       type_id:
         type: integer

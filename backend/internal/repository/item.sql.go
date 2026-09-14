@@ -137,19 +137,20 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 }
 
 const createItems = `-- name: CreateItems :many
-INSERT INTO items (type_id) 
-SELECT ($1) 
-FROM generate_series(1, $2::integer)
+INSERT INTO items (type_id, location_id) 
+SELECT $1, $2 
+FROM generate_series(1, $3::integer)
 RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type CreateItemsParams struct {
-	TypeID int64 `json:"type_id"`
-	Amount int32 `json:"amount"`
+	TypeID     int64       `json:"type_id"`
+	LocationID pgtype.Int8 `json:"location_id"`
+	Amount     int32       `json:"amount"`
 }
 
 func (q *Queries) CreateItems(ctx context.Context, arg CreateItemsParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, createItems, arg.TypeID, arg.Amount)
+	rows, err := q.db.Query(ctx, createItems, arg.TypeID, arg.LocationID, arg.Amount)
 	if err != nil {
 		return nil, err
 	}
@@ -693,6 +694,28 @@ type UpdateItem_ConsumptionParams struct {
 
 func (q *Queries) UpdateItem_Consumption(ctx context.Context, arg UpdateItem_ConsumptionParams) (Item, error) {
 	row := q.db.QueryRow(ctx, updateItem_Consumption, arg.ID, arg.Consumption)
+	var i Item
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.Consumption,
+		&i.TypeID,
+		&i.LocationID,
+	)
+	return i, err
+}
+
+const updateItem_Location = `-- name: UpdateItem_Location :one
+UPDATE items SET location_id = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id, location_id
+`
+
+type UpdateItem_LocationParams struct {
+	ID         int64       `json:"id"`
+	LocationID pgtype.Int8 `json:"location_id"`
+}
+
+func (q *Queries) UpdateItem_Location(ctx context.Context, arg UpdateItem_LocationParams) (Item, error) {
+	row := q.db.QueryRow(ctx, updateItem_Location, arg.ID, arg.LocationID)
 	var i Item
 	err := row.Scan(
 		&i.ID,
