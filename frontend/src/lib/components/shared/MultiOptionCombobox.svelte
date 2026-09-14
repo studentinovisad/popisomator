@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import Check from '@lucide/svelte/icons/check';
 	import X from '@lucide/svelte/icons/x';
 	import { tick } from 'svelte';
 	import { Combobox } from 'bits-ui';
@@ -15,8 +16,10 @@
 		values = $bindable([]),
 		placeholder = 'Pretražite opcije',
 		emptyMessage = 'Nema odgovarajućih opcija.',
+		selectedLabel = 'Izabrane opcije',
 		disabled = false,
 		showSelected = true,
+		showSelectedInMenu = false,
 		onvaluechange
 	}: {
 		id?: string;
@@ -24,25 +27,29 @@
 		values?: string[];
 		placeholder?: string;
 		emptyMessage?: string;
+		selectedLabel?: string;
 		disabled?: boolean;
 		showSelected?: boolean;
+		showSelectedInMenu?: boolean;
 		onvaluechange?: (values: string[]) => void;
 	} = $props();
 
 	let query = $state('');
 	let input = $state<HTMLInputElement | null>(null);
-	let filteredOptions = $derived(
-		options.filter(
-			(option) =>
-				!values.includes(String(option.id)) &&
-				option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
-		)
+	let matchingOptions = $derived(
+		options.filter((option) => {
+			const selected = values.includes(String(option.id));
+			return !selected && option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+		})
 	);
 	let selectedOptions = $derived(
 		values.flatMap((value) => {
 			const option = options.find((candidate) => candidate.id === Number(value));
 			return option ? [option] : [];
 		})
+	);
+	let menuOptions = $derived(
+		showSelectedInMenu ? [...selectedOptions, ...matchingOptions] : matchingOptions
 	);
 	let items = $derived(options.map((option) => ({ value: String(option.id), label: option.name })));
 
@@ -75,7 +82,7 @@
 	onValueChange={handleValueChange}
 >
 	{#if showSelected && selectedOptions.length}
-		<ul class="mb-3 flex flex-wrap gap-2" aria-label="Izabrana svojstva">
+		<ul class="mb-3 flex flex-wrap gap-2" aria-label={selectedLabel}>
 			{#each selectedOptions as option (option.id)}
 				<li
 					class="inline-flex items-center gap-1.5 rounded-md border border-line bg-soft py-1.5 pr-1.5 pl-2.5 text-sm text-ink"
@@ -117,16 +124,26 @@
 			sideOffset={4}
 		>
 			<Combobox.Viewport>
-				{#each filteredOptions as option (option.id)}
+				{#if showSelectedInMenu && selectedOptions.length}
+					<p class="px-3 pt-2 pb-1 text-xs font-medium text-muted">{selectedLabel}</p>
+				{/if}
+				{#each menuOptions as option, index (option.id)}
+					{#if showSelectedInMenu && selectedOptions.length > 0 && index === selectedOptions.length}
+						<div class="my-1 border-t border-line" role="separator"></div>
+					{/if}
+					{@const selected = values.includes(String(option.id))}
 					<Combobox.Item
 						value={String(option.id)}
 						label={option.name}
 						class="flex cursor-pointer items-center justify-between rounded px-3 py-2 text-sm text-ink outline-none data-highlighted:bg-brand-soft data-selected:text-brand"
 					>
-						{option.name}
+						<span>{option.name}</span>
+						{#if selected}
+							<Check class="size-4 text-brand" aria-label="Izabrano" />
+						{/if}
 					</Combobox.Item>
 				{/each}
-				{#if filteredOptions.length === 0}
+				{#if menuOptions.length === 0}
 					<p class="px-3 py-2 text-sm text-muted">{emptyMessage}</p>
 				{/if}
 			</Combobox.Viewport>
