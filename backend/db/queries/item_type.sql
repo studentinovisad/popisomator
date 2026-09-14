@@ -30,7 +30,7 @@ WHERE id = $1
 FOR UPDATE;
 
 -- name: CreateItemType :one
-INSERT INTO item_types (name, description, derived_name_format, expiring_soon_days) VALUES ($1, $2, $3, $4) RETURNING *;
+INSERT INTO item_types (name, description, derived_name_format, expiring_soon_days, low_stock_count) VALUES ($1, $2, $3, $4, $5) RETURNING *;
 
 -- name: UpdateItemType_Name :one
 UPDATE item_types SET name = $2 WHERE id = $1 RETURNING *;
@@ -43,6 +43,9 @@ UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING *;
 
 -- name: UpdateItemType_ExpiringSoonDays :one
 UPDATE item_types SET expiring_soon_days = $2 WHERE id = $1 RETURNING *;
+
+-- name: UpdateItemType_LowStockCount :one
+UPDATE item_types SET low_stock_count = $2 WHERE id = $1 RETURNING *;
 
 -- name: DeleteItemType :execrows
 DELETE FROM item_types WHERE id = $1;

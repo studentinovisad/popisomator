@@ -64,7 +64,7 @@ func (q *Queries) CountItemTypes(ctx context.Context, search string) (int64, err
 }
 
 const createItemType = `-- name: CreateItemType :one
-INSERT INTO item_types (name, description, derived_name_format, expiring_soon_days) VALUES ($1, $2, $3, $4) RETURNING id, name, description, derived_name_format, expiring_soon_days
+INSERT INTO item_types (name, description, derived_name_format, expiring_soon_days, low_stock_count) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, description, derived_name_format, expiring_soon_days, low_stock_count
 `
 
 type CreateItemTypeParams struct {
@@ -72,6 +72,7 @@ type CreateItemTypeParams struct {
 	Description       pgtype.Text `json:"description"`
 	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
 	ExpiringSoonDays  pgtype.Int2 `json:"expiring_soon_days"`
+	LowStockCount     pgtype.Int4 `json:"low_stock_count"`
 }
 
 func (q *Queries) CreateItemType(ctx context.Context, arg CreateItemTypeParams) (ItemType, error) {
@@ -80,6 +81,7 @@ func (q *Queries) CreateItemType(ctx context.Context, arg CreateItemTypeParams) 
 		arg.Description,
 		arg.DerivedNameFormat,
 		arg.ExpiringSoonDays,
+		arg.LowStockCount,
 	)
 	var i ItemType
 	err := row.Scan(
@@ -88,6 +90,7 @@ func (q *Queries) CreateItemType(ctx context.Context, arg CreateItemTypeParams) 
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }
@@ -105,7 +108,7 @@ func (q *Queries) DeleteItemType(ctx context.Context, id int64) (int64, error) {
 }
 
 const getAllItemTypes = `-- name: GetAllItemTypes :many
-SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days, low_stock_count FROM item_types
 `
 
 func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
@@ -123,6 +126,7 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 			&i.Description,
 			&i.DerivedNameFormat,
 			&i.ExpiringSoonDays,
+			&i.LowStockCount,
 		); err != nil {
 			return nil, err
 		}
@@ -135,7 +139,7 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 }
 
 const getItemTypeByID = `-- name: GetItemTypeByID :one
-SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days, low_stock_count FROM item_types
 WHERE id = $1 LIMIT 1
 `
 
@@ -148,6 +152,7 @@ func (q *Queries) GetItemTypeByID(ctx context.Context, id int64) (ItemType, erro
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }
@@ -185,7 +190,7 @@ func (q *Queries) GetItemTypeProperties(ctx context.Context, typeIds []int64) ([
 }
 
 const getItemTypesByItemIDs = `-- name: GetItemTypesByItemIDs :many
-SELECT item_types.id, item_types.name, item_types.description, item_types.derived_name_format, item_types.expiring_soon_days, items.id as item_id FROM item_types
+SELECT item_types.id, item_types.name, item_types.description, item_types.derived_name_format, item_types.expiring_soon_days, item_types.low_stock_count, items.id as item_id FROM item_types
 JOIN items ON items.type_id = item_types.id
 WHERE items.id = ANY($1::bigint[])
 `
@@ -210,6 +215,7 @@ func (q *Queries) GetItemTypesByItemIDs(ctx context.Context, itemIds []int64) ([
 			&i.ItemType.Description,
 			&i.ItemType.DerivedNameFormat,
 			&i.ItemType.ExpiringSoonDays,
+			&i.ItemType.LowStockCount,
 			&i.ItemID,
 		); err != nil {
 			return nil, err
@@ -253,7 +259,7 @@ func (q *Queries) ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOption
 }
 
 const listItemTypes = `-- name: ListItemTypes :many
-SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days, low_stock_count FROM item_types
 WHERE name ILIKE '%' || escape_like_pattern($1) || '%'
 ORDER BY id
 LIMIT $3 OFFSET $2
@@ -280,6 +286,7 @@ func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([
 			&i.Description,
 			&i.DerivedNameFormat,
 			&i.ExpiringSoonDays,
+			&i.LowStockCount,
 		); err != nil {
 			return nil, err
 		}
@@ -292,7 +299,7 @@ func (q *Queries) ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([
 }
 
 const lockItemType = `-- name: LockItemType :one
-SELECT id, name, description, derived_name_format, expiring_soon_days FROM item_types
+SELECT id, name, description, derived_name_format, expiring_soon_days, low_stock_count FROM item_types
 WHERE id = $1
 FOR UPDATE
 `
@@ -306,6 +313,7 @@ func (q *Queries) LockItemType(ctx context.Context, id int64) (ItemType, error) 
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }
@@ -410,7 +418,7 @@ func (q *Queries) UpdateItemTypeProperty_Visibility(ctx context.Context, arg Upd
 }
 
 const updateItemType_DerivedNameFormat = `-- name: UpdateItemType_DerivedNameFormat :one
-UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
+UPDATE item_types SET derived_name_format = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days, low_stock_count
 `
 
 type UpdateItemType_DerivedNameFormatParams struct {
@@ -427,12 +435,13 @@ func (q *Queries) UpdateItemType_DerivedNameFormat(ctx context.Context, arg Upda
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }
 
 const updateItemType_Description = `-- name: UpdateItemType_Description :one
-UPDATE item_types SET description = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
+UPDATE item_types SET description = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days, low_stock_count
 `
 
 type UpdateItemType_DescriptionParams struct {
@@ -449,12 +458,13 @@ func (q *Queries) UpdateItemType_Description(ctx context.Context, arg UpdateItem
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }
 
 const updateItemType_ExpiringSoonDays = `-- name: UpdateItemType_ExpiringSoonDays :one
-UPDATE item_types SET expiring_soon_days = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
+UPDATE item_types SET expiring_soon_days = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days, low_stock_count
 `
 
 type UpdateItemType_ExpiringSoonDaysParams struct {
@@ -471,12 +481,36 @@ func (q *Queries) UpdateItemType_ExpiringSoonDays(ctx context.Context, arg Updat
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
+	)
+	return i, err
+}
+
+const updateItemType_LowStockCount = `-- name: UpdateItemType_LowStockCount :one
+UPDATE item_types SET low_stock_count = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days, low_stock_count
+`
+
+type UpdateItemType_LowStockCountParams struct {
+	ID            int64       `json:"id"`
+	LowStockCount pgtype.Int4 `json:"low_stock_count"`
+}
+
+func (q *Queries) UpdateItemType_LowStockCount(ctx context.Context, arg UpdateItemType_LowStockCountParams) (ItemType, error) {
+	row := q.db.QueryRow(ctx, updateItemType_LowStockCount, arg.ID, arg.LowStockCount)
+	var i ItemType
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DerivedNameFormat,
+		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }
 
 const updateItemType_Name = `-- name: UpdateItemType_Name :one
-UPDATE item_types SET name = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days
+UPDATE item_types SET name = $2 WHERE id = $1 RETURNING id, name, description, derived_name_format, expiring_soon_days, low_stock_count
 `
 
 type UpdateItemType_NameParams struct {
@@ -493,6 +527,7 @@ func (q *Queries) UpdateItemType_Name(ctx context.Context, arg UpdateItemType_Na
 		&i.Description,
 		&i.DerivedNameFormat,
 		&i.ExpiringSoonDays,
+		&i.LowStockCount,
 	)
 	return i, err
 }

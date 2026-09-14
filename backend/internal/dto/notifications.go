@@ -14,6 +14,7 @@ type Notification struct {
 	Read                   bool                               `json:"read"`
 	Descriptor_ItemRequest *ItemRequest                       `json:"desc_item_request,omitempty"`
 	Descriptor_ItemExpiry  *NotificationDescriptor_ItemExpiry `json:"desc_item_expiry,omitempty"`
+	Descriptor_LowStock    *NotificationDescriptor_LowStock   `json:"desc_low_stock,omitempty"`
 }
 
 type NotificationDescriptor_ItemExpiry struct {

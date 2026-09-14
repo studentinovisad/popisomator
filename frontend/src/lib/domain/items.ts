@@ -135,6 +135,12 @@ export function displayJson(
 export const defaultExpiringSoonDays = 14;
 export const maximumExpiringSoonDays = 180;
 
+// What a new item type starts its low stock threshold at, and how far it can be set. Zero is the
+// default because a threshold is only meaningful once someone has decided how much of a thing is too
+// little, and the backend reads that zero as no warning at all.
+export const defaultLowStockCount = 0;
+export const maximumLowStockCount = 50;
+
 export function defaultJsonValue(
 	valueType: PropertyValueType,
 	value: PropertyValue | null

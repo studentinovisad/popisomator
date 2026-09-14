@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -79,6 +80,42 @@ func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, it
 	return notificationIDs, nil
 }
 
+// createLowStockNotifications tells each recipient that one group of itemType has fallen to its
+// threshold. Unlike the two generators above it takes the querier rather than opening its own
+// transaction, because the caller has already claimed the alert row that makes this warning the only
+// one for this crossing - the claim and the warning have to land or fail together.
+//
+// Everything the notification will ever render is passed in and stored: the group is a rendered name
+// with no row to join back to, and the type's name and threshold can both change afterwards without
+// that being allowed to rewrite what was said.
+func createLowStockNotifications(
+	ctx context.Context,
+	queries *repository.Queries,
+	recipientIDs []int64,
+	itemType repository.ItemType,
+	groupLabel string,
+	threshold, observed int32,
+) error {
+	notifications, err := queries.CreateNotifications(ctx, repository.CreateNotificationsParams{
+		Kind:         repository.NotificationKindItemLowStock,
+		RecipientIds: recipientIDs,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = queries.CreateNotificationDescriptors_LowStock(ctx, repository.CreateNotificationDescriptors_LowStockParams{
+		NotificationIds: notificationIDsOf(notifications),
+		TypeID:          pgtype.Int8{Int64: itemType.ID, Valid: true},
+		TypeLabel:       itemType.Name,
+		GroupName:       groupLabel,
+		Threshold:       threshold,
+		Observed:        observed,
+	})
+
+	return err
+}
+
 func notificationIDsOf(notifications []repository.Notification) []int64 {
 	ids := make([]int64, len(notifications))
 	for index, notification := range notifications {
@@ -130,6 +167,19 @@ func ListNotifications(ctx context.Context, recipient_id int64, limit, offset in
 				Item: item,
 				Type: row.ItemExpiryType.NotifdescExpiryType,
 			}
+		case repository.NotificationKindItemLowStock:
+			// No follow-up read, unlike the two above: the descriptor was written with everything the
+			// warning says, precisely because a stock group has nothing to read back from.
+			descriptor := dto.NotificationDescriptor_LowStock{
+				TypeName:  row.LowStockTypeLabel.String,
+				GroupName: row.LowStockGroupName.String,
+				Threshold: row.LowStockThreshold.Int32,
+				Observed:  row.LowStockObserved.Int32,
+			}
+			if row.LowStockTypeID.Valid {
+				descriptor.TypeID = &row.LowStockTypeID.Int64
+			}
+			notif.Descriptor_LowStock = &descriptor
 		}
 		pageItems[index] = notif
 	}

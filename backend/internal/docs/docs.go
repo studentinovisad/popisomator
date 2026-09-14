@@ -1540,6 +1540,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/item-types/{id}/stock": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Groups every item of the type by its rendered derived name and counts how many of\neach are available - untouched, and not held under an approved request. Groups at or\nbelow the type's low_stock_count are flagged; a type without one flags nothing.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ItemTypes"
+                ],
+                "summary": "Break an item type's stock down by group",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeStock"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid type id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/items": {
             "get": {
                 "security": [
@@ -3525,6 +3583,10 @@ const docTemplate = `{
                     "type": "integer",
                     "minimum": 0
                 },
+                "low_stock_count": {
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3930,6 +3992,9 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "low_stock_count": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3984,6 +4049,26 @@ const docTemplate = `{
                         "overview",
                         "details"
                     ]
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeStock": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.StockGroup"
+                    }
+                },
+                "low_stock_count": {
+                    "type": "integer"
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
                 }
             }
         },
@@ -4093,6 +4178,9 @@ const docTemplate = `{
                 "desc_item_request": {
                     "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest"
                 },
+                "desc_low_stock": {
+                    "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.NotificationDescriptor_LowStock"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -4115,6 +4203,26 @@ const docTemplate = `{
                 },
                 "item": {
                     "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Item"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.NotificationDescriptor_LowStock": {
+            "type": "object",
+            "properties": {
+                "group_name": {
+                    "type": "string"
+                },
+                "observed": {
+                    "type": "integer"
+                },
+                "threshold": {
+                    "type": "integer"
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
                 }
             }
         },
@@ -4238,6 +4346,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.StockGroup": {
+            "type": "object",
+            "properties": {
+                "in_stock_count": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest": {
             "type": "object",
             "required": [
@@ -4283,6 +4408,10 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "low_stock_count": {
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "name": {
                     "type": "string"
@@ -4489,11 +4618,13 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "item_request",
-                "item_expiry"
+                "item_expiry",
+                "item_low_stock"
             ],
             "x-enum-varnames": [
                 "NotificationKindItemRequest",
-                "NotificationKindItemExpiry"
+                "NotificationKindItemExpiry",
+                "NotificationKindItemLowStock"
             ]
         },
         "github_com_studentinovisad_popisomator_backend_internal_repository.PropertyVisibility": {

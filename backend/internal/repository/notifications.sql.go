@@ -36,7 +36,7 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, recipientID int6
 }
 
 const createNotificationDescriptors_ItemExpiry = `-- name: CreateNotificationDescriptors_ItemExpiry :many
-INSERT INTO notifdesc_item_expiry (notification_id, item_id, expiry_type) 
+INSERT INTO notifdesc_item_expiry (notification_id, item_id, expiry_type)
 VALUES (unnest($3::bigint[]), $1, $2)
 RETURNING notification_id, kind, item_id, expiry_type
 `
@@ -109,6 +109,56 @@ func (q *Queries) CreateNotificationDescriptors_ItemRequest(ctx context.Context,
 	return items, nil
 }
 
+const createNotificationDescriptors_LowStock = `-- name: CreateNotificationDescriptors_LowStock :many
+INSERT INTO notifdesc_low_stock (notification_id, type_id, type_label, group_name, threshold, observed)
+VALUES (unnest($6::bigint[]), $1, $2, $3, $4, $5)
+RETURNING notification_id, kind, type_id, type_label, group_name, threshold, observed
+`
+
+type CreateNotificationDescriptors_LowStockParams struct {
+	TypeID          pgtype.Int8 `json:"type_id"`
+	TypeLabel       string      `json:"type_label"`
+	GroupName       string      `json:"group_name"`
+	Threshold       int32       `json:"threshold"`
+	Observed        int32       `json:"observed"`
+	NotificationIds []int64     `json:"notification_ids"`
+}
+
+func (q *Queries) CreateNotificationDescriptors_LowStock(ctx context.Context, arg CreateNotificationDescriptors_LowStockParams) ([]NotifdescLowStock, error) {
+	rows, err := q.db.Query(ctx, createNotificationDescriptors_LowStock,
+		arg.TypeID,
+		arg.TypeLabel,
+		arg.GroupName,
+		arg.Threshold,
+		arg.Observed,
+		arg.NotificationIds,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NotifdescLowStock
+	for rows.Next() {
+		var i NotifdescLowStock
+		if err := rows.Scan(
+			&i.NotificationID,
+			&i.Kind,
+			&i.TypeID,
+			&i.TypeLabel,
+			&i.GroupName,
+			&i.Threshold,
+			&i.Observed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createNotifications = `-- name: CreateNotifications :many
 INSERT INTO notifications (recipient_id, kind) 
 VALUES (unnest($2::bigint[]), $1)
@@ -164,17 +214,24 @@ func (q *Queries) DeleteNotification(ctx context.Context, arg DeleteNotification
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT 
-    notif.id, notif.recipient_id, notif.created_at, notif.kind, notif.read, 
+SELECT
+    notif.id, notif.recipient_id, notif.created_at, notif.kind, notif.read,
     notifdesc_item_request.user_id AS item_request_user_id,
     notifdesc_item_request.item_id AS item_request_item_id,
     notifdesc_item_expiry.item_id AS item_expiry_item_id,
-    notifdesc_item_expiry.expiry_type AS item_expiry_type
+    notifdesc_item_expiry.expiry_type AS item_expiry_type,
+    notifdesc_low_stock.type_id AS low_stock_type_id,
+    notifdesc_low_stock.type_label AS low_stock_type_label,
+    notifdesc_low_stock.group_name AS low_stock_group_name,
+    notifdesc_low_stock.threshold AS low_stock_threshold,
+    notifdesc_low_stock.observed AS low_stock_observed
 FROM notifications AS notif
-LEFT JOIN notifdesc_item_request 
+LEFT JOIN notifdesc_item_request
     ON notif.id = notifdesc_item_request.notification_id
-LEFT JOIN notifdesc_item_expiry 
+LEFT JOIN notifdesc_item_expiry
     ON notif.id = notifdesc_item_expiry.notification_id
+LEFT JOIN notifdesc_low_stock
+    ON notif.id = notifdesc_low_stock.notification_id
 WHERE recipient_id = $1
 ORDER BY notif.read ASC, notif.created_at DESC, notif.id DESC
 LIMIT $3 OFFSET $2
@@ -192,6 +249,11 @@ type ListNotificationsRow struct {
 	ItemRequestItemID pgtype.Int8             `json:"item_request_item_id"`
 	ItemExpiryItemID  pgtype.Int8             `json:"item_expiry_item_id"`
 	ItemExpiryType    NullNotifdescExpiryType `json:"item_expiry_type"`
+	LowStockTypeID    pgtype.Int8             `json:"low_stock_type_id"`
+	LowStockTypeLabel pgtype.Text             `json:"low_stock_type_label"`
+	LowStockGroupName pgtype.Text             `json:"low_stock_group_name"`
+	LowStockThreshold pgtype.Int4             `json:"low_stock_threshold"`
+	LowStockObserved  pgtype.Int4             `json:"low_stock_observed"`
 }
 
 // Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
@@ -215,6 +277,11 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.ItemRequestItemID,
 			&i.ItemExpiryItemID,
 			&i.ItemExpiryType,
+			&i.LowStockTypeID,
+			&i.LowStockTypeLabel,
+			&i.LowStockGroupName,
+			&i.LowStockThreshold,
+			&i.LowStockObserved,
 		); err != nil {
 			return nil, err
 		}

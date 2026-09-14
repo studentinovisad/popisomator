@@ -111,6 +111,34 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
+const listNotificationRecipients = `-- name: ListNotificationRecipients :many
+SELECT id FROM users
+WHERE role IN ('manager', 'admin') AND status = 'active'
+ORDER BY id
+`
+
+// Who hears about something the system noticed on its own. ListUsers cannot stand in for this: its
+// role filter takes one role rather than a set, and it is paginated.
+func (q *Queries) ListNotificationRecipients(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listNotificationRecipients)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE full_name ILIKE '%' || escape_like_pattern($1::text) || '%'

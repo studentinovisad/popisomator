@@ -222,6 +222,10 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 		return nil, err
 	}
 
+	// Adding stock can end a shortage, which is what clears the alert and lets the next one be
+	// reported. Runs after the commit so the count it reads is the one the user just created.
+	EvaluateLowStockAsync(ctx, req.TypeID)
+
 	return itemsDTO, nil
 }
 
@@ -430,6 +434,9 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 	}
 
 	var item repository.Item
+	// Both sides of a type change need re-counting: the item leaves one type's stock and joins
+	// another's. Collected inside the transaction, acted on once it has committed.
+	var affectedTypeIDs []int64
 	if req.TypeID != nil || req.Consumption != nil || req.LocationIDSet {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
@@ -444,6 +451,7 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 		if err != nil {
 			return dto.Item{}, err
 		}
+		affectedTypeIDs = append(affectedTypeIDs, before.TypeID)
 
 		// PATCH /items/{id} and POST /items/{id}/consume both land here. Today their controllers hand
 		// over disjoint fields - the first can only carry a type, the second only a consumption - but
@@ -530,11 +538,21 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 			}
 		}
 
+		if item.TypeID != before.TypeID {
+			affectedTypeIDs = append(affectedTypeIDs, item.TypeID)
+		}
+
 		if err := tx.Commit(ctx); err != nil {
 			return dto.Item{}, err
 		}
 	} else {
 		return dto.Item{}, ErrNoUpdateFields
+	}
+
+	// Consuming an item is the commonest way a group goes short, so this is the call site the warning
+	// exists for.
+	for _, typeID := range affectedTypeIDs {
+		EvaluateLowStockAsync(ctx, typeID)
 	}
 
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
@@ -602,7 +620,15 @@ func DeleteItem(ctx context.Context, id int64) error {
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	// Deleting the last item carrying a name removes the group outright rather than emptying it, so
+	// this is also what retires any alert standing against it.
+	EvaluateLowStockAsync(ctx, item.TypeID)
+
+	return nil
 }
 
 func AddItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyRequest) (dto.ItemProperty, error) {
@@ -649,6 +675,8 @@ func AddItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyRequest) 
 	if err := tx.Commit(ctx); err != nil {
 		return dto.ItemProperty{}, err
 	}
+
+	EvaluateLowStockForItemAsync(ctx, req.ItemID)
 
 	return dto.ToItemPropertyDTO(itemProp), nil
 }
@@ -707,6 +735,8 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 		return dto.ItemProperty{}, err
 	}
 
+	EvaluateLowStockForItemAsync(ctx, req.ItemID)
+
 	return dto.ToItemPropertyDTO(itemProp), nil
 }
 
@@ -762,7 +792,13 @@ func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	EvaluateLowStockForItemAsync(ctx, itemId)
+
+	return nil
 }
 
 // itemDerivedName is the name an item goes by, for an audit entry's target_label. A missing row

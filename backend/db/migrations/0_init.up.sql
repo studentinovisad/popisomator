@@ -34,7 +34,10 @@ CREATE TABLE item_types (
     name TEXT NOT NULL UNIQUE,
     description TEXT,
     derived_name_format TEXT,
-    expiring_soon_days SMALLINT CHECK (expiring_soon_days > 0)
+    expiring_soon_days SMALLINT CHECK (expiring_soon_days > 0),
+    -- How few unconsumed items of one derived name may remain before the type reports itself low on
+    -- stock. Null means no warning, the same as expiring_soon_days.
+    low_stock_count INTEGER CHECK (low_stock_count > 0)
 );
 
 CREATE TYPE property_visibility AS ENUM ('overview', 'details');
@@ -122,7 +125,7 @@ CREATE UNIQUE INDEX idx_unique_approved_item_requests
 ON item_requests(item_id)
 WHERE status = 'approved';
 
-CREATE TYPE notification_kind AS ENUM ('item_request', 'item_expiry');
+CREATE TYPE notification_kind AS ENUM ('item_request', 'item_expiry', 'item_low_stock');
 
 CREATE TABLE notifications (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -158,6 +161,35 @@ CREATE TABLE notifdesc_item_expiry (
 
   FOREIGN KEY(notification_id, kind)
     REFERENCES notifications(id, kind) ON DELETE CASCADE
+);
+
+-- Stock is counted per group of interchangeable items, and a group is the rendered derived name -
+-- every bottle reading "Natrijum hidroksid · p.a." is one stock line however many rows it spans.
+-- That name is computed, not stored, so it is the only handle a warning has: there is no group row
+-- to point a foreign key at. Hence the snapshots below. type_label, threshold and observed are
+-- recorded at the moment of the warning because the type may later be renamed, deleted, or have its
+-- threshold changed, and none of that should be able to rewrite what the manager was told.
+CREATE TABLE notifdesc_low_stock (
+  notification_id BIGINT PRIMARY KEY REFERENCES notifications(id) ON DELETE CASCADE,
+  kind notification_kind GENERATED ALWAYS AS ('item_low_stock') STORED,
+  type_id BIGINT REFERENCES item_types(id) ON DELETE SET NULL,
+  type_label TEXT NOT NULL,
+  group_name TEXT NOT NULL,
+  threshold INTEGER NOT NULL,
+  observed INTEGER NOT NULL,
+
+  FOREIGN KEY(notification_id, kind)
+    REFERENCES notifications(id, kind) ON DELETE CASCADE
+);
+
+-- Which groups are currently known to be low, so a warning fires when one crosses the threshold
+-- rather than on every item edit that happens while it stays below. A row appears when the group
+-- goes low and is deleted once it recovers, which is what makes the next dip notifiable again.
+CREATE TABLE low_stock_alerts (
+  type_id BIGINT NOT NULL REFERENCES item_types(id) ON DELETE CASCADE,
+  group_name TEXT NOT NULL,
+  notified_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (type_id, group_name)
 );
 
 -- An audit entry has to outlive the thing it describes: an item deleted a year ago is exactly the

@@ -173,11 +173,17 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 		expiringSoonDays = pgtype.Int2{Int16: *req.ExpiringSoonDays, Valid: true}
 	}
 
+	lowStockCount := pgtype.Int4{Valid: false}
+	if req.LowStockCount != nil && *req.LowStockCount > 0 {
+		lowStockCount = pgtype.Int4{Int32: *req.LowStockCount, Valid: true}
+	}
+
 	itemType, err := queriesTx.CreateItemType(ctx, repository.CreateItemTypeParams{
 		Name:              req.Name,
 		Description:       description,
 		DerivedNameFormat: derivedNameFormat,
 		ExpiringSoonDays:  expiringSoonDays,
+		LowStockCount:     lowStockCount,
 	})
 	if err != nil {
 		return dto.ItemType{}, err
@@ -243,6 +249,9 @@ func CreateItemType(ctx context.Context, req dto.CreateItemTypeRequest) (dto.Ite
 	if itemType.ExpiringSoonDays.Valid {
 		changes = auditNew(changes, "expiring_soon_days", dto.AuditValueTypeCount, itemType.ExpiringSoonDays.Int16)
 	}
+	if itemType.LowStockCount.Valid {
+		changes = auditNew(changes, "low_stock_count", dto.AuditValueTypeCount, itemType.LowStockCount.Int32)
+	}
 
 	if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypeCreate, repository.AuditTargetTypeItemType,
 		itemType.ID, itemType.Name, changes, dto.AuditContext{Properties: auditProperties}); err != nil {
@@ -272,7 +281,7 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 
 	var itemType repository.ItemType
 	if req.Name != nil || req.Description != nil || req.DerivedNameFormat != nil ||
-		req.ExpiringSoonDays != nil {
+		req.ExpiringSoonDays != nil || req.LowStockCount != nil {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return dto.ItemType{}, err
@@ -340,6 +349,21 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 			}
 		}
 
+		if req.LowStockCount != nil {
+			lowStockCount := pgtype.Int4{Valid: false}
+			if *req.LowStockCount > 0 {
+				lowStockCount = pgtype.Int4{Int32: *req.LowStockCount, Valid: true}
+			}
+
+			var err error
+			if itemType, err = queriesTx.UpdateItemType_LowStockCount(ctx, repository.UpdateItemType_LowStockCountParams{
+				ID:            req.ID,
+				LowStockCount: lowStockCount,
+			}); err != nil {
+				return dto.ItemType{}, err
+			}
+		}
+
 		changes := auditDiff(nil, "name", dto.AuditValueTypeText, before.Name, itemType.Name)
 		changes = auditDiff(changes, "description", dto.AuditValueTypeText,
 			before.Description.String, itemType.Description.String)
@@ -347,6 +371,8 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 			before.DerivedNameFormat.String, itemType.DerivedNameFormat.String)
 		changes = auditDiff(changes, "expiring_soon_days", dto.AuditValueTypeCount,
 			before.ExpiringSoonDays.Int16, itemType.ExpiringSoonDays.Int16)
+		changes = auditDiff(changes, "low_stock_count", dto.AuditValueTypeCount,
+			before.LowStockCount.Int32, itemType.LowStockCount.Int32)
 
 		if len(changes) > 0 {
 			if err := writeAudit(ctx, queriesTx, repository.AuditActionItemTypeUpdate, repository.AuditTargetTypeItemType,
@@ -360,6 +386,13 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 		}
 	} else {
 		return dto.ItemType{}, ErrNoUpdateFields
+	}
+
+	// Both of these redraw the stock from scratch: the threshold decides what counts as low, and the
+	// derived name format decides what the groups even are - editing it can merge two groups into one
+	// or split one into several.
+	if req.LowStockCount != nil || req.DerivedNameFormat != nil {
+		EvaluateLowStockAsync(ctx, itemType.ID)
 	}
 
 	typeProps, err := GetItemTypeProperties(ctx, itemType.ID)
