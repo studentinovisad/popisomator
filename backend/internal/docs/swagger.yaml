@@ -369,6 +369,14 @@ definitions:
         type: string
       id:
         type: integer
+      location_names:
+        description: |-
+          Returns name of the location where the item is located in,
+          as well as the names of it's ancestor locations, starting with
+          the root location.
+        items:
+          type: string
+        type: array
       name:
         type: string
       properties:

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -228,6 +229,18 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 			Reason:            request.Reason,
 			RequestedAt:       request.CreatedAt.Time,
 			Properties:        make([]dto.ItemRequestPreparationProperty, 0),
+		}
+		if request.LocationID.Valid {
+			locationNames := make([]string, 0, 1)
+			ancestorRows, err := db.Queries.GetLocationAncestors(ctx, request.ItemID)
+			if err != nil {
+				return dto.ItemRequestPreparationReport{}, err
+			}
+			for _, ancestor := range ancestorRows {
+				locationNames = append(locationNames, ancestor.Name)
+			}
+			slices.Reverse(locationNames)
+			items[index].LocationNames = locationNames
 		}
 		itemIndexes[request.ItemID] = index
 		itemIDs[index] = request.ItemID

@@ -277,6 +277,7 @@ export type ItemRequestPreparationItem = {
 	id: number;
 	name: string;
 	type_name: string;
+	location_names?: string[];
 	derived_name_format: string;
 	consumption: ConsumptionStatus;
 	reason: string;

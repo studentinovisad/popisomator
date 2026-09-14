@@ -27,6 +27,18 @@ WITH RECURSIVE children AS (
 )
 SELECT * FROM children;
 
+-- name: GetLocationAncestors :many
+WITH RECURSIVE ancestors AS (
+    SELECT l.id, l.parent_id, l.name
+      FROM locations l 
+      WHERE l.id = sqlc.arg(id)::bigint
+    UNION ALL
+    SELECT l.id, l.parent_id, l.name
+      FROM locations l
+      JOIN ancestors a ON l.id = a.parent_id
+)
+SELECT * FROM ancestors;
+
 -- name: UpdateLocation_Name :exec
 UPDATE locations SET name = $2 WHERE id = $1;
 

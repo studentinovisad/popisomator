@@ -239,7 +239,8 @@ SELECT
   render_item_derived_name(items.id, item_types.derived_name_format) AS item_name,
   item_types.name AS item_type_name,
   item_types.derived_name_format,
-  items.consumption
+  items.consumption,
+  items.location_id
 FROM item_requests
 JOIN users ON users.id = item_requests.user_id
 JOIN items ON items.id = item_requests.item_id
@@ -260,6 +261,7 @@ type ListItemPreparationRequestsRow struct {
 	ItemTypeName      string             `json:"item_type_name"`
 	DerivedNameFormat pgtype.Text        `json:"derived_name_format"`
 	Consumption       ConsumptionStatus  `json:"consumption"`
+	LocationID        pgtype.Int8        `json:"location_id"`
 }
 
 func (q *Queries) ListItemPreparationRequests(ctx context.Context, userID int64) ([]ListItemPreparationRequestsRow, error) {
@@ -282,6 +284,7 @@ func (q *Queries) ListItemPreparationRequests(ctx context.Context, userID int64)
 			&i.ItemTypeName,
 			&i.DerivedNameFormat,
 			&i.Consumption,
+			&i.LocationID,
 		); err != nil {
 			return nil, err
 		}

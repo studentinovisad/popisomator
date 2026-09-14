@@ -43,9 +43,13 @@ type ItemRequestPreparationReport struct {
 }
 
 type ItemRequestPreparationItem struct {
-	ID                int64                            `json:"id"`
-	Name              string                           `json:"name"`
-	TypeName          string                           `json:"type_name"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	TypeName string `json:"type_name"`
+	// Returns name of the location where the item is located in,
+	// as well as the names of it's ancestor locations, starting with
+	// the root location.
+	LocationNames     []string                         `json:"location_names,omitempty"`
 	DerivedNameFormat string                           `json:"derived_name_format"`
 	Consumption       repository.ConsumptionStatus     `json:"consumption"`
 	Reason            string                           `json:"reason"`

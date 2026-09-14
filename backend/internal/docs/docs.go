@@ -3683,6 +3683,13 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "location_names": {
+                    "description": "Returns name of the location where the item is located in,\nas well as the names of it's ancestor locations, starting with\nthe root location.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "name": {
                     "type": "string"
                 },

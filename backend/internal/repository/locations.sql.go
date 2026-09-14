@@ -59,6 +59,45 @@ func (q *Queries) DeleteLocation(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getLocationAncestors = `-- name: GetLocationAncestors :many
+WITH RECURSIVE ancestors AS (
+    SELECT l.id, l.parent_id, l.name
+      FROM locations l 
+      WHERE l.id = $1::bigint
+    UNION ALL
+    SELECT l.id, l.parent_id, l.name
+      FROM locations l
+      JOIN ancestors a ON l.id = a.parent_id
+)
+SELECT id, parent_id, name FROM ancestors
+`
+
+type GetLocationAncestorsRow struct {
+	ID       int64       `json:"id"`
+	ParentID pgtype.Int8 `json:"parent_id"`
+	Name     string      `json:"name"`
+}
+
+func (q *Queries) GetLocationAncestors(ctx context.Context, id int64) ([]GetLocationAncestorsRow, error) {
+	rows, err := q.db.Query(ctx, getLocationAncestors, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLocationAncestorsRow
+	for rows.Next() {
+		var i GetLocationAncestorsRow
+		if err := rows.Scan(&i.ID, &i.ParentID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLocationByID = `-- name: GetLocationByID :one
 SELECT id, name, description, parent_id FROM locations
 WHERE id = $1 LIMIT 1
