@@ -42,6 +42,14 @@ type ItemRequestPreparationReport struct {
 	Items []ItemRequestPreparationItem `json:"items"`
 }
 
+type ItemRequestPreparationReportRequest struct {
+	UserID      int64   `validate:"required,gt=0"`
+	ItemIDs     []int64 `validate:"omitempty,dive,gt=0"`
+	Status      *string `validate:"omitempty,oneof=requested approved"`
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
+}
+
 type ItemRequestPreparationItem struct {
 	ID       int64  `json:"id"`
 	Name     string `json:"name"`
@@ -51,6 +59,7 @@ type ItemRequestPreparationItem struct {
 	// the root location.
 	LocationNames     []string                         `json:"location_names,omitempty"`
 	DerivedNameFormat string                           `json:"derived_name_format"`
+	Status            repository.RequestStatus         `json:"status"`
 	Consumption       repository.ConsumptionStatus     `json:"consumption"`
 	Reason            string                           `json:"reason"`
 	RequestedAt       time.Time                        `json:"requested_at"`
@@ -82,10 +91,12 @@ type ItemRequestIdentifierRequest struct {
 }
 
 type ItemRequestsListRequest struct {
-	Limit  int32
-	Offset int32
-	Status *string `validate:"omitempty,oneof=requested approved"`
-	UserID *int64  `validate:"omitempty,gt=0"`
+	Limit       int32
+	Offset      int32
+	Status      *string `validate:"omitempty,oneof=requested approved"`
+	UserIDs     []int64 `validate:"omitempty,dive,gt=0"`
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
 }
 
 func ToItemRequestDTO(request repository.ItemRequest) ItemRequest {

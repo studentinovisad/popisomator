@@ -79,7 +79,7 @@ type Querier interface {
 	// Their entries stay in the log and still show the name they acted under - they just cannot be
 	// singled out by this filter any more.
 	ListAuditLogActors(ctx context.Context) ([]ListAuditLogActorsRow, error)
-	ListItemPreparationRequests(ctx context.Context, userID int64) ([]ListItemPreparationRequestsRow, error)
+	ListItemPreparationRequests(ctx context.Context, arg ListItemPreparationRequestsParams) ([]ListItemPreparationRequestsRow, error)
 	ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error)
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
 	ListItemTypeFilterableProperties(ctx context.Context, typeID int64) ([]ListItemTypeFilterablePropertiesRow, error)

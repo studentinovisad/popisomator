@@ -147,32 +147,35 @@ func ListItemRequests(ctx context.Context, req dto.ItemRequestsListRequest) (dto
 		return dto.ItemRequestsPage{}, err
 	}
 
-	userID := pgtype.Int8{}
-	if req.UserID != nil {
-		userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
+	status := nullableRequestStatus(req.Status)
+
+	createdFrom := pgtype.Timestamptz{}
+	if req.CreatedFrom != nil {
+		createdFrom = pgtype.Timestamptz{Time: *req.CreatedFrom, Valid: true}
 	}
 
-	status := repository.NullRequestStatus{}
-	if req.Status != nil {
-		status = repository.NullRequestStatus{
-			RequestStatus: repository.RequestStatus(*req.Status),
-			Valid:         true,
-		}
+	createdTo := pgtype.Timestamptz{}
+	if req.CreatedTo != nil {
+		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
 	}
 
 	total, err := db.Queries.CountItemRequests(ctx, repository.CountItemRequestsParams{
-		UserID: userID,
-		Status: status,
+		UserIds:     req.UserIDs,
+		Status:      status,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
 	})
 	if err != nil {
 		return dto.ItemRequestsPage{}, err
 	}
 
 	requests, err := db.Queries.ListItemRequests(ctx, repository.ListItemRequestsParams{
-		LimitVal:  req.Limit,
-		OffsetVal: req.Offset,
-		UserID:    userID,
-		Status:    status,
+		LimitVal:    req.Limit,
+		OffsetVal:   req.Offset,
+		UserIds:     req.UserIDs,
+		Status:      status,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
 	})
 	if err != nil {
 		return dto.ItemRequestsPage{}, err
@@ -205,13 +208,33 @@ func ListItemRequestUsers(ctx context.Context) ([]dto.ItemRequestUserOption, err
 	return options, nil
 }
 
-func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.ItemRequestPreparationReport, error) {
-	user, err := db.Queries.GetUserByID(ctx, userID)
+func GetItemRequestPreparationReport(ctx context.Context, req dto.ItemRequestPreparationReportRequest) (dto.ItemRequestPreparationReport, error) {
+	if err := dto.Validate(req); err != nil {
+		return dto.ItemRequestPreparationReport{}, err
+	}
+
+	user, err := db.Queries.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		return dto.ItemRequestPreparationReport{}, err
 	}
 
-	requests, err := db.Queries.ListItemPreparationRequests(ctx, userID)
+	createdFrom := pgtype.Timestamptz{}
+	if req.CreatedFrom != nil {
+		createdFrom = pgtype.Timestamptz{Time: *req.CreatedFrom, Valid: true}
+	}
+
+	createdTo := pgtype.Timestamptz{}
+	if req.CreatedTo != nil {
+		createdTo = pgtype.Timestamptz{Time: *req.CreatedTo, Valid: true}
+	}
+
+	requests, err := db.Queries.ListItemPreparationRequests(ctx, repository.ListItemPreparationRequestsParams{
+		UserID:      req.UserID,
+		ItemIds:     req.ItemIDs,
+		Status:      nullableRequestStatus(req.Status),
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
+	})
 	if err != nil {
 		return dto.ItemRequestPreparationReport{}, err
 	}
@@ -228,6 +251,7 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 			Name:              request.ItemName,
 			TypeName:          request.ItemTypeName,
 			DerivedNameFormat: request.DerivedNameFormat.String,
+			Status:            request.Status,
 			Consumption:       request.Consumption,
 			Reason:            request.Reason,
 			RequestedAt:       request.CreatedAt.Time,
@@ -287,6 +311,17 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 		User:  dto.ItemRequestUserOption{ID: user.ID, Name: user.FullName},
 		Items: items,
 	}, nil
+}
+
+func nullableRequestStatus(status *string) repository.NullRequestStatus {
+	if status == nil {
+		return repository.NullRequestStatus{}
+	}
+
+	return repository.NullRequestStatus{
+		RequestStatus: repository.RequestStatus(*status),
+		Valid:         true,
+	}
 }
 
 func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) error {

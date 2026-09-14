@@ -19,7 +19,9 @@ SELECT EXISTS(
 -- name: CountItemRequests :one
 SELECT count(*) FROM item_requests
 WHERE (sqlc.narg('status')::request_status IS NULL OR item_requests.status = sqlc.narg('status'))
-  AND (sqlc.narg('user_id')::bigint IS NULL OR item_requests.user_id = sqlc.narg('user_id'));
+  AND (sqlc.narg('user_ids')::bigint[] IS NULL OR item_requests.user_id = ANY(sqlc.narg('user_ids')::bigint[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR item_requests.created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR item_requests.created_at <= sqlc.narg('created_to'));
 
 -- name: ListItemRequests :many
 SELECT
@@ -31,7 +33,9 @@ JOIN users ON users.id = item_requests.user_id
 JOIN items ON items.id = item_requests.item_id
 JOIN item_types ON item_types.id = items.type_id
 WHERE (sqlc.narg('status')::request_status IS NULL OR item_requests.status = sqlc.narg('status'))
-  AND (sqlc.narg('user_id')::bigint IS NULL OR item_requests.user_id = sqlc.narg('user_id'))
+  AND (sqlc.narg('user_ids')::bigint[] IS NULL OR item_requests.user_id = ANY(sqlc.narg('user_ids')::bigint[]))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR item_requests.created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR item_requests.created_at <= sqlc.narg('created_to'))
 ORDER BY item_requests.created_at DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
@@ -55,7 +59,10 @@ JOIN users ON users.id = item_requests.user_id
 JOIN items ON items.id = item_requests.item_id
 JOIN item_types ON item_types.id = items.type_id
 WHERE item_requests.user_id = $1
-  AND item_requests.status = 'requested'
+  AND (sqlc.narg('item_ids')::bigint[] IS NULL OR item_requests.item_id = ANY(sqlc.narg('item_ids')::bigint[]))
+  AND (sqlc.narg('status')::request_status IS NULL OR item_requests.status = sqlc.narg('status'))
+  AND (sqlc.narg('created_from')::timestamptz IS NULL OR item_requests.created_at >= sqlc.narg('created_from'))
+  AND (sqlc.narg('created_to')::timestamptz IS NULL OR item_requests.created_at <= sqlc.narg('created_to'))
 ORDER BY item_requests.created_at, item_requests.item_id;
 
 -- name: GetItemRequest :one
