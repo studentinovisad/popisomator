@@ -80,13 +80,11 @@
 
 <main class="px-4 pt-4 pb-8 sm:px-6">
 	<ProtectedPageState
-		loading={authPage.state.loading ||
-			(authPage.state.authorized && locationOptionsLoading)}
+		loading={authPage.state.loading || (authPage.state.authorized && locationOptionsLoading)}
 		contentLoaded={!locationOptionsLoading}
 		error={authPage.state.error || locationOptionsError}
 		authorized={authPage.state.authorized}
 	>
-
 		<Portal to="#page-header-actions">
 			<a
 				class="inline-flex size-10 items-center justify-center rounded-md bg-brand text-on-brand hover:bg-brand-strong"
@@ -99,9 +97,9 @@
 		</Portal>
 
 		{#if locationOptions.length > 0}
-			<div class="flex flex-wrap w-full h-full gap-8 justify-center content-center items-center ">
+			<div class="flex h-full w-full flex-wrap content-center items-center justify-center gap-8">
 				{#each locationOptions as location}
-					<LocationBlock location={location} alternateBg={true} deletelocation={deleteLocation}/>
+					<LocationBlock {location} alternateBg={true} deletelocation={deleteLocation} />
 				{/each}
 			</div>
 		{:else}

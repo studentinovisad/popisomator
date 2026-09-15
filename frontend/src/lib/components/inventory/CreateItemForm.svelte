@@ -203,7 +203,11 @@
 						Odaberite tip stavke, njenu lokaciju i broj istih stavki koje želite da dodate.
 					</p>
 				</div>
-				<div class="grid gap-5 sm:grid-cols-[minmax(0,1fr){locations.length > 0 ? "_minmax(0,1fr)" : ""}_12rem]">
+				<div
+					class="grid gap-5 sm:grid-cols-[minmax(0,1fr){locations.length > 0
+						? '_minmax(0,1fr)'
+						: ''}_12rem]"
+				>
 					<div>
 						<Label.Root class="text-sm font-medium text-ink" for="new-item-type"
 							>Tip stavke</Label.Root

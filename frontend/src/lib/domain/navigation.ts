@@ -2,7 +2,14 @@ import type { UserRole } from '$lib/api';
 import { notifications } from '$lib/state/notifications.svelte';
 
 export type NavigationIconName =
-	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications' | 'audit' | 'locations';
+	| 'inventory'
+	| 'catalog'
+	| 'settings'
+	| 'users'
+	| 'requests'
+	| 'notifications'
+	| 'audit'
+	| 'locations';
 
 export type AppPath =
 	| '/'

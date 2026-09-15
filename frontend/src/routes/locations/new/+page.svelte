@@ -56,11 +56,7 @@
 	>
 		<section class="mx-auto flex w-full max-w-3xl flex-1 flex-col">
 			<div class="flex min-h-0 flex-1">
-				<LocationForm
-					{locationOptions}
-					onsaved={onCreated}
-					oncancel={onCancelCreation}
-				/>
+				<LocationForm {locationOptions} onsaved={onCreated} oncancel={onCancelCreation} />
 			</div>
 		</section>
 	</ProtectedPageState>

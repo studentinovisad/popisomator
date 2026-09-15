@@ -72,7 +72,12 @@
 		{#if location}
 			<section class="mx-auto flex w-full max-w-3xl flex-1 flex-col" aria-label="Izmeni tip stavke">
 				<div class="flex min-h-0 flex-1">
-					<LocationForm {location} {locationOptions} onsaved={onSaved} oncancel={cancelLocationEdit}/>
+					<LocationForm
+						{location}
+						{locationOptions}
+						onsaved={onSaved}
+						oncancel={cancelLocationEdit}
+					/>
 				</div>
 			</section>
 		{/if}

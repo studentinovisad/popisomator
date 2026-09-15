@@ -86,5 +86,5 @@ export const catalogApi = {
 	getLocation: (id: number) => request<Location>(`/locations/${id}`),
 	updateLocation: (id: number, payload: UpdateLocationRequest) =>
 		request<Location>(`/locations/${id}`, jsonRequest('PATCH', payload)),
-	deleteLocation: (id: number) => request<void>(`/locations/${id}`, { method: 'DELETE' }),
+	deleteLocation: (id: number) => request<void>(`/locations/${id}`, { method: 'DELETE' })
 };

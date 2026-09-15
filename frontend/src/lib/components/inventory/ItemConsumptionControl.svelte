@@ -49,9 +49,9 @@
 
 {#if item.holder_name != undefined}
 	<span class="block min-w-0">
-		<p class="truncate text-xs text-muted pb-1">Trenutno koristi</p>
+		<p class="truncate pb-1 text-xs text-muted">Trenutno koristi</p>
 		<UserAvatar name={item.holder_name} class="inline-flex size-7 shrink-0" />
-		<p class="px-1 inline-flex mt-0.5 truncate font-medium">{item.holder_name}</p>
+		<p class="mt-0.5 inline-flex truncate px-1 font-medium">{item.holder_name}</p>
 	</span>
 {:else if canConsume}
 	<Select.Root

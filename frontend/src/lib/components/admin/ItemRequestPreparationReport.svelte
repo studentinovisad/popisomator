@@ -47,16 +47,16 @@
 
 	function renderLocationPath(item: PreparationItem) {
 		if (item.location_names == undefined) {
-			return "Neraspoređeno"
+			return 'Neraspoređeno';
 		}
 		let path = '';
 		let firstLocation = true;
-		item.location_names.forEach(name => {
+		item.location_names.forEach((name) => {
 			if (firstLocation) {
 				firstLocation = false;
 				path += name;
 			} else {
-				path += " → " + name
+				path += ' → ' + name;
 			}
 		});
 		return path;
@@ -73,8 +73,7 @@
 			locations.set(location, locationGroup);
 		}
 
-		return [...locations.values()]
-			.sort((left, right) => left.name.localeCompare(right.name, 'sr'));
+		return [...locations.values()].sort((left, right) => left.name.localeCompare(right.name, 'sr'));
 	}
 </script>
 

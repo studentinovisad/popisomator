@@ -4,9 +4,7 @@
 		ApiError,
 		type CreateLocationRequest,
 		type Location,
-
 		type LocationOption
-
 	} from '$lib/api';
 	import { requiredTextError } from '$lib/domain/form-validation';
 	import { Button, Label, Portal, Select, Separator } from 'bits-ui';
@@ -124,7 +122,6 @@
 					{nameError}
 				</p>
 			</div>
-			
 		</div>
 		<div>
 			<Label.Root class="text-sm font-medium text-ink" for="location-description">Opis</Label.Root>

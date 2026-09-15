@@ -20,7 +20,7 @@ export const itemsApi = {
 		propertyFilters = {},
 		sortPropertyID,
 		order = 'desc',
-		heldBy,
+		heldBy
 	}: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset), order });
 		if (search) query.set('search', search);

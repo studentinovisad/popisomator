@@ -83,9 +83,11 @@
 
 			let newLocationID = selectedLocationID.trim().length > 0 ? Number(selectedLocationID) : null;
 			if (item.location_id != newLocationID) {
-				changes.push(api.updateItem(item.id, {
-					location_id: newLocationID
-				}));
+				changes.push(
+					api.updateItem(item.id, {
+						location_id: newLocationID
+					})
+				);
 			}
 
 			for (const propertyID of editablePropertyIDs) {

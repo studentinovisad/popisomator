@@ -17,8 +17,8 @@
 		disabled = false,
 		invalid = false,
 		clearable = false,
-		height = "10",
-		bgColor = "surface",
+		height = '10',
+		bgColor = 'surface',
 		describedBy,
 		onvaluechange
 	}: {
@@ -41,7 +41,6 @@
 	let filteredOptions = $derived(
 		options.filter((option) => option.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
 	);
-	
 
 	function handleInput(event: Event) {
 		query = (event.currentTarget as HTMLInputElement).value;

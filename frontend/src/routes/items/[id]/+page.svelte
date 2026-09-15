@@ -74,7 +74,7 @@
 			const [nextItemType, nextProperties, nextLocations] = await Promise.all([
 				api.getItemType(nextItem.type_id),
 				api.getPropertyOptions(),
-				api.getLocationOptionsFlat(),
+				api.getLocationOptionsFlat()
 			]);
 			item = nextItem;
 			itemType = nextItemType;
@@ -239,7 +239,13 @@
 					<h3 id="item-properties-heading" class="text-base font-semibold text-ink">Svojstva</h3>
 					<div class="mt-3">
 						{#if editing && canManage && itemType}
-							<ItemPropertiesForm {item} {itemType} {properties} {selectedLocationID} onsaved={propertiesSaved} />
+							<ItemPropertiesForm
+								{item}
+								{itemType}
+								{properties}
+								{selectedLocationID}
+								onsaved={propertiesSaved}
+							/>
 						{:else if item.properties.length}
 							<dl class="divide-y divide-line border-y border-line">
 								{#each item.properties as property (property.id)}

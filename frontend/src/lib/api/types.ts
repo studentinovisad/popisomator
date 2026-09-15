@@ -223,11 +223,11 @@ export type Location = {
 	name: string;
 	description?: string;
 	parent_id?: number;
-}
+};
 
 export type LocationOption = Pick<Location, 'id' | 'name'> & {
 	children: LocationOption[];
-}
+};
 
 export type CreateLocationRequest = {
 	name: string;

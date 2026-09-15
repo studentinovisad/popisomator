@@ -57,7 +57,7 @@
 		if (item.location_id != undefined) {
 			return locationNames.get(item.location_id) ?? 'Nepoznata lokacija';
 		} else {
-			return "—";
+			return '—';
 		}
 	}
 

@@ -60,10 +60,10 @@
 	]);
 
 	let heldByOptions = [
-		{label: "Sve stavke", value: "all"},
-        {label: "Moje stavke", value: "me"},
-        {label: "Slobodne stavke", value: "nobody"}
-    ];
+		{ label: 'Sve stavke', value: 'all' },
+		{ label: 'Moje stavke', value: 'me' },
+		{ label: 'Slobodne stavke', value: 'nobody' }
+	];
 </script>
 
 <div class="flex items-center justify-between gap-4">

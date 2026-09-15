@@ -17,12 +17,8 @@
 		type PropertyOption,
 		type PropertyValue,
 		type SortOrder,
-
 		type HeldBy,
-
 		type LocationOption
-
-
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -76,9 +72,7 @@
 	let sortOrder = $derived(getSortOrder(page.url));
 	let selectedItemTypeID = $derived(getSelectedItemTypeID(page.url));
 	let selectedLocationID = $derived(getSelectedLocationID(page.url));
-	let locationFilter = $derived(
-		selectedLocationID != undefined ? String(selectedLocationID) : ''
-	);
+	let locationFilter = $derived(selectedLocationID != undefined ? String(selectedLocationID) : '');
 	let itemTypeFilter = $derived(
 		selectedItemTypeID === undefined ? 'all' : String(selectedItemTypeID)
 	);
@@ -117,7 +111,7 @@
 			];
 		});
 	});
-	let heldByValue = $state(getHeldBy(page.url) || "all")
+	let heldByValue = $state(getHeldBy(page.url) || 'all');
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -256,7 +250,7 @@
 			const [nextItemTypes, nextProperties, nextLocations] = await Promise.all([
 				api.getItemTypeOptions(),
 				api.getPropertyOptions(),
-				api.getLocationOptionsFlat(),
+				api.getLocationOptionsFlat()
 			]);
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
@@ -322,11 +316,11 @@
 	}
 
 	function filterByLocation(locationID: string) {
-		updateTableQuery({ location_id: locationID, page: 1});
+		updateTableQuery({ location_id: locationID, page: 1 });
 	}
 
 	function heldByChange(value: string) {
-		updateTableQuery({ ['held_by']: value != "all" ? value : undefined, page: 1 });
+		updateTableQuery({ ['held_by']: value != 'all' ? value : undefined, page: 1 });
 	}
 
 	async function loadPropertyFilterValues(propertyID: number, search: string) {
@@ -384,7 +378,7 @@
 	}
 
 	function getHeldBy(url: URL): HeldBy | undefined {
-		let val = getTableFilter(url, 'held_by')
+		let val = getTableFilter(url, 'held_by');
 		return val === 'me' || val === 'nobody' ? val : undefined;
 	}
 
