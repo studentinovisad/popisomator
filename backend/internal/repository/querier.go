@@ -7,6 +7,8 @@ package repository
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -126,6 +128,30 @@ type Querier interface {
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error)
+	// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
+	// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
+	// that is what the count groups by.
+	//
+	// The grouping deliberately spans every item of the type whatever its state, while only items that
+	// are actually available count as stock. That split is the whole point. A group that has been used up
+	// has no available rows left, and a plain GROUP BY over in-stock items would drop it from the result
+	// entirely - losing precisely the group worth warning about. Counting inside a FILTER instead keeps
+	// the consumed rows present as evidence the group exists, and reports it at zero.
+	//
+	// Available means untouched and on the shelf: an item someone holds an approved request for is spoken
+	// for and cannot be handed to anyone else, so it is not stock however full it still is. The join
+	// mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
+	// item, which is what keeps it from inflating total_count.
+	//
+	// A null type_id counts the whole inventory instead of one type, which is the same question asked of
+	// everything at once. The type rides along in the select because a group name only identifies a
+	// stock line within one type, and the threshold because it is per type and there is otherwise no way
+	// to tell a short group from a healthy one.
+	//
+	// Deliberately unlimited. One caller wants the scarcest groups and another the largest, which are
+	// opposite ends of this ordering, so a LIMIT would serve the first and quietly truncate the second.
+	//
+	ListStockGroups(ctx context.Context, typeID pgtype.Int8) ([]ListStockGroupsRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	LockItemForRequest(ctx context.Context, id int64) (int64, error)
 	LockItemType(ctx context.Context, id int64) (ItemType, error)
