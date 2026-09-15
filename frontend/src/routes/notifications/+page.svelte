@@ -6,6 +6,7 @@
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import CalendarX from '@lucide/svelte/icons/calendar-x';
 	import ClipboardCheck from '@lucide/svelte/icons/clipboard-check';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import X from '@lucide/svelte/icons/x';
 	import { api, ApiError, type Notification } from '$lib/api';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -136,6 +137,8 @@
 								<CalendarClock class="size-4" />
 							{:else if icon === 'expired'}
 								<CalendarX class="size-4" />
+							{:else if icon === 'low-stock'}
+								<TriangleAlert class="size-4" />
 							{:else}
 								<Bell class="size-4" />
 							{/if}
