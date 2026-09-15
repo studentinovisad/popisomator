@@ -51,7 +51,7 @@
 		saving = true;
 
 		try {
-			const savedParentID = hasParentLocation ? Number(parentLocationID) : null;
+			const savedParentID = hasParentLocation && parentLocationID ? Number(parentLocationID) : null;
 			if (location) {
 				await api.updateLocation(location.id, {
 					name,
