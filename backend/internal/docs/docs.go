@@ -330,6 +330,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/dashboard": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Every dashboard widget in one read. The window runs forward from the current month\nfor expiry, which asks what is about to go off, and backward from it for consumption,\nwhich asks what has already been used. Both charts report a bucket per month over the\nwhole range, including the months in which nothing happened.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Summarise expiry, consumption and stock (manager and admin only)",
+                "parameters": [
+                    {
+                        "enum": [
+                            3,
+                            6,
+                            12
+                        ],
+                        "type": "integer",
+                        "description": "Range covered by both charts, one of 3, 6 or 12 (default 6)",
+                        "name": "months",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Narrow every figure to one item type (default all types)",
+                        "name": "type_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.Dashboard"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "produces": [
@@ -3540,6 +3602,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket": {
+            "type": "object",
+            "properties": {
+                "damaged": {
+                    "type": "integer"
+                },
+                "fully_consumed": {
+                    "type": "integer"
+                },
+                "month": {
+                    "type": "string"
+                },
+                "partially_consumed": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.CreateItemRequest": {
             "type": "object",
             "required": [
@@ -3682,6 +3761,93 @@ const docTemplate = `{
                         "requested",
                         "active"
                     ]
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.Dashboard": {
+            "type": "object",
+            "properties": {
+                "consumption_by_month": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket"
+                    }
+                },
+                "expired_backlog": {
+                    "type": "integer"
+                },
+                "expiring_by_month": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.MonthCount"
+                    }
+                },
+                "expiring_items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.DashboardExpiringItem"
+                    }
+                },
+                "expiring_items_total": {
+                    "type": "integer"
+                },
+                "months": {
+                    "type": "integer"
+                },
+                "stock_groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.DashboardStockGroup"
+                    }
+                },
+                "type_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.DashboardExpiringItem": {
+            "type": "object",
+            "properties": {
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "expires_on": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.DashboardStockGroup": {
+            "type": "object",
+            "properties": {
+                "in_stock_count": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "boolean"
+                },
+                "low_stock_count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
                 }
             }
         },
@@ -4162,6 +4328,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.MonthCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "month": {
                     "type": "string"
                 }
             }

@@ -267,6 +267,13 @@ func New() *http.ServeMux {
 		middleware.Handle(controller.DeleteItemRequest),
 	))
 
+	// Dashboard
+	mux.Handle("GET /dashboard", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.GetDashboard),
+	))
+
 	// Audit log
 	mux.Handle("GET /audit-log", middleware.Chain(
 		middleware.RequireAuth,
