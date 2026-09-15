@@ -20,11 +20,10 @@ WHERE full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
   AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
   AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status);
 
--- Who hears about something the system noticed on its own. ListUsers cannot stand in for this: its
--- role filter takes one role rather than a set, and it is paginated.
--- name: ListNotificationRecipients :many
-SELECT id FROM users
-WHERE role IN ('manager', 'admin') AND status = 'active'
+-- name: GetUsersByRoles :many
+SELECT * FROM users
+WHERE role::text = ANY(sqlc.arg('roles')::text[])
+  AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status)
 ORDER BY id;
 
 -- name: CreateUser :one

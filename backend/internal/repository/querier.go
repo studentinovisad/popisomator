@@ -66,6 +66,7 @@ type Querier interface {
 	GetPropertyByID(ctx context.Context, id int64) (Property, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
+	GetUsersByRoles(ctx context.Context, arg GetUsersByRolesParams) ([]User, error)
 	// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
 	// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
 	// that is what the count groups by.
@@ -118,9 +119,6 @@ type Querier interface {
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListLocationOptions(ctx context.Context) ([]ListLocationOptionsRow, error)
 	ListLowStockAlerts(ctx context.Context, typeID int64) ([]LowStockAlert, error)
-	// Who hears about something the system noticed on its own. ListUsers cannot stand in for this: its
-	// role filter takes one role rather than a set, and it is paginated.
-	ListNotificationRecipients(ctx context.Context) ([]int64, error)
 	// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
 	// bulk-inserted, so a whole batch shares one created_at.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)

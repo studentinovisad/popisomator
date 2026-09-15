@@ -1533,64 +1533,6 @@
                 }
             }
         },
-        "/item-types/{id}/stock": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Groups every item of the type by its rendered derived name and counts how many of\neach are available - untouched, and not held under an approved request. Groups at or\nbelow the type's low_stock_count are flagged; a type without one flags nothing.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ItemTypes"
-                ],
-                "summary": "Break an item type's stock down by group",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Item Type ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeStock"
-                        }
-                    },
-                    "400": {
-                        "description": "invalid type id",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "not logged in",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    }
-                }
-            }
-        },
         "/items": {
             "get": {
                 "security": [
@@ -1760,6 +1702,64 @@
                     },
                     "403": {
                         "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/items/stock": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Items of one type that render the same derived name are one line of stock. Counts how\nmany of each are free to hand out - untouched, and not held under an approved request\n- and flags the lines at or below the type's low_stock_count.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Count a type's items by the name they share",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item type to count",
+                        "name": "type_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemTypeStock"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid type_id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
                         }

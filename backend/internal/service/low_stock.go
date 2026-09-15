@@ -114,13 +114,14 @@ func EvaluateLowStock(ctx context.Context, typeID int64) error {
 		}
 
 		if !recipientsRead {
-			if recipientIDs, err = db.Queries.ListNotificationRecipients(ctx); err != nil {
+			if recipientIDs, err = notificationRecipients(ctx); err != nil {
 				return err
 			}
 			recipientsRead = true
 		}
 
-		if err := warnLowStock(ctx, recipientIDs, itemType, group, threshold); err != nil {
+		if _, err := CreateLowStockNotifications(ctx, recipientIDs, itemType,
+			stockGroupLabel(group.GroupName, itemType.Name), threshold, int32(group.InStockCount)); err != nil {
 			return err
 		}
 	}
@@ -143,42 +144,23 @@ func EvaluateLowStock(ctx context.Context, typeID int64) error {
 	return nil
 }
 
-// warnLowStock claims the alert row for one group and, if the claim was the one that took, notifies
-// about it. Both happen under a single transaction: a claimed group that never got its notification
-// would go quiet until it recovered and dipped again.
-func warnLowStock(
-	ctx context.Context,
-	recipientIDs []int64,
-	itemType repository.ItemType,
-	group repository.GroupItemCountsRow,
-	threshold int32,
-) error {
-	tx, err := db.BeginTransaction(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	queriesTx := db.Queries.WithTx(tx)
-
-	claimed, err := queriesTx.InsertLowStockAlert(ctx, repository.InsertLowStockAlertParams{
-		TypeID:    itemType.ID,
-		GroupName: group.GroupName,
+// notificationRecipients is who hears about something the system noticed on its own, rather than
+// about a request they made themselves.
+func notificationRecipients(ctx context.Context) ([]int64, error) {
+	users, err := db.Queries.GetUsersByRoles(ctx, repository.GetUsersByRolesParams{
+		Roles:        []string{string(repository.UserRoleManager), string(repository.UserRoleAdmin)},
+		StatusFilter: string(repository.UserStatusActive),
 	})
 	if err != nil {
-		return err
-	}
-	if claimed == 0 {
-		return nil
+		return nil, err
 	}
 
-	if len(recipientIDs) > 0 {
-		if err := createLowStockNotifications(ctx, queriesTx, recipientIDs, itemType,
-			stockGroupLabel(group.GroupName, itemType.Name), threshold, int32(group.InStockCount)); err != nil {
-			return err
-		}
+	recipientIDs := make([]int64, len(users))
+	for index, user := range users {
+		recipientIDs[index] = user.ID
 	}
 
-	return tx.Commit(ctx)
+	return recipientIDs, nil
 }
 
 // EvaluateLowStockAsync runs EvaluateLowStock for a type whose stock a just-committed write may have

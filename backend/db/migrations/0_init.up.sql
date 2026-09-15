@@ -35,8 +35,6 @@ CREATE TABLE item_types (
     description TEXT,
     derived_name_format TEXT,
     expiring_soon_days SMALLINT CHECK (expiring_soon_days > 0),
-    -- How few unconsumed items of one derived name may remain before the type reports itself low on
-    -- stock. Null means no warning, the same as expiring_soon_days.
     low_stock_count INTEGER CHECK (low_stock_count > 0)
 );
 
