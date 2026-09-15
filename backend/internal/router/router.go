@@ -116,10 +116,11 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetLocation),
 	))
-	mux.Handle("PATCH /locations/{id}", middleware.Chain(
-		middleware.RequireAuth,
-		middleware.Handle(controller.UpdateLocation),
-	))
+  mux.Handle("PATCH /locations/{id}", middleware.Chain(
+        middleware.RequireAuth,
+        middleware.RequireRoles("manager", "admin"),
+        middleware.Handle(controller.UpdateLocation),
+  ))
 	mux.Handle("DELETE /locations/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),
