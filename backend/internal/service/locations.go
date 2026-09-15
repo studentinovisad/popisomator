@@ -114,58 +114,73 @@ func UpdateLocation(ctx context.Context, req dto.UpdateLocationRequest) (dto.Loc
 		return dto.Location{}, err
 	}
 
-	if req.Name != nil {
-		if err := db.Queries.UpdateLocation_Name(ctx, repository.UpdateLocation_NameParams{
-			ID:   req.ID,
-			Name: *req.Name,
-		}); err != nil {
+	if req.Name != nil || req.Description != nil || req.ParentIDSet {
+		tx, err := db.BeginTransaction(ctx)
+		if err != nil {
 			return dto.Location{}, err
 		}
-	}
+		defer tx.Rollback(ctx)
+		queriesTx := db.Queries.WithTx(tx)
 
-	if req.Description != nil {
-		description := pgtype.Text{String: *req.Description, Valid: true}
-
-		if err := db.Queries.UpdateLocation_Description(ctx, repository.UpdateLocation_DescriptionParams{
-			ID:          req.ID,
-			Description: description,
-		}); err != nil {
-			return dto.Location{}, err
-		}
-	}
-
-	if req.ParentIDSet {
-		parentID := pgtype.Int8{Valid: false}
-		if req.ParentID != nil {
-			rows, err := db.Queries.GetLocationChildren(ctx, req.ID)
-			if err != nil {
+		if req.Name != nil {
+			if err := queriesTx.UpdateLocation_Name(ctx, repository.UpdateLocation_NameParams{
+				ID:   req.ID,
+				Name: *req.Name,
+			}); err != nil {
 				return dto.Location{}, err
 			}
-			for _, row := range rows {
-				if row.ID == *req.ParentID {
-					return dto.Location{}, ErrLocationCycleDetected
+		}
+
+		if req.Description != nil {
+			description := pgtype.Text{String: *req.Description, Valid: true}
+
+			if err := queriesTx.UpdateLocation_Description(ctx, repository.UpdateLocation_DescriptionParams{
+				ID:          req.ID,
+				Description: description,
+			}); err != nil {
+				return dto.Location{}, err
+			}
+		}
+
+		if req.ParentIDSet {
+			parentID := pgtype.Int8{Valid: false}
+			if req.ParentID != nil {
+				rows, err := queriesTx.GetLocationChildren(ctx, req.ID)
+				if err != nil {
+					return dto.Location{}, err
 				}
+				for _, row := range rows {
+					if row.ID == *req.ParentID {
+						return dto.Location{}, ErrLocationCycleDetected
+					}
+				}
+
+				parentID = pgtype.Int8{Int64: *req.ParentID, Valid: true}
 			}
 
-			parentID = pgtype.Int8{Int64: *req.ParentID, Valid: true}
+			if err := queriesTx.UpdateLocation_ParentID(ctx, repository.UpdateLocation_ParentIDParams{
+				ID:       req.ID,
+				ParentID: parentID,
+			}); err != nil {
+				return dto.Location{}, err
+			}
 		}
 
-		if err := db.Queries.UpdateLocation_ParentID(ctx, repository.UpdateLocation_ParentIDParams{
-			ID:       req.ID,
-			ParentID: parentID,
-		}); err != nil {
+		location, err := queriesTx.GetLocationByID(ctx, req.ID)
+		if err != nil {
 			return dto.Location{}, err
 		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return dto.Location{}, err
+		}
+
+		locationDTO := dto.ToLocationDTO(location)
+
+		return locationDTO, nil
+	} else {
+		return dto.Location{}, ErrNoUpdateFields
 	}
-
-	location, err := db.Queries.GetLocationByID(ctx, req.ID)
-	if err != nil {
-		return dto.Location{}, err
-	}
-
-	locationDTO := dto.ToLocationDTO(location)
-
-	return locationDTO, nil
 }
 
 func DeleteLocation(ctx context.Context, id int64) error {
