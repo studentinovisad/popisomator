@@ -148,11 +148,13 @@ func generateChemicalRows() []chemicalRow {
 	purities := []string{"PA", "HPLC", "GC", "ultrapure", "technical", "0.99", "0.995", "0.997", "ACS"}
 	massPackages := []measure{{1.0, "kg"}, {2.5, "kg"}, {500, "g"}, {100, "g"}, {25, "g"}}
 	volumePackages := []measure{{1.0, "L"}, {2.5, "L"}, {5.0, "L"}, {500, "mL"}, {250, "mL"}}
-	// How many identical packages each row is stocked in. Mostly ones, because a lab usually holds
-	// a single bottle of a given reagent; the larger counts stand in for the bulk-stocked staples
-	// and are what puts duplicate items in the seeded inventory. Cycled by index like every other
-	// field here, so reruns produce the same inventory.
-	packageCounts := []int{1, 1, 4, 1, 2, 1, 1, 3, 1, 6, 1, 2}
+	// How many identical packages each row is stocked in, and what puts duplicate items in the seeded
+	// inventory. Most rows carry more than chemicalLowStockCount so that falling to it means
+	// something: a shelf stocked in ones against a threshold of two is below it the day it is filled,
+	// which turns every warning into noise and buries the notifications this seed composes by hand.
+	// The few short rows are the ones meant to trip it. Cycled by index like every other field here,
+	// so reruns produce the same inventory.
+	packageCounts := []int{4, 3, 6, 3, 5, 4, 3, 1, 5, 3, 6, 2}
 	// Days from today to each row's expiry date. Negatives are already expired and the small
 	// positives fall inside the type's chemicalExpiringSoonDays window, so the shelf carries both
 	// warning states rather than being uniformly fresh - without that, an expiry notification has
@@ -297,6 +299,85 @@ var notificationSeeds = []notificationSeed{
 	{Email: "user1@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 2, AgeHours: 4},
 	{Email: "user1@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 4, AgeHours: 30, Read: true},
 	{Email: "user2@popisomator.test", Kind: repository.NotificationKindItemRequest, ItemRequestIndex: 5, AgeHours: 6},
+}
+
+// consumptionSeed is one item taken off the shelf.
+type consumptionSeed struct {
+	// ItemIndex points into the flat list of created items, not into the reagent rows.
+	ItemIndex int
+	State     string
+	// ConsumedAt is set on the entry afterwards, since a real one is always stamped with the time it
+	// was made.
+	ConsumedAt time.Time
+	// Only managers and admins, who may consume anything. A plain user is limited to items they hold
+	// an approved request for.
+	Email string
+}
+
+// consumptionsPerMonth is how many items were used up in each of the last 12 months, most recent
+// first, weighted so the shortest range lands on the busy end of the year.
+var consumptionsPerMonth = []int{6, 5, 5, 4, 4, 3, 3, 3, 2, 2, 2, 1}
+
+// generateConsumptionSeeds decides which items have already been used, and when. It works from the
+// end of the list so the items already spoken for by a seeded request keep the state they were
+// given, and picks by index rather than at random so runs stay identical.
+func generateConsumptionSeeds(itemCount int) []consumptionSeed {
+	claimed := make(map[int]struct{}, len(itemRequestSeeds))
+	for _, seed := range itemRequestSeeds {
+		claimed[seed.ItemIndex] = struct{}{}
+	}
+
+	now := time.Now()
+	currentMonthStart := time.Date(now.Year(), now.Month(), 1, 12, 0, 0, 0, time.UTC)
+
+	seeds := make([]consumptionSeed, 0, itemCount)
+	itemIndex := itemCount - 1
+	for monthsAgo, count := range consumptionsPerMonth {
+		monthStart := currentMonthStart.AddDate(0, -monthsAgo, 0)
+
+		for slot := range count {
+			for itemIndex >= 0 {
+				if _, isClaimed := claimed[itemIndex]; !isClaimed {
+					break
+				}
+				itemIndex--
+			}
+			if itemIndex < 0 {
+				return seeds
+			}
+
+			// The current month is only as long as it has got so far, or the entry lands in the future.
+			dayOfMonth := slot * 5
+			if monthsAgo == 0 {
+				dayOfMonth %= now.Day()
+			} else {
+				dayOfMonth %= 28
+			}
+
+			state := string(repository.ConsumptionStatusFullyConsumed)
+			switch len(seeds) % 7 {
+			case 5:
+				state = string(repository.ConsumptionStatusPartiallyConsumed)
+			case 6:
+				state = string(repository.ConsumptionStatusDamaged)
+			}
+
+			email := "manager@popisomator.test"
+			if len(seeds)%3 == 0 {
+				email = "admin@popisomator.test"
+			}
+
+			seeds = append(seeds, consumptionSeed{
+				ItemIndex:  itemIndex,
+				State:      state,
+				ConsumedAt: monthStart.AddDate(0, 0, dayOfMonth),
+				Email:      email,
+			})
+			itemIndex--
+		}
+	}
+
+	return seeds
 }
 
 // propertyDef describes one of the "Hemikalija" item type's properties.
@@ -458,6 +539,14 @@ func main() {
 
 	if err := seedItemRequests(ctx, adminCtx, users, items); err != nil {
 		log.Fatalf("unable to seed item requests: %v", err)
+	}
+
+	if err := seedConsumption(ctx, users, items); err != nil {
+		log.Fatalf("unable to seed consumption: %v", err)
+	}
+
+	if err := trimLowStockNotifications(ctx); err != nil {
+		log.Fatalf("unable to trim low stock notifications: %v", err)
 	}
 
 	if err := seedNotifications(ctx, users, items); err != nil {
@@ -832,6 +921,143 @@ func seedNotifications(ctx context.Context, users map[string]dto.User, items []s
 	}
 
 	return backdateNotifications(ctx, notificationIDs, ages, readFlags)
+}
+
+// seedConsumption uses up part of the seeded shelf. It goes through the service rather than writing
+// the status directly, so each one leaves a real entry behind it - which is where every usage figure
+// is read from, and nothing else in the seed produces any.
+func seedConsumption(ctx context.Context, users map[string]dto.User, items []seededItem) error {
+	seeds := generateConsumptionSeeds(len(items))
+
+	itemIDs := make([]int64, 0, len(seeds))
+	consumedAts := make([]time.Time, 0, len(seeds))
+
+	for _, seed := range seeds {
+		actor, ok := users[seed.Email]
+		if !ok {
+			return fmt.Errorf("seed user %s was not created", seed.Email)
+		}
+		if seed.ItemIndex >= len(items) {
+			return fmt.Errorf("consumption seed points at item %d of %d", seed.ItemIndex, len(items))
+		}
+		item := items[seed.ItemIndex].Item
+
+		state := seed.State
+		if _, err := service.UpdateItem(actorContext(ctx, actor.ID), dto.UpdateItemRequest{
+			ID:          item.ID,
+			Consumption: &state,
+			ViewerID:    actor.ID,
+		}); err != nil {
+			return fmt.Errorf("consuming item %d: %w", item.ID, err)
+		}
+
+		itemIDs = append(itemIDs, item.ID)
+		consumedAts = append(consumedAts, seed.ConsumedAt)
+	}
+
+	fmt.Printf("consumed %d of %d items across the last %d months\n",
+		len(seeds), len(items), len(consumptionsPerMonth))
+
+	return backdateConsumption(ctx, itemIDs, consumedAts)
+}
+
+// backdateConsumption moves each seeded consumption, and the item it happened to, back to the date
+// it should read as. Both are stamped with the current time on insert, which is right everywhere
+// except in a seed that needs a year of history behind it - so the statements stay here rather than
+// going into the shared query set.
+//
+// The item's own creation moves with it: nothing can be used before it was stocked, and a timeline
+// that opens with the item being consumed looks like a bug rather than like old data. Items nothing
+// was seeded against are left alone.
+func backdateConsumption(ctx context.Context, itemIDs []int64, consumedAts []time.Time) error {
+	if len(itemIDs) == 0 {
+		return nil
+	}
+
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// A stocking date of one to three months before the item was used, varied by id so the items do
+	// not all arrive together.
+	if _, err := tx.Exec(ctx, `
+		UPDATE items AS item
+		SET created_at = seed.consumed_at - make_interval(days => 30 + (item.id % 60)::int)
+		FROM (
+			SELECT
+				unnest($1::bigint[]) AS id,
+				unnest($2::timestamptz[]) AS consumed_at
+		) AS seed
+		WHERE item.id = seed.id
+	`, itemIDs, consumedAts); err != nil {
+		return fmt.Errorf("backdating consumed items: %w", err)
+	}
+
+	// Matched on the item rather than on the entry, whose id a bulk add never hands back.
+	if _, err := tx.Exec(ctx, `
+		UPDATE audit_log AS entry
+		SET created_at = CASE entry.action
+			WHEN 'item_consume' THEN seed.consumed_at
+			ELSE (SELECT items.created_at FROM items WHERE items.id = seed.id)
+		END
+		FROM (
+			SELECT
+				unnest($1::bigint[]) AS id,
+				unnest($2::timestamptz[]) AS consumed_at
+		) AS seed
+		WHERE entry.target_type = 'item'
+		  AND entry.target_id = seed.id
+		  AND entry.action IN ('item_create', 'item_consume')
+	`, itemIDs, consumedAts); err != nil {
+		return fmt.Errorf("backdating consumption audit entries: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+// keptLowStockNotifications is how many of the warnings below survive per recipient - enough that
+// the notification list has the kind in it, few enough that it does not drown out the rest.
+const keptLowStockNotifications = 3
+
+// trimLowStockNotifications throws away most of the low stock warnings the seed sets off.
+//
+// Stocking the shelf and using part of it both run through the services, which tell every manager
+// and admin each time a group falls to its threshold. Most reagents here come in ones and twos
+// against a threshold of two, so that is most of the catalogue warned about at once, and a hundred
+// near-identical rows bury the handful of notifications this seed actually composed.
+//
+// The alert rows are deliberately left alone. They are what records a group as already warned
+// about, so the shortages stay known and nothing fires again the moment the app is touched - this
+// only clears the inbox, exactly as it would look if someone had read and dismissed them.
+func trimLowStockNotifications(ctx context.Context) error {
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
+		DELETE FROM notifications
+		WHERE kind = 'item_low_stock'
+		  AND id NOT IN (
+			SELECT id FROM (
+				SELECT id, row_number() OVER (PARTITION BY recipient_id ORDER BY id DESC) AS position
+				FROM notifications
+				WHERE kind = 'item_low_stock'
+			) AS ranked
+			WHERE position <= $1
+		)
+	`, keptLowStockNotifications)
+	if err != nil {
+		return fmt.Errorf("trimming low stock notifications: %w", err)
+	}
+
+	fmt.Printf("dropped %d low stock notifications raised while seeding, kept %d per recipient\n",
+		tag.RowsAffected(), keptLowStockNotifications)
+
+	return tx.Commit(ctx)
 }
 
 // backdateNotifications spreads the seeded notifications back through time and marks some of them
