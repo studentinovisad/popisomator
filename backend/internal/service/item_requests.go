@@ -232,7 +232,7 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 		}
 		if request.LocationID.Valid {
 			locationNames := make([]string, 0, 1)
-			ancestorRows, err := db.Queries.GetLocationAncestors(ctx, request.ItemID)
+			ancestorRows, err := db.Queries.GetLocationAncestors(ctx, request.LocationID.Int64)
 			if err != nil {
 				return dto.ItemRequestPreparationReport{}, err
 			}
