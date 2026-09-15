@@ -188,11 +188,6 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.ListItemTypeFilterableProperties),
 	))
-	mux.Handle("GET /item-types/{id}/stock", middleware.Chain(
-		middleware.RequireAuth,
-		middleware.RequireRoles("manager", "admin"),
-		middleware.Handle(controller.GetItemTypeStock),
-	))
 	mux.Handle("GET /item-types/{id}/properties/{prop_id}/values", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.ListItemTypePropertyValues),
