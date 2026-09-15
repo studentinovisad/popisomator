@@ -76,7 +76,7 @@ export const catalogApi = {
 		request<Property>(`/properties/${id}`, jsonRequest('PATCH', payload)),
 	deleteProperty: (id: number) => request<void>(`/properties/${id}`, { method: 'DELETE' }),
 	createLocation: (payload: CreateLocationRequest) =>
-		request<Property>('/locations', jsonRequest('POST', payload)),
+		request<Location>('/locations', jsonRequest('POST', payload)),
 	getLocationOptions: () => request<LocationOption[]>('/locations'),
 	getLocationOptionsFlat: (excludeID: number | undefined = undefined) => {
 		const query = new URLSearchParams();
