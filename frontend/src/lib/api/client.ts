@@ -54,7 +54,6 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 			typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string'
 				? body.error
 				: undefined;
-		console.log(serverMessage);
 		throw new ApiError(userFacingErrorMessage(response.status, serverMessage), response.status);
 	}
 
