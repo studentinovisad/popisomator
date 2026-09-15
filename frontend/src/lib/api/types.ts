@@ -461,3 +461,60 @@ export type ListAuditLogParams = {
 	createdFrom?: string;
 	createdTo?: string;
 };
+
+// The whole set, not a convenience list: anything else is rejected.
+export type DashboardMonths = 3 | 6 | 12;
+
+export type DashboardMonthCount = {
+	// The first day of the bucket, YYYY-MM-DD, so it can be given straight to a date formatter.
+	month: string;
+	count: number;
+};
+
+// One month of consumption, already split by the state each item was left in.
+export type DashboardConsumptionBucket = {
+	month: string;
+	fully_consumed: number;
+	partially_consumed: number;
+	damaged: number;
+};
+
+// A stock line names its own type, since a group name only means anything inside one.
+export type DashboardStockGroup = {
+	type_id: number;
+	type_name: string;
+	name: string;
+	in_stock_count: number;
+	total_count: number;
+	low_stock_count: number | null;
+	low: boolean;
+};
+
+// days_remaining is negative once the date has passed, which is the difference between a warning
+// and a write-off.
+export type DashboardExpiringItem = {
+	id: number;
+	name: string;
+	type_name: string;
+	expires_on: string;
+	days_remaining: number;
+};
+
+// The two ranges read in opposite directions: expiry looks forward, consumption back. stock_groups
+// is every group; the shortages are the ones marked `low`.
+export type Dashboard = {
+	months: DashboardMonths;
+	type_id: number | null;
+	expiring_by_month: DashboardMonthCount[];
+	expired_backlog: number;
+	// The list is capped; the total says how many there were before the cap.
+	expiring_items: DashboardExpiringItem[];
+	expiring_items_total: number;
+	consumption_by_month: DashboardConsumptionBucket[];
+	stock_groups: DashboardStockGroup[];
+};
+
+export type GetDashboardParams = {
+	months?: DashboardMonths;
+	typeID?: number;
+};
