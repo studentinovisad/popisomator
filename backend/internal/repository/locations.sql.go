@@ -59,45 +59,6 @@ func (q *Queries) DeleteLocation(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const getLocationAncestors = `-- name: GetLocationAncestors :many
-WITH RECURSIVE ancestors AS (
-    SELECT l.id, l.parent_id, l.name
-      FROM locations l 
-      WHERE l.id = $1::bigint
-    UNION ALL
-    SELECT l.id, l.parent_id, l.name
-      FROM locations l
-      JOIN ancestors a ON l.id = a.parent_id
-)
-SELECT id, parent_id, name FROM ancestors
-`
-
-type GetLocationAncestorsRow struct {
-	ID       int64       `json:"id"`
-	ParentID pgtype.Int8 `json:"parent_id"`
-	Name     string      `json:"name"`
-}
-
-func (q *Queries) GetLocationAncestors(ctx context.Context, id int64) ([]GetLocationAncestorsRow, error) {
-	rows, err := q.db.Query(ctx, getLocationAncestors, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetLocationAncestorsRow
-	for rows.Next() {
-		var i GetLocationAncestorsRow
-		if err := rows.Scan(&i.ID, &i.ParentID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getLocationByID = `-- name: GetLocationByID :one
 SELECT id, name, description, parent_id FROM locations
 WHERE id = $1 LIMIT 1
@@ -143,6 +104,51 @@ func (q *Queries) GetLocationChildren(ctx context.Context, parentID int64) ([]Ge
 	for rows.Next() {
 		var i GetLocationChildrenRow
 		if err := rows.Scan(&i.ID, &i.ParentID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLocationsAncestors = `-- name: GetLocationsAncestors :many
+WITH RECURSIVE ancestors AS (
+    SELECT l.id, l.parent_id, l.name, l.id as child_id
+      FROM locations l 
+      WHERE l.id = ANY($1::bigint[])
+    UNION ALL
+    SELECT l.id, l.parent_id, l.name, a.child_id
+      FROM locations l
+      JOIN ancestors a ON l.id = a.parent_id
+)
+SELECT DISTINCT id, parent_id, name, child_id FROM ancestors
+`
+
+type GetLocationsAncestorsRow struct {
+	ID       int64       `json:"id"`
+	ParentID pgtype.Int8 `json:"parent_id"`
+	Name     string      `json:"name"`
+	ChildID  int64       `json:"child_id"`
+}
+
+func (q *Queries) GetLocationsAncestors(ctx context.Context, id []int64) ([]GetLocationsAncestorsRow, error) {
+	rows, err := q.db.Query(ctx, getLocationsAncestors, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLocationsAncestorsRow
+	for rows.Next() {
+		var i GetLocationsAncestorsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.Name,
+			&i.ChildID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

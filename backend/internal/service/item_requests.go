@@ -219,6 +219,9 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 	items := make([]dto.ItemRequestPreparationItem, len(requests))
 	itemIndexes := make(map[int64]int, len(requests))
 	itemIDs := make([]int64, len(requests))
+
+	locationIndexes := make(map[int64]int64, len(requests))
+	allLocationIDs := make([]int64, 0, len(requests))
 	for index, request := range requests {
 		items[index] = dto.ItemRequestPreparationItem{
 			ID:                request.ItemID,
@@ -231,16 +234,8 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 			Properties:        make([]dto.ItemRequestPreparationProperty, 0),
 		}
 		if request.LocationID.Valid {
-			locationNames := make([]string, 0, 1)
-			ancestorRows, err := db.Queries.GetLocationAncestors(ctx, request.LocationID.Int64)
-			if err != nil {
-				return dto.ItemRequestPreparationReport{}, err
-			}
-			for _, ancestor := range ancestorRows {
-				locationNames = append(locationNames, ancestor.Name)
-			}
-			slices.Reverse(locationNames)
-			items[index].LocationNames = locationNames
+			locationIndexes[request.ItemID] = request.LocationID.Int64
+			allLocationIDs = append(allLocationIDs, request.LocationID.Int64)
 		}
 		itemIndexes[request.ItemID] = index
 		itemIDs[index] = request.ItemID
@@ -263,6 +258,29 @@ func GetItemRequestPreparationReport(ctx context.Context, userID int64) (dto.Ite
 			})
 		}
 
+	}
+
+	if len(allLocationIDs) > 0 {
+		ancestorRows, err := db.Queries.GetLocationsAncestors(ctx, allLocationIDs)
+		if err != nil {
+			return dto.ItemRequestPreparationReport{}, err
+		}
+
+		nameArrays := make(map[int64][]string, len(ancestorRows))
+
+		for _, ancestor := range ancestorRows {
+			nameArrays[ancestor.ChildID] = append(nameArrays[ancestor.ChildID], ancestor.Name)
+		}
+		for i := range nameArrays {
+			slices.Reverse(nameArrays[i])
+		}
+		for i, item := range items {
+			locationID, ok := locationIndexes[item.ID]
+			if !ok {
+				continue
+			}
+			items[i].LocationNames = nameArrays[locationID]
+		}
 	}
 
 	return dto.ItemRequestPreparationReport{

@@ -53,9 +53,9 @@ type Querier interface {
 	GetItemTypesByItemIDs(ctx context.Context, itemIds []int64) ([]GetItemTypesByItemIDsRow, error)
 	GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]GetItemsDerivedNamesRow, error)
 	GetItemsRequestStatuses(ctx context.Context, arg GetItemsRequestStatusesParams) ([]GetItemsRequestStatusesRow, error)
-	GetLocationAncestors(ctx context.Context, id int64) ([]GetLocationAncestorsRow, error)
 	GetLocationByID(ctx context.Context, id int64) (Location, error)
 	GetLocationChildren(ctx context.Context, parentID int64) ([]GetLocationChildrenRow, error)
+	GetLocationsAncestors(ctx context.Context, id []int64) ([]GetLocationsAncestorsRow, error)
 	// Every property, or just the ones named. The filter is optional so one query serves both the full
 	// catalogue and the audit path, which resolves a handful of names at once for an entry spanning
 	// several properties - a reorder, or the initial list of a new item type.
