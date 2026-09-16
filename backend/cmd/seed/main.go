@@ -59,9 +59,6 @@ type chemicalRow struct {
 	// ExpiryOffsetDays is ExpiryDate expressed as days from today, kept alongside it so the expiry
 	// state of an item can be told without parsing the date back out again.
 	ExpiryOffsetDays int
-	Location         string
-	Cabinet          string
-	Box              string
 }
 
 // generateChemicalRows fabricates a chemical inventory shaped like a real one. Chemical names are
@@ -154,21 +151,9 @@ func generateChemicalRows() []chemicalRow {
 	// warning states rather than being uniformly fresh - without that, an expiry notification has
 	// nothing truthful to point at. Cycled by index, so reruns produce the same inventory.
 	expiryOffsetDays := []int{-45, 6, 120, -12, 40, 2, 200, -3, 70, 11, -21, 25, 9, 320, -7, 55}
-	placements := []struct {
-		location string
-		cabinet  string
-		box      string
-	}{
-		{"Laboratorija A", "Ormar za rastvarače", "Kutija A-1"},
-		{"Laboratorija A", "Ormar za kiseline", "Kutija A-2"},
-		{"Laboratorija A", "Ormar za soli", ""},
-		{"Laboratorija B", "Polica 1", "Kutija B-1"},
-		{"Centralni magacin", "", ""},
-	}
 
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
-		placement := placements[i%len(placements)]
 		expiryOffset := expiryOffsetDays[i%len(expiryOffsetDays)]
 		expiryDate := time.Now().AddDate(0, 0, expiryOffset).Format(time.DateOnly)
 		row := chemicalRow{
@@ -176,9 +161,6 @@ func generateChemicalRows() []chemicalRow {
 			CASNumber:        chemical.cas,
 			Manufacturer:     manufacturers[i%len(manufacturers)],
 			Purity:           purities[i%len(purities)],
-			Location:         placement.location,
-			Cabinet:          placement.cabinet,
-			Box:              placement.box,
 			PackageCount:     packageCounts[i%len(packageCounts)],
 			ExpiryDate:       expiryDate,
 			ExpiryOffsetDays: expiryOffset,
@@ -326,9 +308,99 @@ var propertyDefs = []propertyDef{
 	{"mass", "Masa", "mass", repository.PropertyVisibilityOverview},
 	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
 	{"expiry_date", "Istek roka", "expiry", repository.PropertyVisibilityOverview},
-	{"cabinet", "Ormar", "string", repository.PropertyVisibilityOverview},
-	{"box", "Mesto/kutija", "string", repository.PropertyVisibilityOverview},
-	{"location", "Lokacija", "string", repository.PropertyVisibilityOverview},
+}
+
+type locationSeed struct {
+	name        string
+	description string
+	children    []locationSeed
+}
+
+var locationSeeds = []locationSeed{
+	{
+		name:        "Laboratorija 1",
+		description: "Glavni radni prostor sa pristupom ventilaciji i centralnim radnim pultovima.",
+		children: []locationSeed{
+			{
+				name:        "Sigurnosni ormar A",
+				description: "Vatrostalni ormar sa nezavisnim sistemom za ventilaciju.",
+				children: []locationSeed{
+					{
+						name:        "Polica A-1",
+						description: "Gornja polica, maksimalna nosivost 20kg.",
+					},
+					{
+						name:        "Polica A-2",
+						description: "Donja polica, ojačana, opremljena sabirnom kadicom za slučaj izlivanja.",
+						children: []locationSeed{
+							{
+								name:        "Zaštitna kutija A-2-1",
+								description: "Prenosiva polipropilenska kutija, koristi se kao sekundarni kontejner.",
+							},
+							{
+								name:        "Zaštitna kutija A-2-2",
+								description: "Prenosiva polipropilenska kutija, koristi se kao sekundarni kontejner.",
+							},
+						},
+					},
+				},
+			},
+			{
+				name:        "Zidni ormar B",
+				description: "Metalni ormar sa staklenim vratima, koristi se za skladištenje na sobnoj temperaturi.",
+				children: []locationSeed{
+					{
+						name:        "Odeljak B-Levi",
+						description: "Levi deo ormara sa tri podesive police.",
+					},
+					{
+						name:        "Odeljak B-Desni",
+						description: "Desni deo ormara sa fiksnom pregradom.",
+					},
+				},
+			},
+		},
+	},
+	{
+		name:        "Centralni magacin",
+		description: "Prostorija za dugoročno skladištenje sa kontrolisanim pristupom i temperaturom.",
+		children: []locationSeed{
+			{
+				name:        "Frižider F-1",
+				description: "Laboratorijski frižider sa konstantnim temperaturnim režimom (2-8°C).",
+				children: []locationSeed{
+					{
+						name:        "Fioka 1",
+						description: "Gornja plitka fioka od nerđajućeg čelika.",
+					},
+					{
+						name:        "Fioka 2",
+						description: "Donja duboka fioka od nerđajućeg čelika.",
+					},
+				},
+			},
+			{
+				name:        "Stalaža S-1",
+				description: "Industrijska metalna stalaža otvorenog tipa.",
+				children: []locationSeed{
+					{
+						name:        "Nivo 1 (Podni)",
+						description: "Prostor namenjen za tešku ambalažu, direktno iznad poda.",
+					},
+					{
+						name:        "Nivo 2 (Srednji)",
+						description: "Središnja polica, standardna visina za lako pristupanje.",
+						children: []locationSeed{
+							{
+								name:        "Plastični kontejner S-1-A",
+								description: "Otvoreni plastični kontejner za organizaciju manjih boca.",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func main() {
@@ -367,7 +439,12 @@ func main() {
 		log.Fatalf("unable to seed item type: %v", err)
 	}
 
-	items, err := seedItems(adminCtx, typeID, propIDs)
+	locationIDs, err := seedLocations(ctx)
+	if err != nil {
+		log.Fatalf("unable to seed locations: %v", err)
+	}
+
+	items, err := seedItems(adminCtx, typeID, propIDs, locationIDs)
 	if err != nil {
 		log.Fatalf("unable to seed items: %v", err)
 	}
@@ -537,22 +614,61 @@ func ensureItemTypeProperties(ctx context.Context, itemType dto.ItemType, propID
 	return nil
 }
 
+func createLocation(ctx context.Context, entity locationSeed, parentID *int64) ([]int64, error) {
+	location, err := service.CreateLocation(ctx, dto.CreateLocationRequest{
+		Name:        entity.name,
+		Description: entity.description,
+		ParentID:    parentID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	IDs := make([]int64, 0, 1)
+	IDs = append(IDs, location.ID)
+
+	if entity.children != nil {
+		for _, child := range entity.children {
+			childIDs, err := createLocation(ctx, child, &location.ID)
+			if err != nil {
+				return nil, err
+			}
+			IDs = append(IDs, childIDs...)
+		}
+	}
+
+	return IDs, nil
+}
+
+func seedLocations(ctx context.Context) ([]int64, error) {
+	locationIDs := make([]int64, 0)
+	for _, entity := range locationSeeds {
+		entityIDs, err := createLocation(ctx, entity, nil)
+		if err != nil {
+			return nil, err
+		}
+		locationIDs = append(locationIDs, entityIDs...)
+	}
+
+	return locationIDs, nil
+}
+
 // seedItems creates one item per physical package rather than one item per spreadsheet row, so a
 // row stocked in several identical packages becomes that many items. Those rows go through the
 // same bulk-add path the UI uses (one CreateItem call with Amount > 1), which is what gives the
 // seeded inventory duplicate items to exercise filtering and the property totals against.
-func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64) ([]seededItem, error) {
+func seedItems(ctx context.Context, typeID int64, propIDs map[string]int64, locationIDs []int64) ([]seededItem, error) {
 	rows := generateChemicalRows()
 	items := make([]seededItem, 0, len(rows))
 
 	bulkRows := 0
-	for _, row := range rows {
+	for i, row := range rows {
 		properties := propertyValues(row, propIDs)
 
 		createdItems, err := service.CreateItem(ctx, dto.CreateItemRequest{
 			TypeID:     typeID,
 			Properties: properties,
 			Amount:     int32(row.PackageCount),
+			LocationID: &locationIDs[i%len(locationIDs)],
 		})
 		if err != nil {
 			return nil, fmt.Errorf("creating item %q: %w", row.Name, err)
@@ -772,9 +888,6 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 		return dto.PTVolume{Amount: scaleMeasureAmount(packageVolume.Amount), Unit: packageVolume.Unit}
 	})
 	addString("expiry_date", row.ExpiryDate)
-	addString("cabinet", row.Cabinet)
-	addString("box", row.Box)
-	addString("location", row.Location)
 
 	return properties
 }

@@ -16,7 +16,9 @@ DROP TABLE IF EXISTS
     users,
     notifications,
     notifdesc_item_request,
-    notifdesc_item_expiry
+    notifdesc_item_expiry,
+    locations,
+    audit_log
 CASCADE;
 DROP TYPE IF EXISTS 
     request_status,
@@ -25,5 +27,7 @@ DROP TYPE IF EXISTS
     user_status,
     user_role,
     notification_kind,
-    notifdesc_expiry_type
+    notifdesc_expiry_type,
+    audit_action,
+    audit_target_type
 CASCADE;

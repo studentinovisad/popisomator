@@ -4,6 +4,7 @@
 		ApiError,
 		type ItemType,
 		type ItemTypeOption,
+		type LocationOption,
 		type PropertyOption,
 		type PropertyValue
 	} from '$lib/api';
@@ -16,23 +17,26 @@
 	import { toast } from 'svelte-sonner';
 
 	const steps = [
-		{ value: 'setup', label: 'Tip i količina' },
+		{ value: 'setup', label: 'Početni detalji' },
 		{ value: 'item', label: 'Stavka' }
 	] as const;
 
 	let {
 		itemTypes,
+		locations,
 		properties,
 		oncreated,
 		oncancel
 	}: {
 		itemTypes: ItemTypeOption[];
+		locations: LocationOption[];
 		properties: PropertyOption[];
 		oncreated: () => void;
 		oncancel?: () => void;
 	} = $props();
 
 	let selectedTypeID = $state('');
+	let selectedLocationID = $state('');
 	let amount = $state(1);
 	let propertyValues = $state<Record<number, PropertyValue | null>>({});
 	let selectedPropertyIDs = $state<number[]>([]);
@@ -136,14 +140,20 @@
 		creating = true;
 
 		try {
+			let locationID = undefined;
+			if (selectedLocationID.trim().length > 0) {
+				locationID = Number(selectedLocationID);
+			}
 			await api.createItem({
 				type_id: Number(selectedTypeID),
+				location_id: locationID,
 				properties: Object.entries(propertyValues)
 					.filter(([id]) => selectedPropertyIDs.includes(Number(id)))
 					.flatMap(([id, value]) => (value === null ? [] : [{ id: Number(id), value }])),
 				amount
 			});
 			selectedTypeID = '';
+			selectedLocationID = '';
 			propertyValues = {};
 			selectedPropertyIDs = [];
 			toast.success('Stavka je dodata.');
@@ -188,12 +198,16 @@
 		<Tabs.Content value="setup" class="min-h-0 flex-1 pt-6">
 			<div class="grid gap-5">
 				<div>
-					<h2 class="text-base font-medium text-ink">Tip i količina</h2>
+					<h2 class="text-base font-medium text-ink">Početni detalji</h2>
 					<p class="mt-1 text-sm text-muted">
-						Odaberite tip stavke i broj istih stavki koje želite da dodate.
+						Odaberite tip stavke, njenu lokaciju i broj istih stavki koje želite da dodate.
 					</p>
 				</div>
-				<div class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_12rem]">
+				<div
+					class="grid gap-5 sm:grid-cols-[minmax(0,1fr){locations.length > 0
+						? '_minmax(0,1fr)'
+						: ''}_12rem]"
+				>
 					<div>
 						<Label.Root class="text-sm font-medium text-ink" for="new-item-type"
 							>Tip stavke</Label.Root
@@ -214,6 +228,28 @@
 							{fieldErrors.type}
 						</p>
 					</div>
+					{#if locations.length > 0}
+						<div>
+							<Label.Root class="text-sm font-medium text-ink" for="new-location"
+								>Lokacija stavke</Label.Root
+							>
+							<div class="mt-1">
+								<OptionCombobox
+									id="new-location"
+									options={locations}
+									bind:value={selectedLocationID}
+									placeholder="Odaberite lokaciju"
+									clearable
+									invalid={Boolean(fieldErrors.type)}
+									describedBy={fieldErrors.type ? 'new-location-error' : undefined}
+								/>
+							</div>
+							<p class="mt-1 text-xs text-muted">Određuje lokaciju radi organizacije.</p>
+							<p id="new-location-error" class="min-h-4 text-xs text-danger" aria-live="polite">
+								{fieldErrors.type}
+							</p>
+						</div>
+					{/if}
 					<div>
 						<Label.Root class="text-sm font-medium text-ink" for="new-item-amount"
 							>Količina</Label.Root

@@ -48,7 +48,8 @@ SELECT
   render_item_derived_name(items.id, item_types.derived_name_format) AS item_name,
   item_types.name AS item_type_name,
   item_types.derived_name_format,
-  items.consumption
+  items.consumption,
+  items.location_id
 FROM item_requests
 JOIN users ON users.id = item_requests.user_id
 JOIN items ON items.id = item_requests.item_id

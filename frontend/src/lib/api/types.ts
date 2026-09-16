@@ -75,6 +75,7 @@ export type Item = {
 	derived_name?: string;
 	request_status?: ItemRequestStatus;
 	holder_name?: string;
+	location_id?: number;
 };
 
 export type ItemsPage = {
@@ -103,6 +104,7 @@ export type HeldBy = 'nobody' | 'me';
 
 export type ListItemsParams = PageRequest & {
 	typeID?: number;
+	locationID?: number;
 	propertyFilters?: Record<number, PropertyValue>;
 	// Property to order the items by. Left out, they come back newest first.
 	sortPropertyID?: number;
@@ -112,11 +114,13 @@ export type ListItemsParams = PageRequest & {
 
 export type UpdateItemRequest = {
 	type_id?: number;
+	location_id?: number | null;
 	consumption?: ConsumptionStatus;
 };
 
 export type CreateItemRequest = {
 	type_id: number;
+	location_id?: number;
 	properties: ItemProperty[];
 	amount: number;
 };
@@ -216,6 +220,29 @@ export type UpdatePropertyRequest = Partial<
 	Pick<CreatePropertyRequest, 'name' | 'description' | 'default_value'>
 >;
 
+export type Location = {
+	id: number;
+	name: string;
+	description?: string;
+	parent_id?: number;
+};
+
+export type LocationOption = Pick<Location, 'id' | 'name'> & {
+	children: LocationOption[];
+};
+
+export type CreateLocationRequest = {
+	name: string;
+	description?: string;
+	parent_id?: number | null;
+};
+
+export type UpdateLocationRequest = {
+	name?: string;
+	description?: string;
+	parent_id?: number | null;
+};
+
 export type ItemRequest = {
 	user_id: number;
 	item_id: number;
@@ -252,6 +279,7 @@ export type ItemRequestPreparationItem = {
 	id: number;
 	name: string;
 	type_name: string;
+	location_names?: string[];
 	derived_name_format: string;
 	consumption: ConsumptionStatus;
 	reason: string;

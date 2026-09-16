@@ -17,9 +17,8 @@
 		type PropertyOption,
 		type PropertyValue,
 		type SortOrder,
-
-		type HeldBy
-
+		type HeldBy,
+		type LocationOption
 	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import PaginationFooter from '$lib/components/shared/PaginationFooter.svelte';
@@ -44,6 +43,7 @@
 	let items = $state<Item[]>([]);
 	let itemTypes = $state<ItemTypeOption[]>([]);
 	let properties = $state<PropertyOption[]>([]);
+	let locations = $state<LocationOption[]>([]);
 	let selectedItemType = $state<ItemType | null>(null);
 	let itemTypeFilterableProperties = $state<ItemTypeFilterableProperty[]>([]);
 	let propertyFilterOptions = $state<Record<number, PropertyValue[]>>({});
@@ -71,6 +71,8 @@
 	let sortPropertyID = $derived(getSortPropertyID(page.url));
 	let sortOrder = $derived(getSortOrder(page.url));
 	let selectedItemTypeID = $derived(getSelectedItemTypeID(page.url));
+	let selectedLocationID = $derived(getSelectedLocationID(page.url));
+	let locationFilter = $derived(selectedLocationID != undefined ? String(selectedLocationID) : '');
 	let itemTypeFilter = $derived(
 		selectedItemTypeID === undefined ? 'all' : String(selectedItemTypeID)
 	);
@@ -109,7 +111,7 @@
 			];
 		});
 	});
-	let heldByValue = $state(getHeldBy(page.url) || "all")
+	let heldByValue = $state(getHeldBy(page.url) || 'all');
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -125,6 +127,7 @@
 		const url = page.url;
 		const search = getTableSearch(url);
 		const itemTypeID = getSelectedItemTypeID(url);
+		const locationID = getSelectedLocationID(url);
 		const selectedPropertyFilters = getPropertyFilters(url);
 		const currentPage = getTablePage(url);
 		const selectedSortPropertyID = getSortPropertyID(url);
@@ -134,6 +137,7 @@
 			currentPage,
 			search,
 			itemTypeID,
+			locationID,
 			selectedPropertyFilters,
 			selectedSortPropertyID,
 			selectedSortOrder,
@@ -149,6 +153,7 @@
 			(currentPage - 1) * itemsPerPage,
 			search,
 			itemTypeID,
+			locationID,
 			selectedPropertyFilters,
 			selectedSortPropertyID,
 			selectedSortOrder,
@@ -176,6 +181,7 @@
 		offset: number,
 		search: string,
 		itemTypeID: number | undefined,
+		locationID: number | undefined,
 		selectedPropertyFilters: Record<number, PropertyValue>,
 		selectedSortPropertyID: number | undefined,
 		selectedSortOrder: SortOrder,
@@ -191,6 +197,7 @@
 				offset,
 				search,
 				typeID: itemTypeID,
+				locationID,
 				propertyFilters: selectedPropertyFilters,
 				sortPropertyID: selectedSortPropertyID,
 				order: selectedSortOrder,
@@ -240,12 +247,14 @@
 		inventoryError = '';
 
 		try {
-			const [nextItemTypes, nextProperties] = await Promise.all([
+			const [nextItemTypes, nextProperties, nextLocations] = await Promise.all([
 				api.getItemTypeOptions(),
-				api.getPropertyOptions()
+				api.getPropertyOptions(),
+				api.getLocationOptionsFlat()
 			]);
 			itemTypes = nextItemTypes;
 			properties = nextProperties;
+			locations = nextLocations;
 			const requestedTypeID = getSelectedItemTypeID(page.url);
 			if (nextItemTypes.length === 1 && requestedTypeID === undefined) {
 				updateTableQuery({ type_id: nextItemTypes[0].id });
@@ -306,8 +315,12 @@
 		updateTableQuery({ [`property.${propertyID}`]: JSON.stringify(value), page: 1 });
 	}
 
+	function filterByLocation(locationID: string) {
+		updateTableQuery({ location_id: locationID, page: 1 });
+	}
+
 	function heldByChange(value: string) {
-		updateTableQuery({ ['held_by']: value != "all" ? value : undefined, page: 1 });
+		updateTableQuery({ ['held_by']: value != 'all' ? value : undefined, page: 1 });
 	}
 
 	async function loadPropertyFilterValues(propertyID: number, search: string) {
@@ -342,6 +355,7 @@
 			itemOffset,
 			derivedNameSearch,
 			itemTypeID,
+			getSelectedLocationID(page.url),
 			getPropertyFilters(page.url),
 			getSortPropertyID(page.url),
 			getSortOrder(page.url),
@@ -364,7 +378,7 @@
 	}
 
 	function getHeldBy(url: URL): HeldBy | undefined {
-		let val = getTableFilter(url, 'held_by')
+		let val = getTableFilter(url, 'held_by');
 		return val === 'me' || val === 'nobody' ? val : undefined;
 	}
 
@@ -372,6 +386,13 @@
 		const requestedTypeID = Number.parseInt(getTableFilter(url, 'type_id'), 10);
 		return Number.isSafeInteger(requestedTypeID) && requestedTypeID > 0
 			? requestedTypeID
+			: undefined;
+	}
+
+	function getSelectedLocationID(url: URL) {
+		const requestedLocationID = Number.parseInt(getTableFilter(url, 'location_id'), 10);
+		return Number.isSafeInteger(requestedLocationID) && requestedLocationID > 0
+			? requestedLocationID
 			: undefined;
 	}
 
@@ -422,9 +443,12 @@
 			propertyTotals={itemPropertyTotals}
 			{properties}
 			{itemTypes}
+			{locations}
+			{locationFilter}
 			typeFilter={itemTypeFilter}
 			bind:search={derivedNameSearch}
 			loading={loadingInventory}
+			onlocationchange={filterByLocation}
 			onitemtypechange={filterByItemType}
 			onsearch={searchItems}
 			onsortopen={() => (sortDialogOpen = true)}
@@ -443,6 +467,7 @@
 			{items}
 			{itemTypes}
 			{properties}
+			{locations}
 			{canManage}
 			{sortPropertyID}
 			{sortOrder}

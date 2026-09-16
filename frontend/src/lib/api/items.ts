@@ -16,14 +16,16 @@ export const itemsApi = {
 		offset = 0,
 		search = '',
 		typeID,
+		locationID,
 		propertyFilters = {},
 		sortPropertyID,
 		order = 'desc',
-		heldBy,
+		heldBy
 	}: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset), order });
 		if (search) query.set('search', search);
 		if (typeID) query.set('type_id', String(typeID));
+		if (locationID) query.set('location_id', String(locationID));
 		if (sortPropertyID) query.set('sort', `property.${sortPropertyID}`);
 		if (heldBy) query.set('held_by', heldBy);
 		for (const [propertyID, value] of Object.entries(propertyFilters)) {

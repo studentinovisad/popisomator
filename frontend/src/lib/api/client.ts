@@ -17,7 +17,9 @@ const apiErrorMessages: Record<string, string> = {
 	'invalid derived name format': 'Format izvedenog naziva nije ispravan.',
 	'already exists': 'Podaci sa ovim vrednostima već postoje.',
 	'invalid reference': 'Izabrana povezana vrednost ne postoji.',
-	'not found': 'Traženi podatak nije pronađen.'
+	'not found': 'Traženi podatak nije pronađen.',
+	'cycles in location ancestry are not allowed':
+		'Izabrana nadlokacija je već podlokacija date lokacije.'
 };
 
 function userFacingErrorMessage(status: number, serverMessage: string | undefined) {

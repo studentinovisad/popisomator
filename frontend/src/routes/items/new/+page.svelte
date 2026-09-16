@@ -2,7 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api, ApiError, type ItemTypeOption, type PropertyOption } from '$lib/api';
+	import {
+		api,
+		ApiError,
+		type ItemTypeOption,
+		type LocationOption,
+		type PropertyOption
+	} from '$lib/api';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import CreateItemForm from '$lib/components/inventory/CreateItemForm.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
@@ -13,6 +19,7 @@
 	});
 
 	let itemTypes = $state<ItemTypeOption[]>([]);
+	let locations = $state<LocationOption[]>([]);
 	let properties = $state<PropertyOption[]>([]);
 	let loading = $state(false);
 	let error = $state('');
@@ -28,8 +35,9 @@
 		error = '';
 
 		try {
-			[itemTypes, properties] = await Promise.all([
+			[itemTypes, locations, properties] = await Promise.all([
 				api.getItemTypeOptions(),
+				api.getLocationOptionsFlat(),
 				api.getPropertyOptions()
 			]);
 		} catch (reason) {
@@ -62,6 +70,7 @@
 			<div class="flex min-h-0 flex-1">
 				<CreateItemForm
 					{itemTypes}
+					{locations}
 					{properties}
 					oncreated={itemCreated}
 					oncancel={cancelItemCreation}

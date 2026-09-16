@@ -75,29 +75,30 @@ WHERE ($1::bigint IS NULL OR items.type_id = $1)
   AND ($2::consumption_status[] IS NULL OR items.consumption = ANY($2::consumption_status[]))
   AND ($3::timestamptz IS NULL OR items.created_at >= $3)
   AND ($4::timestamptz IS NULL OR items.created_at <= $4)
+  AND ($5::bigint[] IS NULL OR items.location_id = ANY($5::bigint[]))
   AND (
-    $5::bigint IS NULL  
-    OR ($5::bigint = 0 AND approved_request IS NULL)
-    OR approved_request.user_id = $5::bigint
+    $6::bigint IS NULL  
+    OR ($6::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = $6::bigint
   )
   AND (
-    $6::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($6::text) || '%'
+    $7::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($7::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($6::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($7::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($6::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($7::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($7::bigint[]),
-      unnest($8::jsonb[])
+      unnest($8::bigint[]),
+      unnest($9::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -114,6 +115,7 @@ type CountItemsParams struct {
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	LocationIds    []int64             `json:"location_ids"`
 	HeldBy         pgtype.Int8         `json:"held_by"`
 	Search         string              `json:"search"`
 	PropertyIds    []int64             `json:"property_ids"`
@@ -126,6 +128,7 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.LocationIds,
 		arg.HeldBy,
 		arg.Search,
 		arg.PropertyIds,
@@ -137,19 +140,20 @@ func (q *Queries) CountItems(ctx context.Context, arg CountItemsParams) (int64, 
 }
 
 const createItems = `-- name: CreateItems :many
-INSERT INTO items (type_id) 
-SELECT ($1) 
-FROM generate_series(1, $2::integer)
-RETURNING id, created_at, consumption, type_id
+INSERT INTO items (type_id, location_id) 
+SELECT $1, $2 
+FROM generate_series(1, $3::integer)
+RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type CreateItemsParams struct {
-	TypeID int64 `json:"type_id"`
-	Amount int32 `json:"amount"`
+	TypeID     int64       `json:"type_id"`
+	LocationID pgtype.Int8 `json:"location_id"`
+	Amount     int32       `json:"amount"`
 }
 
 func (q *Queries) CreateItems(ctx context.Context, arg CreateItemsParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, createItems, arg.TypeID, arg.Amount)
+	rows, err := q.db.Query(ctx, createItems, arg.TypeID, arg.LocationID, arg.Amount)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +166,7 @@ func (q *Queries) CreateItems(ctx context.Context, arg CreateItemsParams) ([]Ite
 			&i.CreatedAt,
 			&i.Consumption,
 			&i.TypeID,
+			&i.LocationID,
 		); err != nil {
 			return nil, err
 		}
@@ -186,7 +191,7 @@ func (q *Queries) DeleteItem(ctx context.Context, id int64) (int64, error) {
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT id, created_at, consumption, type_id FROM items
+SELECT id, created_at, consumption, type_id, location_id FROM items
 WHERE id = $1 LIMIT 1
 `
 
@@ -198,6 +203,7 @@ func (q *Queries) GetItemByID(ctx context.Context, id int64) (Item, error) {
 		&i.CreatedAt,
 		&i.Consumption,
 		&i.TypeID,
+		&i.LocationID,
 	)
 	return i, err
 }
@@ -367,7 +373,7 @@ func (q *Queries) ListItemTypePropertyValues(ctx context.Context, arg ListItemTy
 }
 
 const listItems = `-- name: ListItems :many
-SELECT items.id, items.created_at, items.consumption, items.type_id FROM items
+SELECT items.id, items.created_at, items.consumption, items.type_id, items.location_id FROM items
 JOIN item_types ON item_types.id = items.type_id
 LEFT JOIN item_properties AS sort_property
   ON sort_property.item_id = items.id
@@ -403,29 +409,30 @@ WHERE ($5::bigint IS NULL OR items.type_id = $5)
   AND ($6::consumption_status[] IS NULL OR items.consumption = ANY($6::consumption_status[]))
   AND ($7::timestamptz IS NULL OR items.created_at >= $7)
   AND ($8::timestamptz IS NULL OR items.created_at <= $8)
+  AND ($9::bigint[] IS NULL OR items.location_id = ANY($9::bigint[]))
   AND (
-    $9::bigint IS NULL  
-    OR ($9::bigint = 0 AND approved_request IS NULL)
-    OR approved_request.user_id = $9::bigint
+    $10::bigint IS NULL  
+    OR ($10::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = $10::bigint
   )
   AND (
-    $10::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($10::text) || '%'
+    $11::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($11::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($10::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($11::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($10::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($11::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($11::bigint[]),
-      unnest($12::jsonb[])
+      unnest($12::bigint[]),
+      unnest($13::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -436,15 +443,15 @@ WHERE ($5::bigint IS NULL OR items.type_id = $5)
     )
   )
 ORDER BY
-  CASE WHEN $13::bool THEN sort_key.number_key END ASC NULLS LAST,
-  CASE WHEN NOT $13::bool THEN sort_key.number_key END DESC NULLS LAST,
-  CASE WHEN $13::bool THEN sort_key.text_key END ASC NULLS LAST,
-  CASE WHEN NOT $13::bool THEN sort_key.text_key END DESC NULLS LAST,
-  CASE WHEN $13::bool THEN items.created_at END ASC,
-  CASE WHEN $13::bool THEN items.id END ASC,
-  CASE WHEN NOT $13::bool THEN items.created_at END DESC,
-  CASE WHEN NOT $13::bool THEN items.id END DESC
-LIMIT $15 OFFSET $14
+  CASE WHEN $14::bool THEN sort_key.number_key END ASC NULLS LAST,
+  CASE WHEN NOT $14::bool THEN sort_key.number_key END DESC NULLS LAST,
+  CASE WHEN $14::bool THEN sort_key.text_key END ASC NULLS LAST,
+  CASE WHEN NOT $14::bool THEN sort_key.text_key END DESC NULLS LAST,
+  CASE WHEN $14::bool THEN items.created_at END ASC,
+  CASE WHEN $14::bool THEN items.id END ASC,
+  CASE WHEN NOT $14::bool THEN items.created_at END DESC,
+  CASE WHEN NOT $14::bool THEN items.id END DESC
+LIMIT $16 OFFSET $15
 `
 
 type ListItemsParams struct {
@@ -456,6 +463,7 @@ type ListItemsParams struct {
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	LocationIds    []int64             `json:"location_ids"`
 	HeldBy         pgtype.Int8         `json:"held_by"`
 	Search         string              `json:"search"`
 	PropertyIds    []int64             `json:"property_ids"`
@@ -484,6 +492,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.LocationIds,
 		arg.HeldBy,
 		arg.Search,
 		arg.PropertyIds,
@@ -504,6 +513,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 			&i.CreatedAt,
 			&i.Consumption,
 			&i.TypeID,
+			&i.LocationID,
 		); err != nil {
 			return nil, err
 		}
@@ -561,29 +571,30 @@ WHERE properties.value_type IN ('price', 'mass', 'volume')
   AND ($5::consumption_status[] IS NULL OR items.consumption = ANY($5::consumption_status[]))
   AND ($6::timestamptz IS NULL OR items.created_at >= $6)
   AND ($7::timestamptz IS NULL OR items.created_at <= $7)
+  AND ($8::bigint[] IS NULL OR items.location_id = ANY($8::bigint[]))
   AND (
-    $8::bigint IS NULL  
-    OR ($8::bigint = 0 AND approved_request IS NULL)
-    OR approved_request.user_id = $8::bigint
+    $9::bigint IS NULL  
+    OR ($9::bigint = 0 AND approved_request IS NULL)
+    OR approved_request.user_id = $9::bigint
   )
   AND (
-    $9::text = ''
-    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($9::text) || '%'
+    $10::text = ''
+    OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($10::text) || '%'
     OR EXISTS (
       SELECT 1 FROM item_properties
       JOIN properties ON properties.id = item_properties.property_id
       WHERE item_properties.item_id = items.id
         AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
-        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($9::text) || '%'
+        AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($10::text) || '%'
     )
     OR render_item_derived_name(items.id, item_types.derived_name_format)
-      ILIKE '%' || replace(escape_like_pattern(trim($9::text)), ' ', '%') || '%'
+      ILIKE '%' || replace(escape_like_pattern(trim($10::text)), ' ', '%') || '%'
   )
   AND NOT EXISTS (
     SELECT 1
     FROM ROWS FROM (
-      unnest($10::bigint[]),
-      unnest($11::jsonb[])
+      unnest($11::bigint[]),
+      unnest($12::jsonb[])
     ) AS filters(property_id, property_value)
     WHERE NOT EXISTS (
       SELECT 1
@@ -605,6 +616,7 @@ type SumItemPropertiesParams struct {
 	Consumption    []ConsumptionStatus `json:"consumption"`
 	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
 	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	LocationIds    []int64             `json:"location_ids"`
 	HeldBy         pgtype.Int8         `json:"held_by"`
 	Search         string              `json:"search"`
 	PropertyIds    []int64             `json:"property_ids"`
@@ -633,6 +645,7 @@ func (q *Queries) SumItemProperties(ctx context.Context, arg SumItemPropertiesPa
 		arg.Consumption,
 		arg.CreatedFrom,
 		arg.CreatedTo,
+		arg.LocationIds,
 		arg.HeldBy,
 		arg.Search,
 		arg.PropertyIds,
@@ -680,7 +693,7 @@ func (q *Queries) UpdateItemProperty(ctx context.Context, arg UpdateItemProperty
 }
 
 const updateItem_Consumption = `-- name: UpdateItem_Consumption :one
-UPDATE items SET consumption = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id
+UPDATE items SET consumption = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type UpdateItem_ConsumptionParams struct {
@@ -696,12 +709,35 @@ func (q *Queries) UpdateItem_Consumption(ctx context.Context, arg UpdateItem_Con
 		&i.CreatedAt,
 		&i.Consumption,
 		&i.TypeID,
+		&i.LocationID,
+	)
+	return i, err
+}
+
+const updateItem_Location = `-- name: UpdateItem_Location :one
+UPDATE items SET location_id = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id, location_id
+`
+
+type UpdateItem_LocationParams struct {
+	ID         int64       `json:"id"`
+	LocationID pgtype.Int8 `json:"location_id"`
+}
+
+func (q *Queries) UpdateItem_Location(ctx context.Context, arg UpdateItem_LocationParams) (Item, error) {
+	row := q.db.QueryRow(ctx, updateItem_Location, arg.ID, arg.LocationID)
+	var i Item
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.Consumption,
+		&i.TypeID,
+		&i.LocationID,
 	)
 	return i, err
 }
 
 const updateItem_Type = `-- name: UpdateItem_Type :one
-UPDATE items SET type_id = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id
+UPDATE items SET type_id = $2 WHERE id = $1 RETURNING id, created_at, consumption, type_id, location_id
 `
 
 type UpdateItem_TypeParams struct {
@@ -717,6 +753,7 @@ func (q *Queries) UpdateItem_Type(ctx context.Context, arg UpdateItem_TypeParams
 		&i.CreatedAt,
 		&i.Consumption,
 		&i.TypeID,
+		&i.LocationID,
 	)
 	return i, err
 }

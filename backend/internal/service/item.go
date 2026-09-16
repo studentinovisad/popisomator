@@ -128,6 +128,11 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 		return nil, err
 	}
 
+	locationID := pgtype.Int8{Valid: false}
+	if req.LocationID != nil {
+		locationID = pgtype.Int8{Int64: *req.LocationID, Valid: true}
+	}
+
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
@@ -136,8 +141,9 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 	queriesTx := db.Queries.WithTx(tx)
 
 	items, err := queriesTx.CreateItems(ctx, repository.CreateItemsParams{
-		TypeID: req.TypeID,
-		Amount: req.Amount,
+		TypeID:     req.TypeID,
+		Amount:     req.Amount,
+		LocationID: locationID,
 	})
 	if err != nil {
 		return nil, err
@@ -229,6 +235,18 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		typeID = pgtype.Int8{Int64: *req.TypeID, Valid: true}
 	}
 
+	var locationIDs []int64
+	if req.LocationID != nil {
+		locationIDs = make([]int64, 0)
+		children, err := db.Queries.GetLocationChildren(ctx, *req.LocationID)
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+		for _, child := range children {
+			locationIDs = append(locationIDs, child.ID)
+		}
+	}
+
 	createdFrom := pgtype.Timestamptz{}
 	if req.CreatedFrom != nil {
 		createdFrom = pgtype.Timestamptz{Time: *req.CreatedFrom, Valid: true}
@@ -272,6 +290,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		PropertyIds:    propertyIDs,
 		PropertyValues: propertyValues,
 		HeldBy:         heldByID,
+		LocationIds:    locationIDs,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -293,6 +312,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
 		HeldBy:         heldByID,
+		LocationIds:    locationIDs,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -326,6 +346,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		UnitNames:      unitNames,
 		UnitFactors:    unitFactors,
 		HeldBy:         heldByID,
+		LocationIds:    locationIDs,
 	})
 	if err != nil {
 		return dto.ItemsPage{}, err
@@ -409,7 +430,7 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 	}
 
 	var item repository.Item
-	if req.TypeID != nil || req.Consumption != nil {
+	if req.TypeID != nil || req.Consumption != nil || req.LocationIDSet {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return dto.Item{}, err
@@ -491,6 +512,21 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 					req.ID, label, entry.changes, dto.AuditContext{}); err != nil {
 					return dto.Item{}, err
 				}
+			}
+		}
+
+		if req.LocationIDSet {
+			locationID := pgtype.Int8{Valid: false}
+			if req.LocationID != nil {
+				locationID = pgtype.Int8{Int64: *req.LocationID, Valid: true}
+			}
+
+			var err error
+			if item, err = queriesTx.UpdateItem_Location(ctx, repository.UpdateItem_LocationParams{
+				ID:         req.ID,
+				LocationID: locationID,
+			}); err != nil {
+				return dto.Item{}, err
 			}
 		}
 

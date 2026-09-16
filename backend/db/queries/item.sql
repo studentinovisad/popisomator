@@ -48,6 +48,7 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (sqlc.narg('location_ids')::bigint[] IS NULL OR items.location_id = ANY(sqlc.narg('location_ids')::bigint[]))
   AND (
     sqlc.narg('held_by')::bigint IS NULL  
     OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
@@ -101,6 +102,7 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (sqlc.narg('location_ids')::bigint[] IS NULL OR items.location_id = ANY(sqlc.narg('location_ids')::bigint[]))
   AND (
     sqlc.narg('held_by')::bigint IS NULL  
     OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
@@ -168,6 +170,7 @@ WHERE properties.value_type IN ('price', 'mass', 'volume')
   AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
   AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+  AND (sqlc.narg('location_ids')::bigint[] IS NULL OR items.location_id = ANY(sqlc.narg('location_ids')::bigint[]))
   AND (
     sqlc.narg('held_by')::bigint IS NULL  
     OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
@@ -204,8 +207,8 @@ GROUP BY properties.id, properties.value_type, currency
 ORDER BY properties.id, currency;
 
 -- name: CreateItems :many
-INSERT INTO items (type_id) 
-SELECT ($1) 
+INSERT INTO items (type_id, location_id) 
+SELECT $1, $2 
 FROM generate_series(1, sqlc.arg(amount)::integer)
 RETURNING *;
 
@@ -214,6 +217,9 @@ UPDATE items SET type_id = $2 WHERE id = $1 RETURNING *;
 
 -- name: UpdateItem_Consumption :one
 UPDATE items SET consumption = $2 WHERE id = $1 RETURNING *;
+
+-- name: UpdateItem_Location :one
+UPDATE items SET location_id = $2 WHERE id = $1 RETURNING *;
 
 -- name: DeleteItem :execrows
 DELETE FROM items WHERE id = $1;
