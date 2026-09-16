@@ -275,12 +275,20 @@ export type ItemRequestPreparationReport = {
 	items: ItemRequestPreparationItem[];
 };
 
+export type ItemRequestPreparationReportParams = Pick<
+	ListItemRequestsParams,
+	'status' | 'createdFrom' | 'createdTo'
+> & {
+	itemIDs?: number[];
+};
+
 export type ItemRequestPreparationItem = {
 	id: number;
 	name: string;
 	type_name: string;
 	location_names?: string[];
 	derived_name_format: string;
+	status: ItemRequestStatus;
 	consumption: ConsumptionStatus;
 	reason: string;
 	requested_at: string;
@@ -304,7 +312,9 @@ export type ListItemRequestsParams = {
 	limit?: number;
 	offset?: number;
 	status?: ItemRequestStatus;
-	userID?: number;
+	userIDs?: number[];
+	createdFrom?: string;
+	createdTo?: string;
 };
 
 export type NotificationKind = 'item_request' | 'item_expiry';

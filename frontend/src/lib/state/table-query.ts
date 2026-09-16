@@ -3,7 +3,7 @@ import { resolve } from '$app/paths';
 import { page } from '$app/state';
 import type { AppPath } from '$lib/domain/navigation';
 
-type TableQueryValue = string | number | null | undefined;
+type TableQueryValue = string | number | readonly (string | number)[] | null | undefined;
 
 export function getTablePage(url: URL) {
 	const value = Number.parseInt(url.searchParams.get('page') ?? '', 10);
@@ -22,6 +22,12 @@ export function updateTableQuery(values: Record<string, TableQueryValue>) {
 	const nextURL = new URL(page.url);
 
 	for (const [key, value] of Object.entries(values)) {
+		if (Array.isArray(value)) {
+			nextURL.searchParams.delete(key);
+			for (const item of value) nextURL.searchParams.append(key, String(item));
+			continue;
+		}
+
 		if (value === undefined || value === null || value === '' || (key === 'page' && value === 1)) {
 			nextURL.searchParams.delete(key);
 		} else {

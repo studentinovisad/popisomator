@@ -70,16 +70,25 @@ func (q *Queries) CheckItemsForRequests(ctx context.Context, itemIds []int64) ([
 const countItemRequests = `-- name: CountItemRequests :one
 SELECT count(*) FROM item_requests
 WHERE ($1::request_status IS NULL OR item_requests.status = $1)
-  AND ($2::bigint IS NULL OR item_requests.user_id = $2)
+  AND ($2::bigint[] IS NULL OR item_requests.user_id = ANY($2::bigint[]))
+  AND ($3::timestamptz IS NULL OR item_requests.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR item_requests.created_at <= $4)
 `
 
 type CountItemRequestsParams struct {
-	Status NullRequestStatus `json:"status"`
-	UserID pgtype.Int8       `json:"user_id"`
+	Status      NullRequestStatus  `json:"status"`
+	UserIds     []int64            `json:"user_ids"`
+	CreatedFrom pgtype.Timestamptz `json:"created_from"`
+	CreatedTo   pgtype.Timestamptz `json:"created_to"`
 }
 
 func (q *Queries) CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countItemRequests, arg.Status, arg.UserID)
+	row := q.db.QueryRow(ctx, countItemRequests,
+		arg.Status,
+		arg.UserIds,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -246,9 +255,20 @@ JOIN users ON users.id = item_requests.user_id
 JOIN items ON items.id = item_requests.item_id
 JOIN item_types ON item_types.id = items.type_id
 WHERE item_requests.user_id = $1
-  AND item_requests.status = 'requested'
+  AND ($2::bigint[] IS NULL OR item_requests.item_id = ANY($2::bigint[]))
+  AND ($3::request_status IS NULL OR item_requests.status = $3)
+  AND ($4::timestamptz IS NULL OR item_requests.created_at >= $4)
+  AND ($5::timestamptz IS NULL OR item_requests.created_at <= $5)
 ORDER BY item_requests.created_at, item_requests.item_id
 `
+
+type ListItemPreparationRequestsParams struct {
+	UserID      int64              `json:"user_id"`
+	ItemIds     []int64            `json:"item_ids"`
+	Status      NullRequestStatus  `json:"status"`
+	CreatedFrom pgtype.Timestamptz `json:"created_from"`
+	CreatedTo   pgtype.Timestamptz `json:"created_to"`
+}
 
 type ListItemPreparationRequestsRow struct {
 	UserID            int64              `json:"user_id"`
@@ -264,8 +284,14 @@ type ListItemPreparationRequestsRow struct {
 	LocationID        pgtype.Int8        `json:"location_id"`
 }
 
-func (q *Queries) ListItemPreparationRequests(ctx context.Context, userID int64) ([]ListItemPreparationRequestsRow, error) {
-	rows, err := q.db.Query(ctx, listItemPreparationRequests, userID)
+func (q *Queries) ListItemPreparationRequests(ctx context.Context, arg ListItemPreparationRequestsParams) ([]ListItemPreparationRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listItemPreparationRequests,
+		arg.UserID,
+		arg.ItemIds,
+		arg.Status,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -338,16 +364,20 @@ JOIN users ON users.id = item_requests.user_id
 JOIN items ON items.id = item_requests.item_id
 JOIN item_types ON item_types.id = items.type_id
 WHERE ($1::request_status IS NULL OR item_requests.status = $1)
-  AND ($2::bigint IS NULL OR item_requests.user_id = $2)
+  AND ($2::bigint[] IS NULL OR item_requests.user_id = ANY($2::bigint[]))
+  AND ($3::timestamptz IS NULL OR item_requests.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR item_requests.created_at <= $4)
 ORDER BY item_requests.created_at DESC
-LIMIT $4 OFFSET $3
+LIMIT $6 OFFSET $5
 `
 
 type ListItemRequestsParams struct {
-	Status    NullRequestStatus `json:"status"`
-	UserID    pgtype.Int8       `json:"user_id"`
-	OffsetVal int32             `json:"offset_val"`
-	LimitVal  int32             `json:"limit_val"`
+	Status      NullRequestStatus  `json:"status"`
+	UserIds     []int64            `json:"user_ids"`
+	CreatedFrom pgtype.Timestamptz `json:"created_from"`
+	CreatedTo   pgtype.Timestamptz `json:"created_to"`
+	OffsetVal   int32              `json:"offset_val"`
+	LimitVal    int32              `json:"limit_val"`
 }
 
 type ListItemRequestsRow struct {
@@ -363,7 +393,9 @@ type ListItemRequestsRow struct {
 func (q *Queries) ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error) {
 	rows, err := q.db.Query(ctx, listItemRequests,
 		arg.Status,
-		arg.UserID,
+		arg.UserIds,
+		arg.CreatedFrom,
+		arg.CreatedTo,
 		arg.OffsetVal,
 		arg.LimitVal,
 	)

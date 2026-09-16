@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/pagination"
@@ -157,7 +158,9 @@ func ApproveItemRequest(w http.ResponseWriter, r *http.Request) {
 // @Param limit query int false "Page size (default 20, max 50)"
 // @Param offset query int false "Page offset (default 0)"
 // @Param status query string false "Filter by item request status" Enums(requested, approved)
-// @Param user_id query int false "Filter by requester ID"
+// @Param user_id query []int false "Filter by requester IDs" collectionFormat(multi)
+// @Param created_from query string false "Filter by request creation time, RFC3339"
+// @Param created_to query string false "Filter by request creation time, RFC3339"
 // @Success 200 {object} dto.ItemRequestsPage
 // @Failure 400 {object} response.Error "invalid limit/offset"
 // @Failure 401 {object} response.Error "not logged in"
@@ -179,13 +182,33 @@ func ListItemRequests(w http.ResponseWriter, r *http.Request) {
 	if val := query.Get("status"); val != "" {
 		listRequest.Status = &val
 	}
-	if val := query.Get("user_id"); val != "" {
-		userID, err := strconv.ParseInt(val, 10, 64)
-		if err != nil || userID <= 0 {
-			response.WriteError(w, http.StatusBadRequest, "invalid user_id")
+	if values, ok := query["user_id"]; ok {
+		userIDs := make([]int64, 0, len(values))
+		for _, value := range values {
+			userID, err := strconv.ParseInt(value, 10, 64)
+			if err != nil || userID <= 0 {
+				response.WriteError(w, http.StatusBadRequest, "invalid user_id")
+				return
+			}
+			userIDs = append(userIDs, userID)
+		}
+		listRequest.UserIDs = userIDs
+	}
+	if val := query.Get("created_from"); val != "" {
+		createdFrom, err := time.Parse(time.RFC3339, val)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid created_from")
 			return
 		}
-		listRequest.UserID = &userID
+		listRequest.CreatedFrom = &createdFrom
+	}
+	if val := query.Get("created_to"); val != "" {
+		createdTo, err := time.Parse(time.RFC3339, val)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid created_to")
+			return
+		}
+		listRequest.CreatedTo = &createdTo
 	}
 
 	itemRequests, err := service.ListItemRequests(r.Context(), listRequest)
@@ -216,24 +239,62 @@ func ListItemRequestUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetItemRequestPreparationReport godoc
-// @Summary Get pending item requests to prepare for one user (manager/admin only)
+// @Summary Get item requests to prepare for one user (manager/admin only)
 // @Tags ItemRequests
 // @Produce json
 // @Security CookieAuth
 // @Param user_id query int true "Requester ID"
+// @Param item_id query []int false "Restrict report to item IDs" collectionFormat(multi)
+// @Param status query string false "Filter by item request status" Enums(requested, approved)
+// @Param created_from query string false "Filter by request creation time, RFC3339"
+// @Param created_to query string false "Filter by request creation time, RFC3339"
 // @Success 200 {object} dto.ItemRequestPreparationReport
 // @Failure 400 {object} response.Error "invalid user_id"
 // @Failure 401 {object} response.Error "not logged in"
 // @Failure 404 {object} response.Error "user not found"
 // @Router /item-requests/preparation-report [get]
 func GetItemRequestPreparationReport(w http.ResponseWriter, r *http.Request) {
-	userID, err := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
+	query := r.URL.Query()
+	userID, err := strconv.ParseInt(query.Get("user_id"), 10, 64)
 	if err != nil || userID < 1 {
 		response.WriteError(w, http.StatusBadRequest, "invalid user_id")
 		return
 	}
 
-	report, err := service.GetItemRequestPreparationReport(r.Context(), userID)
+	reportRequest := dto.ItemRequestPreparationReportRequest{UserID: userID}
+	if values, ok := query["item_id"]; ok {
+		itemIDs := make([]int64, 0, len(values))
+		for _, value := range values {
+			itemID, err := strconv.ParseInt(value, 10, 64)
+			if err != nil || itemID <= 0 {
+				response.WriteError(w, http.StatusBadRequest, "invalid item_id")
+				return
+			}
+			itemIDs = append(itemIDs, itemID)
+		}
+		reportRequest.ItemIDs = itemIDs
+	}
+	if val := query.Get("status"); val != "" {
+		reportRequest.Status = &val
+	}
+	if val := query.Get("created_from"); val != "" {
+		createdFrom, err := time.Parse(time.RFC3339, val)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid created_from")
+			return
+		}
+		reportRequest.CreatedFrom = &createdFrom
+	}
+	if val := query.Get("created_to"); val != "" {
+		createdTo, err := time.Parse(time.RFC3339, val)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid created_to")
+			return
+		}
+		reportRequest.CreatedTo = &createdTo
+	}
+
+	report, err := service.GetItemRequestPreparationReport(r.Context(), reportRequest)
 	if err != nil {
 		writeServiceError(w, err, "couldn't get item request preparation report")
 		return
@@ -267,9 +328,9 @@ func ListPersonalItemRequests(w http.ResponseWriter, r *http.Request) {
 	}
 
 	itemRequests, err := service.ListItemRequests(r.Context(), dto.ItemRequestsListRequest{
-		Limit:  limit,
-		Offset: offset,
-		UserID: &userID,
+		Limit:   limit,
+		Offset:  offset,
+		UserIDs: []int64{userID},
 	})
 	if err != nil {
 		writeServiceError(w, err, "couldn't list personal item requests")
