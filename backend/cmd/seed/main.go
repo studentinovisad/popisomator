@@ -148,12 +148,8 @@ func generateChemicalRows() []chemicalRow {
 	purities := []string{"PA", "HPLC", "GC", "ultrapure", "technical", "0.99", "0.995", "0.997", "ACS"}
 	massPackages := []measure{{1.0, "kg"}, {2.5, "kg"}, {500, "g"}, {100, "g"}, {25, "g"}}
 	volumePackages := []measure{{1.0, "L"}, {2.5, "L"}, {5.0, "L"}, {500, "mL"}, {250, "mL"}}
-	// How many identical packages each row is stocked in, and what puts duplicate items in the seeded
-	// inventory. Most rows carry more than chemicalLowStockCount so that falling to it means
-	// something: a shelf stocked in ones against a threshold of two is below it the day it is filled,
-	// which turns every warning into noise and buries the notifications this seed composes by hand.
-	// The few short rows are the ones meant to trip it. Cycled by index like every other field here,
-	// so reruns produce the same inventory.
+	// Amounts of items to bulk add
+	// 1 and 2 are there to trigger low stock threshold alerts
 	packageCounts := []int{4, 3, 6, 3, 5, 4, 3, 1, 5, 3, 6, 2}
 	// Days from today to each row's expiry date. Negatives are already expired and the small
 	// positives fall inside the type's chemicalExpiringSoonDays window, so the shelf carries both
