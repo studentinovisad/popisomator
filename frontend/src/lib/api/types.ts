@@ -149,6 +149,9 @@ export type ItemType = ItemTypeOption & {
 	// How many days ahead of its date an expiry on this type counts as expiring soon. Null where no
 	// window is set, which is how the backend records 'never mark anything as expiring soon'.
 	expiring_soon_days: number | null;
+	// How few available items sharing one derived name leave this type low on stock. Null where no
+	// threshold is set, recorded the same way as expiring_soon_days.
+	low_stock_count: number | null;
 };
 
 export type ItemTypesPage = {
@@ -164,10 +167,14 @@ export type CreateItemTypeRequest = {
 	derived_name_format: string;
 	properties: ItemTypeProperty[];
 	expiring_soon_days?: number;
+	low_stock_count?: number;
 };
 
 export type UpdateItemTypeRequest = Partial<
-	Pick<ItemType, 'name' | 'description' | 'derived_name_format' | 'expiring_soon_days'>
+	Pick<
+		ItemType,
+		'name' | 'description' | 'derived_name_format' | 'expiring_soon_days' | 'low_stock_count'
+	>
 >;
 
 export type AddUpdateItemTypePropertyRequest = {
@@ -317,7 +324,7 @@ export type ListItemRequestsParams = {
 	createdTo?: string;
 };
 
-export type NotificationKind = 'item_request' | 'item_expiry';
+export type NotificationKind = 'item_request' | 'item_expiry' | 'item_low_stock';
 export type NotificationExpiryType = 'expiring_soon' | 'expired';
 
 export type NotificationItemExpiry = {
@@ -325,7 +332,17 @@ export type NotificationItemExpiry = {
 	expiry_type: NotificationExpiryType;
 };
 
-// Only the descriptor matching `kind` is sent; both are absent if the descriptor row is missing.
+// Everything a low stock warning says was recorded when it fired: a stock group is a rendered name
+// with no row behind it, and the type may since have been renamed or had its threshold moved.
+export type NotificationLowStock = {
+	type_id: number | null;
+	type_name: string;
+	group_name: string;
+	threshold: number;
+	observed: number;
+};
+
+// Only the descriptor matching `kind` is sent; all are absent if the descriptor row is missing.
 export type Notification = {
 	id: number;
 	recipient_id: number;
@@ -334,6 +351,7 @@ export type Notification = {
 	read: boolean;
 	desc_item_request?: ItemRequest;
 	desc_item_expiry?: NotificationItemExpiry;
+	desc_low_stock?: NotificationLowStock;
 };
 
 export type NotificationsPage = {

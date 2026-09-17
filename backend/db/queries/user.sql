@@ -20,6 +20,12 @@ WHERE full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
   AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
   AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status);
 
+-- name: GetUsersByRoles :many
+SELECT * FROM users
+WHERE role::text = ANY(sqlc.arg('roles')::text[])
+  AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status)
+ORDER BY id;
+
 -- name: CreateUser :one
 INSERT INTO users (email, password_hash, full_name, role, status) VALUES ($1, $2, $3, $4, $5) RETURNING *;
 

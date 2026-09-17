@@ -25,12 +25,19 @@ import (
 )
 
 const (
-	chemicalDerivedNameFormat = "{Naziv hemikalije} · {Proizvođač}"
+	// The manufacturer is deliberately absent: the derived name is also what stock is counted by, and
+	// two bottles of the same chemical at the same purity are interchangeable however they were
+	// bought. Naming the supplier here would split one stock line into one per supplier, so a shelf
+	// holding plenty would read as several groups each nearly empty.
+	chemicalDerivedNameFormat = "{Naziv hemikalije} · {Čistoća}"
 	testPassword              = "Test1234"
 	// chemicalExpiringSoonDays is how many days ahead of its date an item counts as expiring soon.
 	// Set on the seeded item type, and reused to work out which items an expiry notification may
 	// truthfully point at.
 	chemicalExpiringSoonDays = 14
+	// chemicalLowStockCount is how few available items of one derived name leave the type low on
+	// stock. Set on the seeded item type so the seeded shelf trips the warning.
+	chemicalLowStockCount = 2
 )
 
 // measure is a package size as it appears on the bottle: an amount in a named unit. It maps onto
@@ -542,11 +549,14 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 			if err := ensureItemTypeProperties(ctx, existingType, propIDs); err != nil {
 				return 0, err
 			}
-			if existingType.DerivedNameFormat != chemicalDerivedNameFormat {
+			lowStockCount := int32(chemicalLowStockCount)
+			if existingType.DerivedNameFormat != chemicalDerivedNameFormat ||
+				existingType.LowStockCount == nil || *existingType.LowStockCount != lowStockCount {
 				format := chemicalDerivedNameFormat
 				if _, err := service.UpdateItemType(ctx, dto.UpdateItemTypeRequest{
 					ID:                existingType.ID,
 					DerivedNameFormat: &format,
+					LowStockCount:     &lowStockCount,
 				}); err != nil {
 					return 0, fmt.Errorf("setting derived name format: %w", err)
 				}
@@ -564,12 +574,14 @@ func seedItemType(ctx context.Context, name string, propIDs map[string]int64) (i
 	}
 
 	expiringSoonDays := int16(chemicalExpiringSoonDays)
+	lowStockCount := int32(chemicalLowStockCount)
 
 	created, err := service.CreateItemType(ctx, dto.CreateItemTypeRequest{
 		Name:              name,
 		DerivedNameFormat: chemicalDerivedNameFormat,
 		Properties:        properties,
 		ExpiringSoonDays:  &expiringSoonDays,
+		LowStockCount:     &lowStockCount,
 	})
 	if err != nil {
 		return 0, err

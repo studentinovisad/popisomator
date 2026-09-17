@@ -111,6 +111,45 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
+const getUsersByRoles = `-- name: GetUsersByRoles :many
+SELECT id, email, password_hash, full_name, role, status FROM users
+WHERE role::text = ANY($1::text[])
+  AND status = COALESCE(NULLIF($2::text, '')::user_status, status)
+ORDER BY id
+`
+
+type GetUsersByRolesParams struct {
+	Roles        []string `json:"roles"`
+	StatusFilter string   `json:"status_filter"`
+}
+
+func (q *Queries) GetUsersByRoles(ctx context.Context, arg GetUsersByRolesParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersByRoles, arg.Roles, arg.StatusFilter)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.FullName,
+			&i.Role,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE full_name ILIKE '%' || escape_like_pattern($1::text) || '%'

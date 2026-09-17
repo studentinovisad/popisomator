@@ -18,7 +18,9 @@ DROP TABLE IF EXISTS
     notifdesc_item_request,
     notifdesc_item_expiry,
     locations,
-    audit_log
+    audit_log,
+    notifdesc_low_stock,
+    low_stock_alerts
 CASCADE;
 DROP TYPE IF EXISTS 
     request_status,

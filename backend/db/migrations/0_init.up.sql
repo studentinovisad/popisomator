@@ -34,7 +34,8 @@ CREATE TABLE item_types (
     name TEXT NOT NULL UNIQUE,
     description TEXT,
     derived_name_format TEXT,
-    expiring_soon_days SMALLINT CHECK (expiring_soon_days > 0)
+    expiring_soon_days SMALLINT CHECK (expiring_soon_days > 0),
+    low_stock_count INTEGER CHECK (low_stock_count > 0)
 );
 
 CREATE TYPE property_visibility AS ENUM ('overview', 'details');
@@ -122,7 +123,7 @@ CREATE UNIQUE INDEX idx_unique_approved_item_requests
 ON item_requests(item_id)
 WHERE status = 'approved';
 
-CREATE TYPE notification_kind AS ENUM ('item_request', 'item_expiry');
+CREATE TYPE notification_kind AS ENUM ('item_request', 'item_expiry', 'item_low_stock');
 
 CREATE TABLE notifications (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -158,6 +159,25 @@ CREATE TABLE notifdesc_item_expiry (
 
   FOREIGN KEY(notification_id, kind)
     REFERENCES notifications(id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE notifdesc_low_stock (
+  notification_id BIGINT PRIMARY KEY REFERENCES notifications(id) ON DELETE CASCADE,
+  kind notification_kind GENERATED ALWAYS AS ('item_low_stock') STORED,
+  type_id BIGINT REFERENCES item_types(id) ON DELETE SET NULL,
+  group_name TEXT NOT NULL,
+  threshold INTEGER NOT NULL,
+  observed INTEGER NOT NULL,
+
+  FOREIGN KEY(notification_id, kind)
+    REFERENCES notifications(id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE low_stock_alerts (
+  type_id BIGINT NOT NULL REFERENCES item_types(id) ON DELETE CASCADE,
+  group_name TEXT NOT NULL,
+  notified_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (type_id, group_name)
 );
 
 -- An audit entry has to outlive the thing it describes: an item deleted a year ago is exactly the

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -79,6 +80,39 @@ func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, it
 	return notificationIDs, nil
 }
 
+// createLowStockNotifications writes notifications and their descriptors through the caller's
+// transaction. Low stock owns the alert claim that decides whether a notification is warranted;
+// keeping both writes in that transaction prevents a claimed alert without its notification.
+func createLowStockNotifications(
+	ctx context.Context,
+	queries repository.Querier,
+	recipientIDs []int64,
+	typeID int64,
+	groupName string,
+	threshold, observed int32,
+) ([]int64, error) {
+	notifications, err := queries.CreateNotifications(ctx, repository.CreateNotificationsParams{
+		Kind:         repository.NotificationKindItemLowStock,
+		RecipientIds: recipientIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	notificationIDs := notificationIDsOf(notifications)
+	if _, err := queries.CreateNotificationDescriptors_LowStock(ctx, repository.CreateNotificationDescriptors_LowStockParams{
+		NotificationIds: notificationIDs,
+		TypeID:          pgtype.Int8{Int64: typeID, Valid: true},
+		GroupName:       groupName,
+		Threshold:       threshold,
+		Observed:        observed,
+	}); err != nil {
+		return nil, err
+	}
+
+	return notificationIDs, nil
+}
+
 func notificationIDsOf(notifications []repository.Notification) []int64 {
 	ids := make([]int64, len(notifications))
 	for index, notification := range notifications {
@@ -130,6 +164,17 @@ func ListNotifications(ctx context.Context, recipient_id int64, limit, offset in
 				Item: item,
 				Type: row.ItemExpiryType.NotifdescExpiryType,
 			}
+		case repository.NotificationKindItemLowStock:
+			descriptor := dto.NotificationDescriptor_LowStock{
+				TypeName:  row.LowStockTypeName.String,
+				GroupName: row.LowStockGroupName.String,
+				Threshold: row.LowStockThreshold.Int32,
+				Observed:  row.LowStockObserved.Int32,
+			}
+			if row.LowStockTypeID.Valid {
+				descriptor.TypeID = &row.LowStockTypeID.Int64
+			}
+			notif.Descriptor_LowStock = &descriptor
 		}
 		pageItems[index] = notif
 	}

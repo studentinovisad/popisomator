@@ -1,7 +1,7 @@
 include ../.env
 export
 
-.PHONY: run dev build migrate-diff migrate-apply migrate-status sqlc generate swagger
+.PHONY: run dev build migrate-diff migrate-apply migrate-create migrate-status seed sqlc generate swagger
 
 ## Run the server locally
 run:
@@ -26,6 +26,12 @@ migrate-create:
 ## Show current migration status
 migrate-status:
 	migrate -database $(POPISOMATOR_MIGRATION_DSN) -path ./db/migrations version
+
+## Fill the database with sample users, item types, and items. Run after migrate-apply. It adds to
+## whatever is already there rather than replacing it, so re-running stacks up duplicate items - for
+## a clean slate, drop the volume first (podman compose down -v) and migrate again.
+seed:
+	go run ./cmd/seed
 
 ## Regenerate sqlc Go code from db/queries + db/schema.sql
 sqlc:

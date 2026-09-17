@@ -204,8 +204,9 @@ func (ns NullNotifdescExpiryType) Value() (driver.Value, error) {
 type NotificationKind string
 
 const (
-	NotificationKindItemRequest NotificationKind = "item_request"
-	NotificationKindItemExpiry  NotificationKind = "item_expiry"
+	NotificationKindItemRequest  NotificationKind = "item_request"
+	NotificationKindItemExpiry   NotificationKind = "item_expiry"
+	NotificationKindItemLowStock NotificationKind = "item_low_stock"
 )
 
 func (e *NotificationKind) Scan(src interface{}) error {
@@ -453,6 +454,7 @@ type ItemType struct {
 	Description       pgtype.Text `json:"description"`
 	DerivedNameFormat pgtype.Text `json:"derived_name_format"`
 	ExpiringSoonDays  pgtype.Int2 `json:"expiring_soon_days"`
+	LowStockCount     pgtype.Int4 `json:"low_stock_count"`
 }
 
 type ItemTypeProperty struct {
@@ -470,6 +472,12 @@ type Location struct {
 	ParentID    pgtype.Int8 `json:"parent_id"`
 }
 
+type LowStockAlert struct {
+	TypeID     int64              `json:"type_id"`
+	GroupName  string             `json:"group_name"`
+	NotifiedAt pgtype.Timestamptz `json:"notified_at"`
+}
+
 type NotifdescItemExpiry struct {
 	NotificationID int64                `json:"notification_id"`
 	Kind           NullNotificationKind `json:"kind"`
@@ -482,6 +490,15 @@ type NotifdescItemRequest struct {
 	Kind           NullNotificationKind `json:"kind"`
 	UserID         int64                `json:"user_id"`
 	ItemID         int64                `json:"item_id"`
+}
+
+type NotifdescLowStock struct {
+	NotificationID int64                `json:"notification_id"`
+	Kind           NullNotificationKind `json:"kind"`
+	TypeID         pgtype.Int8          `json:"type_id"`
+	GroupName      string               `json:"group_name"`
+	Threshold      int32                `json:"threshold"`
+	Observed       int32                `json:"observed"`
 }
 
 type Notification struct {

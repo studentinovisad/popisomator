@@ -9,22 +9,36 @@ VALUES (unnest(sqlc.arg('notification_ids')::bigint[]), $1, $2)
 RETURNING *;
 
 -- name: CreateNotificationDescriptors_ItemExpiry :many
-INSERT INTO notifdesc_item_expiry (notification_id, item_id, expiry_type) 
+INSERT INTO notifdesc_item_expiry (notification_id, item_id, expiry_type)
 VALUES (unnest(sqlc.arg('notification_ids')::bigint[]), $1, $2)
 RETURNING *;
 
+-- name: CreateNotificationDescriptors_LowStock :many
+INSERT INTO notifdesc_low_stock (notification_id, type_id, group_name, threshold, observed)
+VALUES (unnest(sqlc.arg('notification_ids')::bigint[]), $1, $2, $3, $4)
+RETURNING *;
+
 -- name: ListNotifications :many
-SELECT 
-    sqlc.embed(notif), 
+SELECT
+    sqlc.embed(notif),
     notifdesc_item_request.user_id AS item_request_user_id,
     notifdesc_item_request.item_id AS item_request_item_id,
     notifdesc_item_expiry.item_id AS item_expiry_item_id,
-    notifdesc_item_expiry.expiry_type AS item_expiry_type
+    notifdesc_item_expiry.expiry_type AS item_expiry_type,
+    notifdesc_low_stock.type_id AS low_stock_type_id,
+    low_stock_item_type.name AS low_stock_type_name,
+    notifdesc_low_stock.group_name AS low_stock_group_name,
+    notifdesc_low_stock.threshold AS low_stock_threshold,
+    notifdesc_low_stock.observed AS low_stock_observed
 FROM notifications AS notif
-LEFT JOIN notifdesc_item_request 
+LEFT JOIN notifdesc_item_request
     ON notif.id = notifdesc_item_request.notification_id
-LEFT JOIN notifdesc_item_expiry 
+LEFT JOIN notifdesc_item_expiry
     ON notif.id = notifdesc_item_expiry.notification_id
+LEFT JOIN notifdesc_low_stock
+    ON notif.id = notifdesc_low_stock.notification_id
+LEFT JOIN item_types AS low_stock_item_type
+    ON low_stock_item_type.id = notifdesc_low_stock.type_id
 WHERE recipient_id = $1
 -- Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
 -- bulk-inserted, so a whole batch shares one created_at.

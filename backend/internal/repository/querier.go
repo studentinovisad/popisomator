@@ -15,6 +15,7 @@ type Querier interface {
 	AddItemTypeProperty(ctx context.Context, arg AddItemTypePropertyParams) (ItemTypeProperty, error)
 	ApproveItemRequest(ctx context.Context, arg ApproveItemRequestParams) (ItemRequest, error)
 	CheckItemsForRequests(ctx context.Context, itemIds []int64) ([]ItemRequest, error)
+	ClearLowStockAlerts(ctx context.Context, typeID int64) (int64, error)
 	CountAuditLog(ctx context.Context, arg CountAuditLogParams) (int64, error)
 	CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error)
 	CountItemTypes(ctx context.Context, search string) (int64, error)
@@ -30,6 +31,7 @@ type Querier interface {
 	CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error)
 	CreateNotificationDescriptors_ItemExpiry(ctx context.Context, arg CreateNotificationDescriptors_ItemExpiryParams) ([]NotifdescItemExpiry, error)
 	CreateNotificationDescriptors_ItemRequest(ctx context.Context, arg CreateNotificationDescriptors_ItemRequestParams) ([]NotifdescItemRequest, error)
+	CreateNotificationDescriptors_LowStock(ctx context.Context, arg CreateNotificationDescriptors_LowStockParams) ([]NotifdescLowStock, error)
 	CreateNotifications(ctx context.Context, arg CreateNotificationsParams) ([]Notification, error)
 	CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -37,6 +39,7 @@ type Querier interface {
 	DeleteItemRequest(ctx context.Context, arg DeleteItemRequestParams) (int64, error)
 	DeleteItemType(ctx context.Context, id int64) (int64, error)
 	DeleteLocation(ctx context.Context, id int64) (int64, error)
+	DeleteLowStockAlerts(ctx context.Context, arg DeleteLowStockAlertsParams) (int64, error)
 	DeleteNonApprovedItemRequests(ctx context.Context, itemID int64) (int64, error)
 	DeleteNotification(ctx context.Context, arg DeleteNotificationParams) (int64, error)
 	DeleteProperty(ctx context.Context, id int64) (int64, error)
@@ -63,8 +66,27 @@ type Querier interface {
 	GetPropertyByID(ctx context.Context, id int64) (Property, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
+	GetUsersByRoles(ctx context.Context, arg GetUsersByRolesParams) ([]User, error)
+	// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
+	// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
+	// that is what the count groups by.
+	//
+	// The grouping deliberately spans every item of the type whatever its state, while only items that
+	// are actually available count as stock. That split is the whole point. A group that has been used up
+	// has no available rows left, and a plain GROUP BY over in-stock items would drop it from the result
+	// entirely - losing precisely the group worth warning about. Counting inside a FILTER instead keeps
+	// the consumed rows present as evidence the group exists, and reports it at zero.
+	//
+	// Available means untouched and on the shelf: an item someone holds an approved request for is spoken
+	// for and cannot be handed to anyone else, so it is not stock however full it still is. The join
+	// mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
+	// item, which is what keeps it from inflating total_count.
+	//
+	GroupItemCounts(ctx context.Context, typeID int64) ([]GroupItemCountsRow, error)
+	GroupItemCountsForGroups(ctx context.Context, arg GroupItemCountsForGroupsParams) ([]GroupItemCountsForGroupsRow, error)
 	HasApprovedItemRequest(ctx context.Context, itemID int64) (bool, error)
 	Healthcheck(ctx context.Context) (int32, error)
+	InsertLowStockAlert(ctx context.Context, arg InsertLowStockAlertParams) (int64, error)
 	// Newest first. The id tiebreaker keeps pagination stable: a bulk add writes a whole batch of rows
 	// under one created_at.
 	ListAuditLog(ctx context.Context, arg ListAuditLogParams) ([]AuditLog, error)
@@ -97,6 +119,8 @@ type Querier interface {
 	// null keys too, and so land last whichever direction is asked for.
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListLocationOptions(ctx context.Context) ([]ListLocationOptionsRow, error)
+	ListLowStockAlerts(ctx context.Context, typeID int64) ([]LowStockAlert, error)
+	ListLowStockAlertsForGroups(ctx context.Context, arg ListLowStockAlertsForGroupsParams) ([]LowStockAlert, error)
 	// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
 	// bulk-inserted, so a whole batch shares one created_at.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
@@ -122,6 +146,7 @@ type Querier interface {
 	UpdateItemType_DerivedNameFormat(ctx context.Context, arg UpdateItemType_DerivedNameFormatParams) (ItemType, error)
 	UpdateItemType_Description(ctx context.Context, arg UpdateItemType_DescriptionParams) (ItemType, error)
 	UpdateItemType_ExpiringSoonDays(ctx context.Context, arg UpdateItemType_ExpiringSoonDaysParams) (ItemType, error)
+	UpdateItemType_LowStockCount(ctx context.Context, arg UpdateItemType_LowStockCountParams) (ItemType, error)
 	UpdateItemType_Name(ctx context.Context, arg UpdateItemType_NameParams) (ItemType, error)
 	UpdateItem_Consumption(ctx context.Context, arg UpdateItem_ConsumptionParams) (Item, error)
 	UpdateItem_Location(ctx context.Context, arg UpdateItem_LocationParams) (Item, error)

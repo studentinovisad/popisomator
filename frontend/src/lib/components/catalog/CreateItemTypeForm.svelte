@@ -11,11 +11,13 @@
 		type PropertyVisibility
 	} from '$lib/api';
 	import ExpiringSoonDaysInput from '$lib/components/catalog/ExpiringSoonDaysInput.svelte';
+	import LowStockCountInput from '$lib/components/catalog/LowStockCountInput.svelte';
 	import ItemPropertyValueInput from '$lib/components/inventory/ItemPropertyValueInput.svelte';
 	import MultiOptionCombobox from '$lib/components/shared/MultiOptionCombobox.svelte';
 	import {
 		defaultExpiringSoonDays,
 		defaultJsonValue,
+		defaultLowStockCount,
 		propertyValueTypeLabel
 	} from '$lib/domain/items';
 	import { requiredTextError } from '$lib/domain/form-validation';
@@ -46,6 +48,7 @@
 	let description = $state('');
 	let derivedNameFormat = $state('');
 	let expiringSoonDays = $state(defaultExpiringSoonDays);
+	let lowStockCount = $state(defaultLowStockCount);
 	let comboboxSelectedPropertyValues = $state<string[]>([]);
 	let selectedPropertyIDs = $state<number[]>([]);
 	let orderedProperties = $state<PropertyOption[]>([]);
@@ -90,6 +93,7 @@
 		// A type with no window stored has none by intent - it is what the backend writes when the
 		// count is cleared - so it opens at nought rather than back at the default.
 		expiringSoonDays = itemType ? (itemType.expiring_soon_days ?? 0) : defaultExpiringSoonDays;
+		lowStockCount = itemType ? (itemType.low_stock_count ?? 0) : defaultLowStockCount;
 		comboboxSelectedPropertyValues =
 			itemType?.properties.map((property) => String(property.id)) ?? [];
 		selectedPropertyIDs = itemType?.properties.map((property) => property.id) ?? [];
@@ -253,6 +257,7 @@
 					description,
 					derived_name_format: derivedNameFormat,
 					expiring_soon_days: expiringSoonDays,
+					low_stock_count: lowStockCount,
 					properties: selectedPropertyIDs.map((id) => ({
 						id,
 						default_value: defaultValues[id],
@@ -263,7 +268,8 @@
 				await api.updateItemType(itemType.id, {
 					name,
 					description,
-					expiring_soon_days: expiringSoonDays
+					expiring_soon_days: expiringSoonDays,
+					low_stock_count: lowStockCount
 				});
 
 				const defaultValueUpdates: Promise<unknown>[] = [];
@@ -589,6 +595,19 @@
 						<ExpiringSoonDaysInput id="item-type-expiring-soon-days" bind:days={expiringSoonDays} />
 					</div>
 				{/if}
+				<!-- Unlike the expiry warning this needs no particular property: stock is counted in
+				     items, and every type has those. -->
+				<Separator.Root class="h-px bg-line" decorative />
+				<div>
+					<Label.Root class="text-sm font-medium text-ink" for="item-type-low-stock-count">
+						Upozorenje o zalihama
+					</Label.Root>
+					<p class="mt-1 text-sm text-muted">
+						Koliko slobodnih stavki sa istim nazivom sme da ostane pre nego što tip prijavi da su
+						zalihe pri kraju. Potrošene i zadužene stavke se ne računaju.
+					</p>
+					<LowStockCountInput id="item-type-low-stock-count" bind:count={lowStockCount} />
+				</div>
 			</div>
 		</Tabs.Content>
 	</Tabs.Root>

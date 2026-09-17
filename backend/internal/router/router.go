@@ -69,6 +69,11 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.ListItems),
 	))
+	mux.Handle("GET /items/stock", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.GetItemStock),
+	))
 	mux.Handle("GET /items/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetItem),
