@@ -24,7 +24,7 @@
 			const byCount = scarcestFirst
 				? left.in_stock_count - right.in_stock_count
 				: right.in_stock_count - left.in_stock_count;
-			return byCount !== 0 ? byCount : left.name.localeCompare(right.name, 'sr-RS');
+			return byCount !== 0 ? byCount : left.name.localeCompare(right.name, 'sr-Latn-RS');
 		})
 	);
 

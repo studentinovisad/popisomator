@@ -50,7 +50,7 @@ export function itemRequestStatusClass(status: ItemRequestStatus) {
 }
 
 export function formatRequestDate(value: string) {
-	return new Date(value).toLocaleString('sr-RS', {
+	return new Date(value).toLocaleString('sr-Latn-RS', {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',

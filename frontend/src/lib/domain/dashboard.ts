@@ -39,9 +39,9 @@ export function consumptionSeriesLabel(key: keyof Omit<DashboardConsumptionBucke
 	return consumptionLabel(key);
 }
 
-const monthFormatter = new Intl.DateTimeFormat('sr-RS', { month: 'short' });
-const monthYearFormatter = new Intl.DateTimeFormat('sr-RS', { month: 'long', year: 'numeric' });
-const dateFormatter = new Intl.DateTimeFormat('sr-RS', { dateStyle: 'medium' });
+const monthFormatter = new Intl.DateTimeFormat('sr-Latn-RS', { month: 'short' });
+const monthYearFormatter = new Intl.DateTimeFormat('sr-Latn-RS', { month: 'long', year: 'numeric' });
+const dateFormatter = new Intl.DateTimeFormat('sr-Latn-RS', { dateStyle: 'medium' });
 
 // Dates arrive as plain YYYY-MM-DD and are read as UTC, since a local reading would step one near
 // midnight into the neighbouring day.
