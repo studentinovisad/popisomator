@@ -139,7 +139,7 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 
 	// An approved request takes the item off the shelf without consuming it, so stock falls by one
 	// even though nothing was used up.
-	EvaluateLowStockForItemAsync(ctx, req.ItemID)
+	reconcileLowStockAfterItemRequestChange(ctx, req.ItemID)
 
 	itemRequestDTO := dto.ToItemRequestDTO(itemRequest)
 
@@ -379,7 +379,7 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 
 	// Taking an approved item back puts it on the shelf again, which can end a shortage. Turning down
 	// a pending request moves nothing, but re-counting is cheap next to working out which case it was.
-	EvaluateLowStockForItemAsync(ctx, req.ItemID)
+	reconcileLowStockAfterItemRequestChange(ctx, req.ItemID)
 
 	return nil
 }

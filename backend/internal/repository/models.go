@@ -496,7 +496,6 @@ type NotifdescLowStock struct {
 	NotificationID int64                `json:"notification_id"`
 	Kind           NullNotificationKind `json:"kind"`
 	TypeID         pgtype.Int8          `json:"type_id"`
-	TypeLabel      string               `json:"type_label"`
 	GroupName      string               `json:"group_name"`
 	Threshold      int32                `json:"threshold"`
 	Observed       int32                `json:"observed"`

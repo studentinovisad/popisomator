@@ -80,41 +80,18 @@ func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, it
 	return notificationIDs, nil
 }
 
-// CreateLowStockNotifications gives each recipient a notification that one group of itemType has
-// fallen to threshold, returning the new notification IDs in recipient order. Written under one
-// transaction for the same reason as CreateItemRequestNotifications, which also covers the alert row:
-// it is what keeps a group from being warned about twice, so claiming it and sending the warning have
-// to land or fail together. A group already claimed returns no IDs and sends nothing.
-//
-// The group name, threshold and observed count are stored rather than looked up later. A group is a
-// rendered name with no row behind it, and the threshold can move afterwards without that being
-// allowed to rewrite what was said.
-func CreateLowStockNotifications(
+// createLowStockNotifications writes notifications and their descriptors through the caller's
+// transaction. Low stock owns the alert claim that decides whether a notification is warranted;
+// keeping both writes in that transaction prevents a claimed alert without its notification.
+func createLowStockNotifications(
 	ctx context.Context,
+	queries repository.Querier,
 	recipientIDs []int64,
-	itemType repository.ItemType,
+	typeID int64,
 	groupName string,
 	threshold, observed int32,
 ) ([]int64, error) {
-	tx, err := db.BeginTransaction(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-	queriesTx := db.Queries.WithTx(tx)
-
-	claimed, err := queriesTx.InsertLowStockAlert(ctx, repository.InsertLowStockAlertParams{
-		TypeID:    itemType.ID,
-		GroupName: groupName,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if claimed == 0 {
-		return nil, nil
-	}
-
-	notifications, err := queriesTx.CreateNotifications(ctx, repository.CreateNotificationsParams{
+	notifications, err := queries.CreateNotifications(ctx, repository.CreateNotificationsParams{
 		Kind:         repository.NotificationKindItemLowStock,
 		RecipientIds: recipientIDs,
 	})
@@ -123,18 +100,13 @@ func CreateLowStockNotifications(
 	}
 
 	notificationIDs := notificationIDsOf(notifications)
-	if _, err := queriesTx.CreateNotificationDescriptors_LowStock(ctx, repository.CreateNotificationDescriptors_LowStockParams{
+	if _, err := queries.CreateNotificationDescriptors_LowStock(ctx, repository.CreateNotificationDescriptors_LowStockParams{
 		NotificationIds: notificationIDs,
-		TypeID:          pgtype.Int8{Int64: itemType.ID, Valid: true},
-		TypeLabel:       itemType.Name,
+		TypeID:          pgtype.Int8{Int64: typeID, Valid: true},
 		GroupName:       groupName,
 		Threshold:       threshold,
 		Observed:        observed,
 	}); err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 
@@ -193,10 +165,8 @@ func ListNotifications(ctx context.Context, recipient_id int64, limit, offset in
 				Type: row.ItemExpiryType.NotifdescExpiryType,
 			}
 		case repository.NotificationKindItemLowStock:
-			// No follow-up read, unlike the two above: the descriptor was written with everything the
-			// warning says, precisely because a stock group has nothing to read back from.
 			descriptor := dto.NotificationDescriptor_LowStock{
-				TypeName:  row.LowStockTypeLabel.String,
+				TypeName:  row.LowStockTypeName.String,
 				GroupName: row.LowStockGroupName.String,
 				Threshold: row.LowStockThreshold.Int32,
 				Observed:  row.LowStockObserved.Int32,

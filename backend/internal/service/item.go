@@ -222,9 +222,8 @@ func CreateItem(ctx context.Context, req dto.CreateItemRequest) ([]dto.Item, err
 		return nil, err
 	}
 
-	// Adding stock can end a shortage, which is what clears the alert and lets the next one be
-	// reported. Runs after the commit so the count it reads is the one the user just created.
-	EvaluateLowStockAsync(ctx, req.TypeID)
+	// Every item in the batch has the same initial properties, so they share one derived-name group.
+	reconcileLowStockAfterItemChange(ctx, req.TypeID, itemsDTO[0].DerivedName)
 
 	return itemsDTO, nil
 }
@@ -433,10 +432,9 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 		return dto.Item{}, err
 	}
 
-	var item repository.Item
-	// Both sides of a type change need re-counting: the item leaves one type's stock and joins
-	// another's. Collected inside the transaction, acted on once it has committed.
-	var affectedTypeIDs []int64
+	var item, before repository.Item
+	var beforeGroupName, afterGroupName string
+	stockChanged := req.TypeID != nil || req.Consumption != nil
 	if req.TypeID != nil || req.Consumption != nil || req.LocationIDSet {
 		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
@@ -447,11 +445,16 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 
 		// The UPDATE statements below only return the new row, so the prior state has to be read
 		// first or the audit entry has nothing to diff against.
-		before, err := queriesTx.GetItemByID(ctx, req.ID)
+		before, err = queriesTx.GetItemByID(ctx, req.ID)
 		if err != nil {
 			return dto.Item{}, err
 		}
-		affectedTypeIDs = append(affectedTypeIDs, before.TypeID)
+		if stockChanged {
+			beforeGroupName, err = itemDerivedName(ctx, queriesTx, req.ID)
+			if err != nil {
+				return dto.Item{}, err
+			}
+		}
 
 		// PATCH /items/{id} and POST /items/{id}/consume both land here. Today their controllers hand
 		// over disjoint fields - the first can only carry a type, the second only a consumption - but
@@ -538,8 +541,11 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 			}
 		}
 
-		if item.TypeID != before.TypeID {
-			affectedTypeIDs = append(affectedTypeIDs, item.TypeID)
+		if stockChanged {
+			afterGroupName, err = itemDerivedName(ctx, queriesTx, req.ID)
+			if err != nil {
+				return dto.Item{}, err
+			}
 		}
 
 		if err := tx.Commit(ctx); err != nil {
@@ -549,10 +555,11 @@ func UpdateItem(ctx context.Context, req dto.UpdateItemRequest) (dto.Item, error
 		return dto.Item{}, ErrNoUpdateFields
 	}
 
-	// Consuming an item is the commonest way a group goes short, so this is the call site the warning
-	// exists for.
-	for _, typeID := range affectedTypeIDs {
-		EvaluateLowStockAsync(ctx, typeID)
+	if stockChanged {
+		reconcileLowStockAfterItemChange(ctx, before.TypeID, beforeGroupName)
+		if item.TypeID != before.TypeID {
+			reconcileLowStockAfterItemChange(ctx, item.TypeID, afterGroupName)
+		}
 	}
 
 	itemsDTO := []dto.Item{dto.ToItemDTO(item)}
@@ -624,9 +631,7 @@ func DeleteItem(ctx context.Context, id int64) error {
 		return err
 	}
 
-	// Deleting the last item carrying a name removes the group outright rather than emptying it, so
-	// this is also what retires any alert standing against it.
-	EvaluateLowStockAsync(ctx, item.TypeID)
+	reconcileLowStockAfterItemChange(ctx, item.TypeID, label)
 
 	return nil
 }
@@ -644,6 +649,14 @@ func AddItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyRequest) 
 	queriesTx := db.Queries.WithTx(tx)
 
 	property, err := validatePropertyValue(ctx, queriesTx, req.PropertyID, req.Value)
+	if err != nil {
+		return dto.ItemProperty{}, err
+	}
+	beforeGroupName, err := itemDerivedName(ctx, queriesTx, req.ItemID)
+	if err != nil {
+		return dto.ItemProperty{}, err
+	}
+	item, err := queriesTx.GetItemByID(ctx, req.ItemID)
 	if err != nil {
 		return dto.ItemProperty{}, err
 	}
@@ -676,7 +689,7 @@ func AddItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyRequest) 
 		return dto.ItemProperty{}, err
 	}
 
-	EvaluateLowStockForItemAsync(ctx, req.ItemID)
+	reconcileLowStockAfterItemChange(ctx, item.TypeID, beforeGroupName, label)
 
 	return dto.ToItemPropertyDTO(itemProp), nil
 }
@@ -703,6 +716,14 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 	if err != nil {
 		return dto.ItemProperty{}, err
 	}
+	beforeGroupName, err := itemDerivedName(ctx, queriesTx, req.ItemID)
+	if err != nil {
+		return dto.ItemProperty{}, err
+	}
+	item, err := queriesTx.GetItemByID(ctx, req.ItemID)
+	if err != nil {
+		return dto.ItemProperty{}, err
+	}
 
 	itemProp, err := queriesTx.UpdateItemProperty(ctx, repository.UpdateItemPropertyParams{
 		ItemID:        req.ItemID,
@@ -712,18 +733,17 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 	if err != nil {
 		return dto.ItemProperty{}, err
 	}
+	afterGroupName, err := itemDerivedName(ctx, queriesTx, req.ItemID)
+	if err != nil {
+		return dto.ItemProperty{}, err
+	}
 
 	// The UPDATE succeeds whether or not the value moved, so an edit that set a property to what it
 	// already held would otherwise fill the log with entries recording nothing.
 	changes := auditRawDiff(nil, "property", property.ValueType, previousValue, itemProp.PropertyValue)
 	if len(changes) > 0 {
-		label, err := itemDerivedName(ctx, queriesTx, req.ItemID)
-		if err != nil {
-			return dto.ItemProperty{}, err
-		}
-
 		if err := writeAudit(ctx, queriesTx, repository.AuditActionItemPropertyUpdate, repository.AuditTargetTypeItem,
-			req.ItemID, label, changes, dto.AuditContext{
+			req.ItemID, afterGroupName, changes, dto.AuditContext{
 				PropertyID:   &property.ID,
 				PropertyName: property.Name,
 			}); err != nil {
@@ -735,7 +755,7 @@ func UpdateItemProperty(ctx context.Context, req dto.AddUpdateItemPropertyReques
 		return dto.ItemProperty{}, err
 	}
 
-	EvaluateLowStockForItemAsync(ctx, req.ItemID)
+	reconcileLowStockAfterItemChange(ctx, item.TypeID, beforeGroupName, afterGroupName)
 
 	return dto.ToItemPropertyDTO(itemProp), nil
 }
@@ -747,6 +767,13 @@ func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
 	}
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
+	item, err := queriesTx.GetItemByID(ctx, itemId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
 
 	property, err := queriesTx.GetPropertyByID(ctx, propId)
 	if err != nil {
@@ -778,6 +805,10 @@ func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
 	if rowsAffected == 0 {
 		return ErrNotFound
 	}
+	afterGroupName, err := itemDerivedName(ctx, queriesTx, itemId)
+	if err != nil {
+		return err
+	}
 
 	changes := []dto.AuditChange{{
 		Key:       "property",
@@ -796,7 +827,7 @@ func RemoveItemProperty(ctx context.Context, itemId int64, propId int64) error {
 		return err
 	}
 
-	EvaluateLowStockForItemAsync(ctx, itemId)
+	reconcileLowStockAfterItemChange(ctx, item.TypeID, label, afterGroupName)
 
 	return nil
 }

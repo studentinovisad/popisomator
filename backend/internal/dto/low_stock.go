@@ -20,9 +20,8 @@ type ItemTypeStock struct {
 	Groups    []StockGroup `json:"groups"`
 }
 
-// NotificationDescriptor_LowStock renders entirely from what was recorded when the warning fired.
-// A group is a computed name with no row behind it, and the type may since have been renamed or had
-// its threshold moved, so nothing here can be looked up after the fact.
+// NotificationDescriptor_LowStock has the warning's group and stock snapshot. TypeName is read from
+// the linked type when the notification is listed, so a later rename is reflected automatically.
 type NotificationDescriptor_LowStock struct {
 	TypeID    *int64 `json:"type_id"`
 	TypeName  string `json:"type_name"`

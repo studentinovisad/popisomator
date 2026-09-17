@@ -29,6 +29,31 @@ WHERE items.type_id = sqlc.arg('type_id')
 GROUP BY group_name
 ORDER BY in_stock_count, group_name;
 
+-- name: GroupItemCountsForGroups :many
+WITH requested_groups AS (
+  SELECT DISTINCT requested.group_name
+  FROM unnest(sqlc.arg('group_names')::text[]) AS requested(group_name)
+)
+SELECT
+  requested_groups.group_name::text AS group_name,
+  count(items.id) FILTER (
+    WHERE items.consumption = 'not_consumed' AND approved_request.item_id IS NULL
+  ) AS in_stock_count,
+  count(items.id) AS total_count
+FROM requested_groups
+JOIN item_types ON item_types.id = sqlc.arg('type_id')
+LEFT JOIN items
+  ON items.type_id = item_types.id
+ AND render_item_derived_name(items.id, item_types.derived_name_format) = requested_groups.group_name
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+ AND approved_request.status = 'approved'
+GROUP BY requested_groups.group_name;
+
+-- name: ListLowStockAlertsForGroups :many
+SELECT * FROM low_stock_alerts
+WHERE type_id = $1 AND group_name = ANY(sqlc.arg('group_names')::text[]);
+
 -- name: ListLowStockAlerts :many
 SELECT * FROM low_stock_alerts
 WHERE type_id = $1;

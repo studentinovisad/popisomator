@@ -392,7 +392,7 @@ func UpdateItemType(ctx context.Context, req dto.UpdateItemTypeRequest) (dto.Ite
 	// derived name format decides what the groups even are - editing it can merge two groups into one
 	// or split one into several.
 	if req.LowStockCount != nil || req.DerivedNameFormat != nil {
-		EvaluateLowStockAsync(ctx, itemType.ID)
+		reconcileLowStockAfterTypeChange(ctx, itemType.ID)
 	}
 
 	typeProps, err := GetItemTypeProperties(ctx, itemType.ID)

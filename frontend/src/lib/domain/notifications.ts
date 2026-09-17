@@ -40,9 +40,8 @@ export function notificationTitle(notification: Notification) {
 export function notificationDetail(notification: Notification) {
 	const lowStock = notification.desc_low_stock;
 	if (lowStock) {
-		// Every number here was recorded when the warning fired, so it still reads as what the
-		// recipient was actually told even after the type's threshold has since been moved.
-		return `${lowStock.type_name} · na stanju ${lowStock.observed}, prag ${lowStock.threshold}`;
+		const stockDetail = `Na stanju ${lowStock.observed}, prag ${lowStock.threshold}`;
+		return lowStock.type_name ? `${lowStock.type_name} · ${stockDetail}` : stockDetail;
 	}
 
 	return notification.desc_item_request?.reason ?? '';

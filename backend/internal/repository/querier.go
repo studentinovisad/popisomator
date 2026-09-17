@@ -83,6 +83,7 @@ type Querier interface {
 	// item, which is what keeps it from inflating total_count.
 	//
 	GroupItemCounts(ctx context.Context, typeID int64) ([]GroupItemCountsRow, error)
+	GroupItemCountsForGroups(ctx context.Context, arg GroupItemCountsForGroupsParams) ([]GroupItemCountsForGroupsRow, error)
 	HasApprovedItemRequest(ctx context.Context, itemID int64) (bool, error)
 	Healthcheck(ctx context.Context) (int32, error)
 	InsertLowStockAlert(ctx context.Context, arg InsertLowStockAlertParams) (int64, error)
@@ -119,6 +120,7 @@ type Querier interface {
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListLocationOptions(ctx context.Context) ([]ListLocationOptionsRow, error)
 	ListLowStockAlerts(ctx context.Context, typeID int64) ([]LowStockAlert, error)
+	ListLowStockAlertsForGroups(ctx context.Context, arg ListLowStockAlertsForGroupsParams) ([]LowStockAlert, error)
 	// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
 	// bulk-inserted, so a whole batch shares one created_at.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)

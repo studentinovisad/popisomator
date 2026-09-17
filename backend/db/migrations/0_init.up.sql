@@ -161,17 +161,10 @@ CREATE TABLE notifdesc_item_expiry (
     REFERENCES notifications(id, kind) ON DELETE CASCADE
 );
 
--- Stock is counted per group of interchangeable items, and a group is the rendered derived name -
--- every bottle reading "Natrijum hidroksid · p.a." is one stock line however many rows it spans.
--- That name is computed, not stored, so it is the only handle a warning has: there is no group row
--- to point a foreign key at. Hence the snapshots below. type_label, threshold and observed are
--- recorded at the moment of the warning because the type may later be renamed, deleted, or have its
--- threshold changed, and none of that should be able to rewrite what the manager was told.
 CREATE TABLE notifdesc_low_stock (
   notification_id BIGINT PRIMARY KEY REFERENCES notifications(id) ON DELETE CASCADE,
   kind notification_kind GENERATED ALWAYS AS ('item_low_stock') STORED,
   type_id BIGINT REFERENCES item_types(id) ON DELETE SET NULL,
-  type_label TEXT NOT NULL,
   group_name TEXT NOT NULL,
   threshold INTEGER NOT NULL,
   observed INTEGER NOT NULL,
@@ -180,9 +173,6 @@ CREATE TABLE notifdesc_low_stock (
     REFERENCES notifications(id, kind) ON DELETE CASCADE
 );
 
--- Which groups are currently known to be low, so a warning fires when one crosses the threshold
--- rather than on every item edit that happens while it stays below. A row appears when the group
--- goes low and is deleted once it recovers, which is what makes the next dip notifiable again.
 CREATE TABLE low_stock_alerts (
   type_id BIGINT NOT NULL REFERENCES item_types(id) ON DELETE CASCADE,
   group_name TEXT NOT NULL,

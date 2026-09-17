@@ -96,6 +96,59 @@ func (q *Queries) GroupItemCounts(ctx context.Context, typeID int64) ([]GroupIte
 	return items, nil
 }
 
+const groupItemCountsForGroups = `-- name: GroupItemCountsForGroups :many
+WITH requested_groups AS (
+  SELECT DISTINCT requested.group_name
+  FROM unnest($2::text[]) AS requested(group_name)
+)
+SELECT
+  requested_groups.group_name::text AS group_name,
+  count(items.id) FILTER (
+    WHERE items.consumption = 'not_consumed' AND approved_request.item_id IS NULL
+  ) AS in_stock_count,
+  count(items.id) AS total_count
+FROM requested_groups
+JOIN item_types ON item_types.id = $1
+LEFT JOIN items
+  ON items.type_id = item_types.id
+ AND render_item_derived_name(items.id, item_types.derived_name_format) = requested_groups.group_name
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+ AND approved_request.status = 'approved'
+GROUP BY requested_groups.group_name
+`
+
+type GroupItemCountsForGroupsParams struct {
+	TypeID     int64    `json:"type_id"`
+	GroupNames []string `json:"group_names"`
+}
+
+type GroupItemCountsForGroupsRow struct {
+	GroupName    string `json:"group_name"`
+	InStockCount int64  `json:"in_stock_count"`
+	TotalCount   int64  `json:"total_count"`
+}
+
+func (q *Queries) GroupItemCountsForGroups(ctx context.Context, arg GroupItemCountsForGroupsParams) ([]GroupItemCountsForGroupsRow, error) {
+	rows, err := q.db.Query(ctx, groupItemCountsForGroups, arg.TypeID, arg.GroupNames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GroupItemCountsForGroupsRow
+	for rows.Next() {
+		var i GroupItemCountsForGroupsRow
+		if err := rows.Scan(&i.GroupName, &i.InStockCount, &i.TotalCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertLowStockAlert = `-- name: InsertLowStockAlert :execrows
 INSERT INTO low_stock_alerts (type_id, group_name)
 VALUES ($1, $2)
@@ -122,6 +175,36 @@ WHERE type_id = $1
 
 func (q *Queries) ListLowStockAlerts(ctx context.Context, typeID int64) ([]LowStockAlert, error) {
 	rows, err := q.db.Query(ctx, listLowStockAlerts, typeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LowStockAlert
+	for rows.Next() {
+		var i LowStockAlert
+		if err := rows.Scan(&i.TypeID, &i.GroupName, &i.NotifiedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLowStockAlertsForGroups = `-- name: ListLowStockAlertsForGroups :many
+SELECT type_id, group_name, notified_at FROM low_stock_alerts
+WHERE type_id = $1 AND group_name = ANY($2::text[])
+`
+
+type ListLowStockAlertsForGroupsParams struct {
+	TypeID     int64    `json:"type_id"`
+	GroupNames []string `json:"group_names"`
+}
+
+func (q *Queries) ListLowStockAlertsForGroups(ctx context.Context, arg ListLowStockAlertsForGroupsParams) ([]LowStockAlert, error) {
+	rows, err := q.db.Query(ctx, listLowStockAlertsForGroups, arg.TypeID, arg.GroupNames)
 	if err != nil {
 		return nil, err
 	}

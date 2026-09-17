@@ -48,18 +48,9 @@ func ListItemStock(ctx context.Context, typeID int64) (dto.ItemTypeStock, error)
 	return stock, nil
 }
 
-// EvaluateLowStock warns about every group of typeID that has just fallen to its threshold.
-//
-// Stock only moves when items do, so running this from the mutations that move them is exact and
-// needs no scheduler. What it must not do is warn twice about the same shortage: an item edited while
-// a group sits below its threshold would otherwise send the warning again. low_stock_alerts holds the
-// groups already warned about, so a notification is tied to the crossing rather than to the state,
-// and clearing a row on recovery is what makes the next dip notifiable.
-//
-// The alert row is claimed with an ON CONFLICT DO NOTHING insert and the notification is written only
-// if that insert took. Two evaluations racing on the same group therefore produce one warning between
-// them, whichever gets there first.
-func EvaluateLowStock(ctx context.Context, typeID int64) error {
+// ReconcileLowStock evaluates every group of an item type. Configuration changes use the full pass:
+// changing a threshold or the derived-name format can affect every group at once.
+func ReconcileLowStock(ctx context.Context, typeID int64) error {
 	itemType, err := db.Queries.GetItemTypeByID(ctx, typeID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -68,80 +59,154 @@ func EvaluateLowStock(ctx context.Context, typeID int64) error {
 		return err
 	}
 
-	// Turning the warning off stops tracking rather than freezing it: leaving the rows behind would
-	// silence the groups that were low at the time if it were ever turned back on.
 	if !itemType.LowStockCount.Valid {
 		_, err := db.Queries.ClearLowStockAlerts(ctx, typeID)
 		return err
 	}
-	threshold := itemType.LowStockCount.Int32
 
-	groups, err := db.Queries.GroupItemCounts(ctx, typeID)
+	rows, err := db.Queries.GroupItemCounts(ctx, typeID)
 	if err != nil {
 		return err
 	}
 
-	alerted, err := db.Queries.ListLowStockAlerts(ctx, typeID)
+	groups := make([]lowStockGroup, len(rows))
+	groupNames := make(map[string]struct{}, len(rows))
+	for index, row := range rows {
+		groups[index] = lowStockGroup{
+			Name:         row.GroupName,
+			InStockCount: row.InStockCount,
+			TotalCount:   row.TotalCount,
+		}
+		groupNames[row.GroupName] = struct{}{}
+	}
+
+	if err := reconcileLowStockGroups(ctx, itemType, groups); err != nil {
+		return err
+	}
+
+	alerts, err := db.Queries.ListLowStockAlerts(ctx, typeID)
 	if err != nil {
 		return err
 	}
-	stale := make(map[string]struct{}, len(alerted))
-	for _, alert := range alerted {
-		stale[alert.GroupName] = struct{}{}
+	staleGroupNames := make([]string, 0)
+	for _, alert := range alerts {
+		if _, exists := groupNames[alert.GroupName]; !exists {
+			staleGroupNames = append(staleGroupNames, alert.GroupName)
+		}
+	}
+	if len(staleGroupNames) == 0 {
+		return nil
 	}
 
-	// Read on first need rather than up front: this runs after every item write, and the common case
-	// is a type where nothing has crossed its threshold and no warning is going out at all.
+	_, err = db.Queries.DeleteLowStockAlerts(ctx, repository.DeleteLowStockAlertsParams{
+		TypeID:     typeID,
+		GroupNames: staleGroupNames,
+	})
+	return err
+}
+
+// ReconcileLowStockGroups evaluates only named groups. Item writes pass the group before and after
+// the write, so a renamed or deleted item still clears an alert for the group it left.
+func ReconcileLowStockGroups(ctx context.Context, typeID int64, groupNames []string) error {
+	groupNames = uniqueGroupNames(groupNames)
+	if len(groupNames) == 0 {
+		return nil
+	}
+
+	itemType, err := db.Queries.GetItemTypeByID(ctx, typeID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if !itemType.LowStockCount.Valid {
+		return nil
+	}
+
+	rows, err := db.Queries.GroupItemCountsForGroups(ctx, repository.GroupItemCountsForGroupsParams{
+		TypeID:     typeID,
+		GroupNames: groupNames,
+	})
+	if err != nil {
+		return err
+	}
+
+	groups := make([]lowStockGroup, len(rows))
+	for index, row := range rows {
+		groups[index] = lowStockGroup{
+			Name:         row.GroupName,
+			InStockCount: row.InStockCount,
+			TotalCount:   row.TotalCount,
+		}
+	}
+
+	return reconcileLowStockGroups(ctx, itemType, groups)
+}
+
+type lowStockGroup struct {
+	Name         string
+	InStockCount int64
+	TotalCount   int64
+}
+
+func reconcileLowStockGroups(ctx context.Context, itemType repository.ItemType, groups []lowStockGroup) error {
+	if len(groups) == 0 {
+		return nil
+	}
+
+	groupNames := make([]string, len(groups))
+	for index, group := range groups {
+		groupNames[index] = group.Name
+	}
+	alerts, err := db.Queries.ListLowStockAlertsForGroups(ctx, repository.ListLowStockAlertsForGroupsParams{
+		TypeID:     itemType.ID,
+		GroupNames: groupNames,
+	})
+	if err != nil {
+		return err
+	}
+
+	alerted := make(map[string]struct{}, len(alerts))
+	for _, alert := range alerts {
+		alerted[alert.GroupName] = struct{}{}
+	}
+
 	var recipientIDs []int64
-	recipientsRead := false
-
-	recovered := make([]string, 0, len(alerted))
+	recipientsLoaded := false
+	recoveredGroupNames := make([]string, 0)
 	for _, group := range groups {
-		_, wasAlerted := stale[group.GroupName]
-		delete(stale, group.GroupName)
-
-		if !isLowStock(group.InStockCount, threshold, true) {
-			// Only groups carrying an alert row are worth naming in the delete; the rest were never
-			// low and have nothing to clear.
+		_, wasAlerted := alerted[group.Name]
+		if group.TotalCount == 0 || !isLowStock(group.InStockCount, itemType.LowStockCount.Int32, true) {
 			if wasAlerted {
-				recovered = append(recovered, group.GroupName)
+				recoveredGroupNames = append(recoveredGroupNames, group.Name)
 			}
 			continue
 		}
-
 		if wasAlerted {
 			continue
 		}
 
-		if !recipientsRead {
+		if !recipientsLoaded {
 			if recipientIDs, err = notificationRecipients(ctx); err != nil {
 				return err
 			}
-			recipientsRead = true
+			recipientsLoaded = true
 		}
-
-		if _, err := CreateLowStockNotifications(ctx, recipientIDs, itemType,
-			stockGroupLabel(group.GroupName, itemType.Name), threshold, int32(group.InStockCount)); err != nil {
+		if _, err := createLowStockAlert(ctx, recipientIDs, itemType.ID, group.Name,
+			stockGroupLabel(group.Name, itemType.Name), itemType.LowStockCount.Int32, int32(group.InStockCount)); err != nil {
 			return err
 		}
 	}
 
-	// Whatever is left has an alert row but no group: every item carrying that name was deleted
-	// outright. There is nothing to be short of any more, so the row goes with them.
-	for groupName := range stale {
-		recovered = append(recovered, groupName)
+	if len(recoveredGroupNames) == 0 {
+		return nil
 	}
-
-	if len(recovered) > 0 {
-		if _, err := db.Queries.DeleteLowStockAlerts(ctx, repository.DeleteLowStockAlertsParams{
-			TypeID:     typeID,
-			GroupNames: recovered,
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = db.Queries.DeleteLowStockAlerts(ctx, repository.DeleteLowStockAlertsParams{
+		TypeID:     itemType.ID,
+		GroupNames: recoveredGroupNames,
+	})
+	return err
 }
 
 // notificationRecipients is who hears about something the system noticed on its own, rather than
@@ -163,39 +228,91 @@ func notificationRecipients(ctx context.Context) ([]int64, error) {
 	return recipientIDs, nil
 }
 
-// EvaluateLowStockAsync runs EvaluateLowStock for a type whose stock a just-committed write may have
-// moved, and reports failure to the log rather than to the caller. A warning that could not be raised
-// is worth knowing about, but it is not worth failing a write the user already completed.
-func EvaluateLowStockAsync(ctx context.Context, typeID int64) {
-	if err := EvaluateLowStock(ctx, typeID); err != nil {
-		log.Printf("Couldn't evaluate low stock for item type %v. Error: %v", typeID, err)
+func reconcileLowStockAfterTypeChange(ctx context.Context, typeID int64) {
+	if err := ReconcileLowStock(ctx, typeID); err != nil {
+		log.Printf("Couldn't reconcile low stock for item type %v. Error: %v", typeID, err)
 	}
 }
 
-// EvaluateLowStockForItemAsync re-counts the stock of whatever type an item belongs to. The property
-// mutations work in item ids, and a property edit can rename an item out of one group and into
-// another without either the type or the number of items changing - which moves two groups' counts at
-// once, both of them inside this one type.
-func EvaluateLowStockForItemAsync(ctx context.Context, itemID int64) {
+func reconcileLowStockAfterItemChange(ctx context.Context, typeID int64, groupNames ...string) {
+	if err := ReconcileLowStockGroups(ctx, typeID, groupNames); err != nil {
+		log.Printf("Couldn't reconcile low stock for item type %v. Error: %v", typeID, err)
+	}
+}
+
+func reconcileLowStockAfterItemRequestChange(ctx context.Context, itemID int64) {
 	item, err := db.Queries.GetItemByID(ctx, itemID)
 	if err != nil {
-		log.Printf("Couldn't read item %v to evaluate low stock. Error: %v", itemID, err)
+		log.Printf("Couldn't read item %v to reconcile low stock. Error: %v", itemID, err)
 		return
 	}
 
-	EvaluateLowStockAsync(ctx, item.TypeID)
+	groupName, err := itemDerivedName(ctx, db.Queries, itemID)
+	if err != nil {
+		log.Printf("Couldn't read item %v's derived name to reconcile low stock. Error: %v", itemID, err)
+		return
+	}
+
+	reconcileLowStockAfterItemChange(ctx, item.TypeID, groupName)
 }
 
-// isLowStock is the whole definition of out of stock: at or under the threshold, not merely under it,
-// so a threshold of 1 warns on the last item rather than only once it is gone.
+func createLowStockAlert(
+	ctx context.Context,
+	recipientIDs []int64,
+	typeID int64,
+	groupName, groupLabel string,
+	threshold, observed int32,
+) ([]int64, error) {
+	if len(recipientIDs) == 0 {
+		return nil, nil
+	}
+
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	queriesTx := db.Queries.WithTx(tx)
+
+	claimed, err := queriesTx.InsertLowStockAlert(ctx, repository.InsertLowStockAlertParams{
+		TypeID:    typeID,
+		GroupName: groupName,
+	})
+	if err != nil || claimed == 0 {
+		return nil, err
+	}
+
+	notificationIDs, err := createLowStockNotifications(ctx, queriesTx, recipientIDs,
+		typeID, groupLabel, threshold, observed)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return notificationIDs, nil
+}
+
+func uniqueGroupNames(groupNames []string) []string {
+	unique := make([]string, 0, len(groupNames))
+	seen := make(map[string]struct{}, len(groupNames))
+	for _, groupName := range groupNames {
+		if _, exists := seen[groupName]; exists {
+			continue
+		}
+		seen[groupName] = struct{}{}
+		unique = append(unique, groupName)
+	}
+
+	return unique
+}
+
 func isLowStock(inStockCount int64, threshold int32, hasThreshold bool) bool {
 	return hasThreshold && inStockCount <= int64(threshold)
 }
 
-// stockGroupLabel names a group for display. derived_name_format is nullable, and
-// render_item_derived_name yields an empty string when it is unset - every item of the type then
-// falls into one nameless group, which is the correct grouping for a type that gives its items no
-// distinguishing name, but needs the type's own name to be readable.
 func stockGroupLabel(groupName, typeName string) string {
 	if groupName == "" {
 		return typeName
