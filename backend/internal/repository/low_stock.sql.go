@@ -7,6 +7,8 @@ package repository
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const clearLowStockAlerts = `-- name: ClearLowStockAlerts :execrows
@@ -37,63 +39,6 @@ func (q *Queries) DeleteLowStockAlerts(ctx context.Context, arg DeleteLowStockAl
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const groupItemCounts = `-- name: GroupItemCounts :many
-SELECT
-  render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
-  count(*) FILTER (
-    WHERE items.consumption = 'not_consumed' AND approved_request.item_id IS NULL
-  ) AS in_stock_count,
-  count(*) AS total_count
-FROM items
-JOIN item_types ON item_types.id = items.type_id
-LEFT JOIN item_requests AS approved_request
-  ON approved_request.item_id = items.id
- AND approved_request.status = 'approved'
-WHERE items.type_id = $1
-GROUP BY group_name
-ORDER BY in_stock_count, group_name
-`
-
-type GroupItemCountsRow struct {
-	GroupName    string `json:"group_name"`
-	InStockCount int64  `json:"in_stock_count"`
-	TotalCount   int64  `json:"total_count"`
-}
-
-// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
-// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
-// that is what the count groups by.
-//
-// The grouping deliberately spans every item of the type whatever its state, while only items that
-// are actually available count as stock. That split is the whole point. A group that has been used up
-// has no available rows left, and a plain GROUP BY over in-stock items would drop it from the result
-// entirely - losing precisely the group worth warning about. Counting inside a FILTER instead keeps
-// the consumed rows present as evidence the group exists, and reports it at zero.
-//
-// Available means untouched and on the shelf: an item someone holds an approved request for is spoken
-// for and cannot be handed to anyone else, so it is not stock however full it still is. The join
-// mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
-// item, which is what keeps it from inflating total_count.
-func (q *Queries) GroupItemCounts(ctx context.Context, typeID int64) ([]GroupItemCountsRow, error) {
-	rows, err := q.db.Query(ctx, groupItemCounts, typeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GroupItemCountsRow
-	for rows.Next() {
-		var i GroupItemCountsRow
-		if err := rows.Scan(&i.GroupName, &i.InStockCount, &i.TotalCount); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const groupItemCountsForGroups = `-- name: GroupItemCountsForGroups :many
@@ -213,6 +158,84 @@ func (q *Queries) ListLowStockAlertsForGroups(ctx context.Context, arg ListLowSt
 	for rows.Next() {
 		var i LowStockAlert
 		if err := rows.Scan(&i.TypeID, &i.GroupName, &i.NotifiedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStockGroups = `-- name: ListStockGroups :many
+SELECT
+  item_types.id AS type_id,
+  item_types.name AS type_name,
+  item_types.low_stock_count,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
+  count(*) FILTER (
+    WHERE items.consumption = 'not_consumed' AND approved_request.item_id IS NULL
+  ) AS in_stock_count,
+  count(*) AS total_count
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+ AND approved_request.status = 'approved'
+WHERE ($1::bigint IS NULL OR items.type_id = $1)
+GROUP BY item_types.id, group_name
+ORDER BY in_stock_count, item_types.name, group_name
+`
+
+type ListStockGroupsRow struct {
+	TypeID        int64       `json:"type_id"`
+	TypeName      string      `json:"type_name"`
+	LowStockCount pgtype.Int4 `json:"low_stock_count"`
+	GroupName     string      `json:"group_name"`
+	InStockCount  int64       `json:"in_stock_count"`
+	TotalCount    int64       `json:"total_count"`
+}
+
+// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
+// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
+// that is what the count groups by.
+//
+// The grouping deliberately spans every item of the type whatever its state, while only items that
+// are actually available count as stock. That split is the whole point. A group that has been used up
+// has no available rows left, and a plain GROUP BY over in-stock items would drop it from the result
+// entirely - losing precisely the group worth warning about. Counting inside a FILTER instead keeps
+// the consumed rows present as evidence the group exists, and reports it at zero.
+//
+// Available means untouched and on the shelf: an item someone holds an approved request for is spoken
+// for and cannot be handed to anyone else, so it is not stock however full it still is. The join
+// mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
+// item, which is what keeps it from inflating total_count.
+//
+// A null type_id counts the whole inventory instead of one type, which is the same question asked of
+// everything at once. The type rides along in the select because a group name only identifies a
+// stock line within one type, and the threshold because it is per type and there is otherwise no way
+// to tell a short group from a healthy one.
+//
+// Deliberately unlimited. One caller wants the scarcest groups and another the largest, which are
+// opposite ends of this ordering, so a LIMIT would serve the first and quietly truncate the second.
+func (q *Queries) ListStockGroups(ctx context.Context, typeID pgtype.Int8) ([]ListStockGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listStockGroups, typeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStockGroupsRow
+	for rows.Next() {
+		var i ListStockGroupsRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.TypeName,
+			&i.LowStockCount,
+			&i.GroupName,
+			&i.InStockCount,
+			&i.TotalCount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

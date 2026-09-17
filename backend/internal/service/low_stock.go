@@ -65,7 +65,7 @@ func ReconcileLowStock(ctx context.Context, typeID int64) error {
 		return err
 	}
 
-	rows, err := db.Queries.GroupItemCounts(ctx, typeID)
+	rows, err := db.Queries.ListStockGroups(ctx, pgtype.Int8{Int64: typeID, Valid: true})
 	if err != nil {
 		return err
 	}
