@@ -13,8 +13,19 @@
 -- mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
 -- item, which is what keeps it from inflating total_count.
 --
--- name: GroupItemCounts :many
+-- A null type_id counts the whole inventory instead of one type, which is the same question asked of
+-- everything at once. The type rides along in the select because a group name only identifies a
+-- stock line within one type, and the threshold because it is per type and there is otherwise no way
+-- to tell a short group from a healthy one.
+--
+-- Deliberately unlimited. One caller wants the scarcest groups and another the largest, which are
+-- opposite ends of this ordering, so a LIMIT would serve the first and quietly truncate the second.
+--
+-- name: ListStockGroups :many
 SELECT
+  item_types.id AS type_id,
+  item_types.name AS type_name,
+  item_types.low_stock_count,
   render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
   count(*) FILTER (
     WHERE items.consumption = 'not_consumed' AND approved_request.item_id IS NULL
@@ -25,9 +36,9 @@ JOIN item_types ON item_types.id = items.type_id
 LEFT JOIN item_requests AS approved_request
   ON approved_request.item_id = items.id
  AND approved_request.status = 'approved'
-WHERE items.type_id = sqlc.arg('type_id')
-GROUP BY group_name
-ORDER BY in_stock_count, group_name;
+WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+GROUP BY item_types.id, group_name
+ORDER BY in_stock_count, item_types.name, group_name;
 
 -- name: GroupItemCountsForGroups :many
 WITH requested_groups AS (

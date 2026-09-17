@@ -2,17 +2,11 @@ import type { UserRole } from '$lib/api';
 import { notifications } from '$lib/state/notifications.svelte';
 
 export type NavigationIconName =
-	| 'inventory'
-	| 'catalog'
-	| 'settings'
-	| 'users'
-	| 'requests'
-	| 'notifications'
-	| 'audit'
-	| 'locations';
+	'inventory' | 'catalog' | 'settings' | 'users' | 'requests' | 'notifications' | 'audit' | 'locations' | 'dashboard';
 
 export type AppPath =
 	| '/'
+	| '/dashboard'
 	| '/items/new'
 	| '/item-requests'
 	| '/item-requests/me'
@@ -75,6 +69,10 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 	'/': {
 		title: 'Stavke',
 		description: 'Pratite stanje stavki i evidentirajte njihovu potrošnju.'
+	},
+	'/dashboard': {
+		title: 'Kontrolna tabla',
+		description: 'Pratite rokove, potrošnju i stanje zaliha kroz vreme.'
 	},
 	'/items/new': {
 		title: 'Nova stavka',
@@ -152,6 +150,12 @@ export const pageMetadata: Record<AppPath, PageMetadata> = {
 
 export const primaryNavigation: NavigationItem[] = [
 	{ path: '/', label: 'Stavke', icon: 'inventory' },
+	{
+		path: '/dashboard',
+		label: 'Kontrolna tabla',
+		icon: 'dashboard',
+		requiredRoles: ['manager', 'admin']
+	},
 	{
 		path: '/item-requests',
 		label: 'Zahtevi',

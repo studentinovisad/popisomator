@@ -64,6 +64,17 @@
 	--color-warning-soft: #4b391d;
 }
 
+/* The chart library reads these four names for its own defaults, so they are pointed at the palette
+ * above. They resolve where they are used, which is what makes dark mode fall out for free. The
+ * tooltip is rendered outside the chart and has to be named separately to reach them. */
+.lc-root-container,
+.lc-tooltip-root {
+	--color-primary: var(--color-brand);
+	--color-surface-100: var(--color-surface);
+	--color-surface-200: var(--color-soft);
+	--color-surface-content: var(--color-ink);
+}
+
 .theme-changing,
 .theme-changing *,
 .theme-changing *::before,

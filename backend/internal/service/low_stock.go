@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -22,7 +23,7 @@ func ListItemStock(ctx context.Context, typeID int64) (dto.ItemTypeStock, error)
 		return dto.ItemTypeStock{}, err
 	}
 
-	rows, err := db.Queries.GroupItemCounts(ctx, typeID)
+	rows, err := db.Queries.ListStockGroups(ctx, pgtype.Int8{Int64: typeID, Valid: true})
 	if err != nil {
 		return dto.ItemTypeStock{}, err
 	}
@@ -64,7 +65,7 @@ func ReconcileLowStock(ctx context.Context, typeID int64) error {
 		return err
 	}
 
-	rows, err := db.Queries.GroupItemCounts(ctx, typeID)
+	rows, err := db.Queries.ListStockGroups(ctx, pgtype.Int8{Int64: typeID, Valid: true})
 	if err != nil {
 		return err
 	}

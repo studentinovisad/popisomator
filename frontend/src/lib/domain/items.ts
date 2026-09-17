@@ -105,7 +105,7 @@ export function displayJson(
 		switch (valueType) {
 			case 'price': {
 				const price = value as PTPrice;
-				return (price.amount / PriceMultiplier).toLocaleString('sr-RS', {
+				return (price.amount / PriceMultiplier).toLocaleString('sr-Latn-RS', {
 					style: 'currency',
 					currency: price.currency,
 					minimumFractionDigits: 2,
@@ -115,7 +115,7 @@ export function displayJson(
 			case 'mass':
 			case 'volume': {
 				const measure = value as PTMeasure;
-				const amount = (measure.amount / MeasureMultiplier).toLocaleString('sr-RS', {
+				const amount = (measure.amount / MeasureMultiplier).toLocaleString('sr-Latn-RS', {
 					maximumFractionDigits: 4
 				});
 				return `${amount}${measure.unit}`;

@@ -7,6 +7,8 @@ package repository
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -17,6 +19,27 @@ type Querier interface {
 	CheckItemsForRequests(ctx context.Context, itemIds []int64) ([]ItemRequest, error)
 	ClearLowStockAlerts(ctx context.Context, typeID int64) (int64, error)
 	CountAuditLog(ctx context.Context, arg CountAuditLogParams) (int64, error)
+	// An item records the state it is in, never when it got there, so the log is the only thing that
+	// can date a consumption.
+	//
+	// Consumption is a status rather than an event, and correcting one later writes a second entry.
+	// Requiring the change to start at not_consumed counts each item the once it left the shelf. The
+	// diff is stored JSON-encoded, which is why ->> hands back a bare enum name, and a consumption
+	// entry only ever holds the one change.
+	//
+	// The created_at bound repeats what the join already does, to keep the index in play.
+	//
+	// Narrowing by type has to reach the item, and target_id has no foreign key to reach it with: an
+	// item consumed and since deleted counts when no type is asked for, and drops out when one is.
+	CountConsumptionByMonth(ctx context.Context, arg CountConsumptionByMonthParams) ([]CountConsumptionByMonthRow, error)
+	CountExpiredBacklog(ctx context.Context, typeID pgtype.Int8) (int64, error)
+	// An expiry is stored as a date string, and nothing stops a bad one getting in. The CASE is what
+	// guards the cast - putting the check in the WHERE would not, since Postgres is free to evaluate
+	// the two in either order.
+	//
+	// The months are generated rather than read off the rows, so a period where nothing expires still
+	// gets a bar. Generating them in the database keeps one clock in charge of which month is current.
+	CountExpiringByMonth(ctx context.Context, arg CountExpiringByMonthParams) ([]CountExpiringByMonthRow, error)
 	CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error)
 	CountItemTypes(ctx context.Context, search string) (int64, error)
 	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
@@ -67,22 +90,6 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	GetUsersByRoles(ctx context.Context, arg GetUsersByRolesParams) ([]User, error)
-	// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
-	// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
-	// that is what the count groups by.
-	//
-	// The grouping deliberately spans every item of the type whatever its state, while only items that
-	// are actually available count as stock. That split is the whole point. A group that has been used up
-	// has no available rows left, and a plain GROUP BY over in-stock items would drop it from the result
-	// entirely - losing precisely the group worth warning about. Counting inside a FILTER instead keeps
-	// the consumed rows present as evidence the group exists, and reports it at zero.
-	//
-	// Available means untouched and on the shelf: an item someone holds an approved request for is spoken
-	// for and cannot be handed to anyone else, so it is not stock however full it still is. The join
-	// mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
-	// item, which is what keeps it from inflating total_count.
-	//
-	GroupItemCounts(ctx context.Context, typeID int64) ([]GroupItemCountsRow, error)
 	GroupItemCountsForGroups(ctx context.Context, arg GroupItemCountsForGroupsParams) ([]GroupItemCountsForGroupsRow, error)
 	HasApprovedItemRequest(ctx context.Context, itemID int64) (bool, error)
 	Healthcheck(ctx context.Context) (int32, error)
@@ -101,6 +108,18 @@ type Querier interface {
 	// Their entries stay in the log and still show the name they acted under - they just cannot be
 	// singled out by this filter any more.
 	ListAuditLogActors(ctx context.Context) ([]ListAuditLogActorsRow, error)
+	// What a manager has to act on rather than only count: everything already past its date, plus what
+	// falls inside the warning window its type sets. A type without a window warns about nothing, but an
+	// item that is already expired is expired either way, which is why the two are separate conditions.
+	//
+	// days_remaining comes back from here rather than being worked out from the date by the caller, so
+	// the sign that decides expired from merely close is settled against one clock.
+	//
+	// The list is capped, so every row carries how many there were before the cap. Counting over the
+	// window rather than in a second query is what stops the total from ever disagreeing with the
+	// condition above: there is only one copy of it. A cap that hid how much it was hiding would report
+	// the ceiling as though it were the answer.
+	ListExpiringItems(ctx context.Context, arg ListExpiringItemsParams) ([]ListExpiringItemsRow, error)
 	ListItemPreparationRequests(ctx context.Context, arg ListItemPreparationRequestsParams) ([]ListItemPreparationRequestsRow, error)
 	ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error)
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
@@ -126,6 +145,30 @@ type Querier interface {
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListProperties(ctx context.Context, arg ListPropertiesParams) ([]Property, error)
 	ListPropertyOptions(ctx context.Context) ([]ListPropertyOptionsRow, error)
+	// Stock is an aggregate, never a stored number: items holds one row per physical item and nothing
+	// records a quantity. What makes two of those rows the same stock is their rendered derived name, so
+	// that is what the count groups by.
+	//
+	// The grouping deliberately spans every item of the type whatever its state, while only items that
+	// are actually available count as stock. That split is the whole point. A group that has been used up
+	// has no available rows left, and a plain GROUP BY over in-stock items would drop it from the result
+	// entirely - losing precisely the group worth warning about. Counting inside a FILTER instead keeps
+	// the consumed rows present as evidence the group exists, and reports it at zero.
+	//
+	// Available means untouched and on the shelf: an item someone holds an approved request for is spoken
+	// for and cannot be handed to anyone else, so it is not stock however full it still is. The join
+	// mirrors the one ListItems filters by; idx_unique_approved_item_requests caps it at one row per
+	// item, which is what keeps it from inflating total_count.
+	//
+	// A null type_id counts the whole inventory instead of one type, which is the same question asked of
+	// everything at once. The type rides along in the select because a group name only identifies a
+	// stock line within one type, and the threshold because it is per type and there is otherwise no way
+	// to tell a short group from a healthy one.
+	//
+	// Deliberately unlimited. One caller wants the scarcest groups and another the largest, which are
+	// opposite ends of this ordering, so a LIMIT would serve the first and quietly truncate the second.
+	//
+	ListStockGroups(ctx context.Context, typeID pgtype.Int8) ([]ListStockGroupsRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	LockItemForRequest(ctx context.Context, id int64) (int64, error)
 	LockItemType(ctx context.Context, id int64) (ItemType, error)
