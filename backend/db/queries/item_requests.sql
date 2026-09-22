@@ -66,8 +66,14 @@ WHERE item_requests.user_id = $1
 ORDER BY item_requests.created_at, item_requests.item_id;
 
 -- name: GetItemRequest :one
-SELECT * FROM item_requests
-WHERE user_id = $1 AND item_id = $2;
+SELECT sqlc.embed(item_requests),
+  users.full_name AS user_name,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS item_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+JOIN items ON items.id = item_requests.item_id
+JOIN item_types ON item_types.id = items.type_id
+WHERE item_requests.user_id = $1 AND item_requests.item_id = $2;
 
 -- name: CheckItemsForRequests :many
 SELECT * FROM item_requests

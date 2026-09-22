@@ -193,6 +193,20 @@ func (q *Queries) CreateNotifications(ctx context.Context, arg CreateNotificatio
 	return items, nil
 }
 
+const deleteItemRequestNotifications = `-- name: DeleteItemRequestNotifications :execrows
+DELETE FROM notifications n
+USING notifdesc_item_request request
+WHERE n.id = request.notification_id AND request.item_id = $1
+`
+
+func (q *Queries) DeleteItemRequestNotifications(ctx context.Context, itemID int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItemRequestNotifications, itemID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteNotification = `-- name: DeleteNotification :execrows
 DELETE FROM notifications WHERE id = $1 AND recipient_id = $2
 `
@@ -208,6 +222,41 @@ func (q *Queries) DeleteNotification(ctx context.Context, arg DeleteNotification
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getExistingExpiryNotifications = `-- name: GetExistingExpiryNotifications :many
+SELECT n.recipient_id FROM notifications n
+INNER JOIN notifdesc_item_expiry expiry
+    ON n.id = expiry.notification_id
+WHERE n.recipient_id = ANY($3::bigint[])
+AND expiry.item_id = $1
+AND expiry.expiry_type = $2
+`
+
+type GetExistingExpiryNotificationsParams struct {
+	ItemID       int64               `json:"item_id"`
+	ExpiryType   NotifdescExpiryType `json:"expiry_type"`
+	RecipientIds []int64             `json:"recipient_ids"`
+}
+
+func (q *Queries) GetExistingExpiryNotifications(ctx context.Context, arg GetExistingExpiryNotificationsParams) ([]int64, error) {
+	rows, err := q.db.Query(ctx, getExistingExpiryNotifications, arg.ItemID, arg.ExpiryType, arg.RecipientIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var recipient_id int64
+		if err := rows.Scan(&recipient_id); err != nil {
+			return nil, err
+		}
+		items = append(items, recipient_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listNotifications = `-- name: ListNotifications :many

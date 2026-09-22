@@ -1,6 +1,8 @@
 package dto
 
-import "github.com/studentinovisad/popisomator/backend/internal/repository"
+import (
+	"github.com/studentinovisad/popisomator/backend/internal/repository"
+)
 
 type User struct {
 	ID       int64                 `json:"id"`
@@ -28,8 +30,8 @@ type ListUsersRequest struct {
 	Limit  int32
 	Offset int32
 	Search string
-	Role   string
-	Status string
+	Role   *repository.UserRole
+	Status *repository.UserStatus
 }
 
 func ToUserDTO(user repository.User) User {

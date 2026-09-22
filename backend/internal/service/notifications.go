@@ -9,19 +9,38 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
 
-// CreateItemRequestNotifications gives each recipient a notification about userID's request for
-// itemID, returning the new notification IDs in recipient order. The notification and its
-// descriptor are written under one transaction, since a notification whose descriptor is missing
-// has nothing to render. Recipients are taken as given; picking them is the caller's decision.
-func CreateItemRequestNotifications(ctx context.Context, recipientIDs []int64, userID, itemID int64) ([]int64, error) {
-	tx, err := db.BeginTransaction(ctx)
+func getRecipientsByRoles(ctx context.Context, roles ...repository.UserRole) ([]int64, error) {
+	users, err := db.Queries.GetActiveUsersByRoles(ctx, roles)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-	queriesTx := db.Queries.WithTx(tx)
 
-	notifications, err := queriesTx.CreateNotifications(ctx, repository.CreateNotificationsParams{
+	recipientIDs := make([]int64, len(users))
+	for index, user := range users {
+		recipientIDs[index] = user.ID
+	}
+
+	return recipientIDs, nil
+}
+
+func CreateItemRequestNotifications(ctx context.Context, queries repository.Querier, userID, itemID int64, approvedNotification bool) ([]int64, error) {
+	var recipientIDs []int64
+	if approvedNotification {
+		recipientIDs = []int64{userID}
+
+		_, err := queries.DeleteItemRequestNotifications(ctx, itemID)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		recipientIDs, err = getRecipientsByRoles(ctx, "admin", "manager")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	notifications, err := queries.CreateNotifications(ctx, repository.CreateNotificationsParams{
 		Kind:         repository.NotificationKindItemRequest,
 		RecipientIds: recipientIDs,
 	})
@@ -30,7 +49,7 @@ func CreateItemRequestNotifications(ctx context.Context, recipientIDs []int64, u
 	}
 
 	notificationIDs := notificationIDsOf(notifications)
-	if _, err := queriesTx.CreateNotificationDescriptors_ItemRequest(ctx, repository.CreateNotificationDescriptors_ItemRequestParams{
+	if _, err := queries.CreateNotificationDescriptors_ItemRequest(ctx, repository.CreateNotificationDescriptors_ItemRequestParams{
 		NotificationIds: notificationIDs,
 		UserID:          userID,
 		ItemID:          itemID,
@@ -38,17 +57,15 @@ func CreateItemRequestNotifications(ctx context.Context, recipientIDs []int64, u
 		return nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
 	return notificationIDs, nil
 }
 
-// CreateItemExpiryNotifications gives each recipient a notification that itemID is near or past its
-// expiry date, expiryType saying which, and returns the new notification IDs in recipient order.
-// Written under one transaction for the same reason as CreateItemRequestNotifications.
-func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, itemID int64, expiryType repository.NotifdescExpiryType) ([]int64, error) {
+func CreateItemExpiryNotifications(ctx context.Context, itemID int64, expiryType repository.NotifdescExpiryType) ([]int64, error) {
+	recipientIDs, err := getRecipientsByRoles(ctx, "admin", "manager")
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
@@ -56,9 +73,32 @@ func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, it
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
+	// Filter out recipient IDs so that users don't receive the same notifications twice
+	recipients := make(map[int64]struct{}, 0)
+	for _, recipientID := range recipientIDs {
+		recipients[recipientID] = struct{}{}
+	}
+
+	existingNotifications, err := queriesTx.GetExistingExpiryNotifications(ctx, repository.GetExistingExpiryNotificationsParams{
+		RecipientIds: recipientIDs,
+		ItemID:       itemID,
+		ExpiryType:   expiryType,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, recipientID := range existingNotifications {
+		delete(recipients, recipientID)
+	}
+	filteredRecipientIDs := make([]int64, 0)
+	for recipientID := range recipients {
+		filteredRecipientIDs = append(filteredRecipientIDs, recipientID)
+	}
+
+	// Create notifications only for filtered recipient IDs
 	notifications, err := queriesTx.CreateNotifications(ctx, repository.CreateNotificationsParams{
 		Kind:         repository.NotificationKindItemExpiry,
-		RecipientIds: recipientIDs,
+		RecipientIds: filteredRecipientIDs,
 	})
 	if err != nil {
 		return nil, err
@@ -80,17 +120,18 @@ func CreateItemExpiryNotifications(ctx context.Context, recipientIDs []int64, it
 	return notificationIDs, nil
 }
 
-// createLowStockNotifications writes notifications and their descriptors through the caller's
-// transaction. Low stock owns the alert claim that decides whether a notification is warranted;
-// keeping both writes in that transaction prevents a claimed alert without its notification.
-func createLowStockNotifications(
+func CreateLowStockNotifications(
 	ctx context.Context,
 	queries repository.Querier,
-	recipientIDs []int64,
 	typeID int64,
 	groupName string,
 	threshold, observed int32,
 ) ([]int64, error) {
+	recipientIDs, err := getRecipientsByRoles(ctx, "admin", "manager")
+	if err != nil {
+		return nil, err
+	}
+
 	notifications, err := queries.CreateNotifications(ctx, repository.CreateNotificationsParams{
 		Kind:         repository.NotificationKindItemLowStock,
 		RecipientIds: recipientIDs,

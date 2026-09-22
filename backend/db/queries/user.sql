@@ -7,23 +7,23 @@ SELECT * FROM users
 WHERE id = $1 LIMIT 1;
 
 -- name: ListUsers :many
-SELECT * FROM users
-WHERE full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
-  AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
-  AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status)
+SELECT * FROM users u
+WHERE u.full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
+  AND (sqlc.narg('role')::user_role IS NULL OR u.role = sqlc.narg('role')::user_role)
+  AND (sqlc.narg('status')::user_status IS NULL OR u.status = sqlc.narg('status')::user_status)
 ORDER BY id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: CountUsers :one
-SELECT count(*) FROM users
-WHERE full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
-  AND role = COALESCE(NULLIF(sqlc.arg(role_filter)::text, '')::user_role, role)
-  AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status);
+SELECT count(*) FROM users u
+WHERE u.full_name ILIKE '%' || escape_like_pattern(sqlc.arg(search)::text) || '%'
+  AND (sqlc.narg('role')::user_role IS NULL OR u.role = sqlc.narg('role')::user_role)
+  AND (sqlc.narg('status')::user_status IS NULL OR u.status = sqlc.narg('status')::user_status);
 
--- name: GetUsersByRoles :many
-SELECT * FROM users
-WHERE role::text = ANY(sqlc.arg('roles')::text[])
-  AND status = COALESCE(NULLIF(sqlc.arg(status_filter)::text, '')::user_status, status)
+-- name: GetActiveUsersByRoles :many
+SELECT * FROM users u
+WHERE u.role = ANY(sqlc.arg('roles')::user_role[])
+  AND u.status = 'active'
 ORDER BY id;
 
 -- name: CreateUser :one

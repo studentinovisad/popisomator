@@ -173,8 +173,6 @@ func reconcileLowStockGroups(ctx context.Context, itemType repository.ItemType, 
 		alerted[alert.GroupName] = struct{}{}
 	}
 
-	var recipientIDs []int64
-	recipientsLoaded := false
 	recoveredGroupNames := make([]string, 0)
 	for _, group := range groups {
 		_, wasAlerted := alerted[group.Name]
@@ -188,13 +186,7 @@ func reconcileLowStockGroups(ctx context.Context, itemType repository.ItemType, 
 			continue
 		}
 
-		if !recipientsLoaded {
-			if recipientIDs, err = notificationRecipients(ctx); err != nil {
-				return err
-			}
-			recipientsLoaded = true
-		}
-		if _, err := createLowStockAlert(ctx, recipientIDs, itemType.ID, group.Name,
+		if _, err := createLowStockAlert(ctx, itemType.ID, group.Name,
 			stockGroupLabel(group.Name, itemType.Name), itemType.LowStockCount.Int32, int32(group.InStockCount)); err != nil {
 			return err
 		}
@@ -208,25 +200,6 @@ func reconcileLowStockGroups(ctx context.Context, itemType repository.ItemType, 
 		GroupNames: recoveredGroupNames,
 	})
 	return err
-}
-
-// notificationRecipients is who hears about something the system noticed on its own, rather than
-// about a request they made themselves.
-func notificationRecipients(ctx context.Context) ([]int64, error) {
-	users, err := db.Queries.GetUsersByRoles(ctx, repository.GetUsersByRolesParams{
-		Roles:        []string{string(repository.UserRoleManager), string(repository.UserRoleAdmin)},
-		StatusFilter: string(repository.UserStatusActive),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	recipientIDs := make([]int64, len(users))
-	for index, user := range users {
-		recipientIDs[index] = user.ID
-	}
-
-	return recipientIDs, nil
 }
 
 func reconcileLowStockAfterTypeChange(ctx context.Context, typeID int64) {
@@ -259,15 +232,10 @@ func reconcileLowStockAfterItemRequestChange(ctx context.Context, itemID int64) 
 
 func createLowStockAlert(
 	ctx context.Context,
-	recipientIDs []int64,
 	typeID int64,
 	groupName, groupLabel string,
 	threshold, observed int32,
 ) ([]int64, error) {
-	if len(recipientIDs) == 0 {
-		return nil, nil
-	}
-
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
@@ -283,7 +251,7 @@ func createLowStockAlert(
 		return nil, err
 	}
 
-	notificationIDs, err := createLowStockNotifications(ctx, queriesTx, recipientIDs,
+	notificationIDs, err := CreateLowStockNotifications(ctx, queriesTx,
 		typeID, groupLabel, threshold, observed)
 	if err != nil {
 		return nil, err

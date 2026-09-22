@@ -30,22 +30,32 @@ func GetUserByEmail(ctx context.Context, email string) (dto.User, error) {
 	return userDTO, nil
 }
 
-func ListUsers(ctx context.Context, request dto.ListUsersRequest) (dto.UsersPage, error) {
+func ListUsers(ctx context.Context, req dto.ListUsersRequest) (dto.UsersPage, error) {
+	role := repository.NullUserRole{Valid: false}
+	if req.Role != nil {
+		role = repository.NullUserRole{UserRole: *req.Role, Valid: true}
+	}
+
+	status := repository.NullUserStatus{Valid: false}
+	if req.Status != nil {
+		status = repository.NullUserStatus{UserStatus: *req.Status, Valid: true}
+	}
+
 	users, err := db.Queries.ListUsers(ctx, repository.ListUsersParams{
-		Search:       request.Search,
-		RoleFilter:   request.Role,
-		StatusFilter: request.Status,
-		PageOffset:   request.Offset,
-		PageLimit:    request.Limit,
+		Search:     req.Search,
+		Role:       role,
+		Status:     status,
+		PageOffset: req.Offset,
+		PageLimit:  req.Limit,
 	})
 	if err != nil {
 		return dto.UsersPage{}, err
 	}
 
 	total, err := db.Queries.CountUsers(ctx, repository.CountUsersParams{
-		Search:       request.Search,
-		RoleFilter:   request.Role,
-		StatusFilter: request.Status,
+		Search: req.Search,
+		Role:   role,
+		Status: status,
 	})
 	if err != nil {
 		return dto.UsersPage{}, err
@@ -58,8 +68,8 @@ func ListUsers(ctx context.Context, request dto.ListUsersRequest) (dto.UsersPage
 
 	return dto.UsersPage{
 		Items:  items,
-		Limit:  request.Limit,
-		Offset: request.Offset,
+		Limit:  req.Limit,
+		Offset: req.Offset,
 		Total:  total,
 	}, nil
 }
