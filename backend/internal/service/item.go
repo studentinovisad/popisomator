@@ -270,7 +270,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		sortPropertyID = pgtype.Int8{Int64: *req.SortPropertyID, Valid: true}
 	}
 
-	// Both ListItems and SumItemProperties need the unit factor table: the first to compare masses
+	// Item-list queries and SumItemProperties need the unit factor table to compare masses
 	// and volumes recorded in different units, the second to add them up.
 	unitValueTypes, unitNames, unitFactors := dto.MeasureUnitFactorRows()
 
@@ -299,33 +299,85 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		return dto.ItemsPage{}, err
 	}
 
-	items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
-		TypeID:         typeID,
-		Consumption:    req.Consumption,
-		CreatedFrom:    createdFrom,
-		CreatedTo:      createdTo,
-		Search:         req.Search,
-		PropertyIds:    propertyIDs,
-		PropertyValues: propertyValues,
-		LimitVal:       req.Limit,
-		OffsetVal:      req.Offset,
-		OrderAsc:       req.Order == "asc",
-		SortPropertyID: sortPropertyID,
-		UnitValueTypes: unitValueTypes,
-		UnitNames:      unitNames,
-		UnitFactors:    unitFactors,
-		HeldBy:         heldByID,
-		LocationIds:    locationIDs,
-	})
-	if err != nil {
-		return dto.ItemsPage{}, err
-	}
+	pageTotal := totalItems
+	var itemsDTO []dto.Item
+	var itemIDs []int64
 
-	itemsDTO := make([]dto.Item, len(items))
-	itemIDs := make([]int64, len(items))
-	for i, item := range items {
-		itemsDTO[i] = dto.ToItemDTO(item)
-		itemIDs[i] = item.ID
+	if req.Grouped {
+		pageTotal, err = db.Queries.CountItemGroups(ctx, repository.CountItemGroupsParams{
+			ViewerID:       req.ViewerID,
+			TypeID:         typeID,
+			Consumption:    req.Consumption,
+			CreatedFrom:    createdFrom,
+			CreatedTo:      createdTo,
+			Search:         req.Search,
+			PropertyIds:    propertyIDs,
+			PropertyValues: propertyValues,
+			HeldBy:         heldByID,
+			LocationIds:    locationIDs,
+		})
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+
+		itemGroups, err := db.Queries.ListItemGroups(ctx, repository.ListItemGroupsParams{
+			TypeID:         typeID,
+			Consumption:    req.Consumption,
+			CreatedFrom:    createdFrom,
+			CreatedTo:      createdTo,
+			Search:         req.Search,
+			PropertyIds:    propertyIDs,
+			PropertyValues: propertyValues,
+			LimitVal:       req.Limit,
+			OffsetVal:      req.Offset,
+			OrderAsc:       req.Order == "asc",
+			SortPropertyID: sortPropertyID,
+			ViewerID:       req.ViewerID,
+			UnitValueTypes: unitValueTypes,
+			UnitNames:      unitNames,
+			UnitFactors:    unitFactors,
+			HeldBy:         heldByID,
+			LocationIds:    locationIDs,
+		})
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+
+		itemsDTO = make([]dto.Item, len(itemGroups))
+		itemIDs = make([]int64, len(itemGroups))
+		for index, itemGroup := range itemGroups {
+			itemsDTO[index] = dto.ToItemGroupDTO(itemGroup)
+			itemIDs[index] = itemGroup.ID
+		}
+	} else {
+		items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
+			TypeID:         typeID,
+			Consumption:    req.Consumption,
+			CreatedFrom:    createdFrom,
+			CreatedTo:      createdTo,
+			Search:         req.Search,
+			PropertyIds:    propertyIDs,
+			PropertyValues: propertyValues,
+			LimitVal:       req.Limit,
+			OffsetVal:      req.Offset,
+			OrderAsc:       req.Order == "asc",
+			SortPropertyID: sortPropertyID,
+			UnitValueTypes: unitValueTypes,
+			UnitNames:      unitNames,
+			UnitFactors:    unitFactors,
+			HeldBy:         heldByID,
+			LocationIds:    locationIDs,
+		})
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+
+		itemsDTO = make([]dto.Item, len(items))
+		itemIDs = make([]int64, len(items))
+		for index, item := range items {
+			itemsDTO[index] = dto.ToItemDTO(item)
+			itemIDs[index] = item.ID
+		}
 	}
 
 	if len(itemIDs) > 0 {
@@ -359,7 +411,8 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Items:          itemsDTO,
 		Limit:          req.Limit,
 		Offset:         req.Offset,
-		Total:          totalItems,
+		Total:          pageTotal,
+		ItemCount:      totalItems,
 		PropertyTotals: toItemPropertyTotals(totalRows),
 	}, nil
 }
