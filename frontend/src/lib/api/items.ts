@@ -17,12 +17,14 @@ export const itemsApi = {
 		search = '',
 		typeID,
 		locationID,
+		grouped = false,
 		propertyFilters = {},
 		sortPropertyID,
 		order = 'desc',
 		heldBy
 	}: ListItemsParams = {}) => {
 		const query = new URLSearchParams({ limit: String(limit), offset: String(offset), order });
+		if (grouped) query.set('grouped', 'true');
 		if (search) query.set('search', search);
 		if (typeID) query.set('type_id', String(typeID));
 		if (locationID) query.set('location_id', String(locationID));
