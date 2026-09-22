@@ -116,9 +116,19 @@
 			{#each items as item (item.id)}
 				<tr class="h-16">
 					<td class="px-4 py-3 align-middle">
-						<div class="block min-w-0">
-							<p class="truncate text-xs text-muted">{typeName(item)}</p>
-							<p class="mt-0.5 truncate font-medium">{item.derived_name}</p>
+						<div class="flex min-w-0 items-center gap-2">
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-xs text-muted">{typeName(item)}</p>
+								<p class="mt-0.5 truncate font-medium">{item.derived_name}</p>
+							</div>
+							{#if (item.quantity ?? 1) > 1}
+								<span
+									class="shrink-0 rounded bg-brand-soft px-1.5 py-0.5 text-xs font-medium text-brand"
+									aria-label={`${item.quantity} istovetne stavke`}
+								>
+									× {item.quantity}
+								</span>
+							{/if}
 						</div>
 					</td>
 					{#if locationsExist}
@@ -157,7 +167,9 @@
 							<a
 								class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
 								href={resolve(`/items/${item.id}`)}
-								aria-label={`Detalji stavke ${item.id}`}
+								aria-label={(item.quantity ?? 1) > 1
+									? `Detalji jedne od ${item.quantity} istovetne stavke`
+									: `Detalji stavke ${item.id}`}
 								title="Detalji"
 							>
 								<Eye class="size-4" aria-hidden="true" />
@@ -182,14 +194,28 @@
 			<li class="px-4 py-3">
 				<div class="flex items-start justify-between gap-3">
 					<a class="min-w-0 flex-1" href={resolve(`/items/${item.id}`)}>
-						{#if item.derived_name}
-							<p class="truncate text-xs text-muted">{typeName(item)}</p>
-							<p class="mt-0.5 truncate text-sm font-medium text-ink hover:text-brand">
-								{item.derived_name}
-							</p>
-						{:else}
-							<p class="truncate text-sm font-medium text-ink hover:text-brand">{typeName(item)}</p>
-						{/if}
+						<div class="flex min-w-0 items-center gap-2">
+							<div class="min-w-0 flex-1">
+								{#if item.derived_name}
+									<p class="truncate text-xs text-muted">{typeName(item)}</p>
+									<p class="mt-0.5 truncate text-sm font-medium text-ink hover:text-brand">
+										{item.derived_name}
+									</p>
+								{:else}
+									<p class="truncate text-sm font-medium text-ink hover:text-brand">
+										{typeName(item)}
+									</p>
+								{/if}
+							</div>
+							{#if (item.quantity ?? 1) > 1}
+								<span
+									class="shrink-0 rounded bg-brand-soft px-1.5 py-0.5 text-xs font-medium text-brand"
+									aria-label={`${item.quantity} istovetne stavke`}
+								>
+									× {item.quantity}
+								</span>
+							{/if}
+						</div>
 						{#if overviewProperties.length}
 							<p class="mt-2 text-xs leading-relaxed text-muted">
 								{overviewProperties
@@ -205,7 +231,9 @@
 						<a
 							class="inline-grid size-8 place-items-center rounded text-muted hover:bg-soft hover:text-ink"
 							href={resolve(`/items/${item.id}`)}
-							aria-label={`Detalji stavke ${item.id}`}
+							aria-label={(item.quantity ?? 1) > 1
+								? `Detalji jedne od ${item.quantity} istovetne stavke`
+								: `Detalji stavke ${item.id}`}
 							title="Detalji"
 						>
 							<Eye class="size-4" aria-hidden="true" />

@@ -65,6 +65,109 @@ func (q *Queries) AddItemPropertyBulk(ctx context.Context, arg AddItemPropertyBu
 	return items, nil
 }
 
+const countItemGroups = `-- name: CountItemGroups :one
+WITH filtered_items AS (
+  SELECT
+    items.consumption,
+    items.type_id,
+    items.location_id,
+    item_values.values AS property_values,
+    viewer_request.status AS viewer_request_status,
+    approved_request.user_id AS holder_id
+  FROM items
+  JOIN item_types ON item_types.id = items.type_id
+  LEFT JOIN item_requests AS viewer_request
+    ON viewer_request.item_id = items.id
+   AND viewer_request.user_id = $1::bigint
+  LEFT JOIN item_requests AS approved_request
+    ON approved_request.item_id = items.id
+   AND approved_request.status = 'approved'
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(
+      jsonb_object_agg(item_properties.property_id, item_properties.property_value),
+      '{}'::jsonb
+    ) AS values
+    FROM item_properties
+    WHERE item_properties.item_id = items.id
+  ) AS item_values ON true
+  WHERE ($2::bigint IS NULL OR items.type_id = $2)
+    AND ($3::consumption_status[] IS NULL OR items.consumption = ANY($3::consumption_status[]))
+    AND ($4::timestamptz IS NULL OR items.created_at >= $4)
+    AND ($5::timestamptz IS NULL OR items.created_at <= $5)
+    AND ($6::bigint[] IS NULL OR items.location_id = ANY($6::bigint[]))
+    AND (
+      $7::bigint IS NULL
+      OR ($7::bigint = 0 AND approved_request IS NULL)
+      OR approved_request.user_id = $7::bigint
+    )
+    AND (
+      $8::text = ''
+      OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($8::text) || '%'
+      OR EXISTS (
+        SELECT 1 FROM item_properties
+        JOIN properties ON properties.id = item_properties.property_id
+        WHERE item_properties.item_id = items.id
+          AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+          AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($8::text) || '%'
+      )
+      OR render_item_derived_name(items.id, item_types.derived_name_format)
+        ILIKE '%' || replace(escape_like_pattern(trim($8::text)), ' ', '%') || '%'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM ROWS FROM (
+        unnest($9::bigint[]),
+        unnest($10::jsonb[])
+      ) AS filters(property_id, property_value)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM item_properties
+        WHERE item_properties.item_id = items.id
+          AND item_properties.property_id = filters.property_id
+          AND item_properties.property_value = filters.property_value
+      )
+    )
+)
+SELECT count(*)
+FROM (
+  SELECT 1
+  FROM filtered_items
+  GROUP BY consumption, type_id, location_id, property_values, viewer_request_status, holder_id
+) AS groups
+`
+
+type CountItemGroupsParams struct {
+	ViewerID       int64               `json:"viewer_id"`
+	TypeID         pgtype.Int8         `json:"type_id"`
+	Consumption    []ConsumptionStatus `json:"consumption"`
+	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	LocationIds    []int64             `json:"location_ids"`
+	HeldBy         pgtype.Int8         `json:"held_by"`
+	Search         string              `json:"search"`
+	PropertyIds    []int64             `json:"property_ids"`
+	PropertyValues []json.RawMessage   `json:"property_values"`
+}
+
+// Count grouped rows for pagination. CountItems remains the physical-item count.
+func (q *Queries) CountItemGroups(ctx context.Context, arg CountItemGroupsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countItemGroups,
+		arg.ViewerID,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.LocationIds,
+		arg.HeldBy,
+		arg.Search,
+		arg.PropertyIds,
+		arg.PropertyValues,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countItems = `-- name: CountItems :one
 SELECT count(*) FROM items
 JOIN item_types ON item_types.id = items.type_id
@@ -286,6 +389,206 @@ func (q *Queries) GetItemsDerivedNames(ctx context.Context, itemIds []int64) ([]
 	return items, nil
 }
 
+const listItemGroups = `-- name: ListItemGroups :many
+WITH filtered_items AS (
+  SELECT
+    items.id,
+    items.created_at,
+    items.consumption,
+    items.type_id,
+    items.location_id,
+    item_values.values AS property_values,
+    viewer_request.status AS viewer_request_status,
+    approved_request.user_id AS holder_id,
+    sort_key.number_key,
+    sort_key.text_key
+  FROM items
+  JOIN item_types ON item_types.id = items.type_id
+  LEFT JOIN item_properties AS sort_property
+    ON sort_property.item_id = items.id
+   AND sort_property.property_id = $4::bigint
+  LEFT JOIN item_requests AS viewer_request
+    ON viewer_request.item_id = items.id
+   AND viewer_request.user_id = $5::bigint
+  LEFT JOIN item_requests AS approved_request
+    ON approved_request.item_id = items.id
+   AND approved_request.status = 'approved'
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(
+      jsonb_object_agg(item_properties.property_id, item_properties.property_value),
+      '{}'::jsonb
+    ) AS values
+    FROM item_properties
+    WHERE item_properties.item_id = items.id
+  ) AS item_values ON true
+  LEFT JOIN LATERAL (
+    SELECT
+      CASE sort_property_definition.value_type
+        WHEN 'number'  THEN (sort_property.property_value #>> '{}')::numeric
+        WHEN 'boolean' THEN (sort_property.property_value #>> '{}')::boolean::int::numeric
+        WHEN 'price'   THEN (sort_property.property_value ->> 'amount')::numeric
+        WHEN 'mass'    THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+        WHEN 'volume'  THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+      END AS number_key,
+      CASE sort_property_definition.value_type
+        WHEN 'string' THEN lower(sort_property.property_value #>> '{}')
+        -- An expiry is stored as an ISO date string, which already sorts chronologically as text.
+        WHEN 'expiry' THEN sort_property.property_value #>> '{}'
+      END AS text_key
+    FROM properties AS sort_property_definition
+    LEFT JOIN ROWS FROM (
+      unnest($6::text[]),
+      unnest($7::text[]),
+      unnest($8::bigint[])
+    ) AS sort_unit_factor(value_type, unit_name, factor)
+      ON sort_unit_factor.value_type = sort_property_definition.value_type
+     AND sort_unit_factor.unit_name = sort_property.property_value ->> 'unit'
+    WHERE sort_property_definition.id = sort_property.property_id
+  ) AS sort_key ON true
+  WHERE ($9::bigint IS NULL OR items.type_id = $9)
+    AND ($10::consumption_status[] IS NULL OR items.consumption = ANY($10::consumption_status[]))
+    AND ($11::timestamptz IS NULL OR items.created_at >= $11)
+    AND ($12::timestamptz IS NULL OR items.created_at <= $12)
+    AND ($13::bigint[] IS NULL OR items.location_id = ANY($13::bigint[]))
+    AND (
+      $14::bigint IS NULL
+      OR ($14::bigint = 0 AND approved_request IS NULL)
+      OR approved_request.user_id = $14::bigint
+    )
+    AND (
+      $15::text = ''
+      OR item_types.derived_name_format ILIKE '%' || escape_like_pattern($15::text) || '%'
+      OR EXISTS (
+        SELECT 1 FROM item_properties
+        JOIN properties ON properties.id = item_properties.property_id
+        WHERE item_properties.item_id = items.id
+          AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+          AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern($15::text) || '%'
+      )
+      OR render_item_derived_name(items.id, item_types.derived_name_format)
+        ILIKE '%' || replace(escape_like_pattern(trim($15::text)), ' ', '%') || '%'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM ROWS FROM (
+        unnest($16::bigint[]),
+        unnest($17::jsonb[])
+      ) AS filters(property_id, property_value)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM item_properties
+        WHERE item_properties.item_id = items.id
+          AND item_properties.property_id = filters.property_id
+          AND item_properties.property_value = filters.property_value
+      )
+    )
+), grouped_items AS (
+  SELECT
+    min(id) AS representative_id,
+    count(*) AS quantity,
+    min(created_at) AS oldest_created_at,
+    max(created_at) AS newest_created_at,
+    consumption,
+    type_id,
+    location_id,
+    property_values,
+    viewer_request_status,
+    holder_id,
+    min(number_key) AS number_key,
+    min(text_key) AS text_key
+  FROM filtered_items
+  GROUP BY consumption, type_id, location_id, property_values, viewer_request_status, holder_id
+)
+SELECT representative_item.id, representative_item.created_at, representative_item.consumption, representative_item.type_id, representative_item.location_id, grouped_items.quantity
+FROM grouped_items
+JOIN items AS representative_item ON representative_item.id = grouped_items.representative_id
+ORDER BY
+  CASE WHEN $1::bool THEN grouped_items.number_key END ASC NULLS LAST,
+  CASE WHEN NOT $1::bool THEN grouped_items.number_key END DESC NULLS LAST,
+  CASE WHEN $1::bool THEN grouped_items.text_key END ASC NULLS LAST,
+  CASE WHEN NOT $1::bool THEN grouped_items.text_key END DESC NULLS LAST,
+  CASE WHEN $1::bool THEN grouped_items.oldest_created_at END ASC,
+  CASE WHEN $1::bool THEN grouped_items.representative_id END ASC,
+  CASE WHEN NOT $1::bool THEN grouped_items.newest_created_at END DESC,
+  CASE WHEN NOT $1::bool THEN grouped_items.representative_id END DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListItemGroupsParams struct {
+	OrderAsc       bool                `json:"order_asc"`
+	OffsetVal      int32               `json:"offset_val"`
+	LimitVal       int32               `json:"limit_val"`
+	SortPropertyID pgtype.Int8         `json:"sort_property_id"`
+	ViewerID       int64               `json:"viewer_id"`
+	UnitValueTypes []string            `json:"unit_value_types"`
+	UnitNames      []string            `json:"unit_names"`
+	UnitFactors    []int64             `json:"unit_factors"`
+	TypeID         pgtype.Int8         `json:"type_id"`
+	Consumption    []ConsumptionStatus `json:"consumption"`
+	CreatedFrom    pgtype.Timestamptz  `json:"created_from"`
+	CreatedTo      pgtype.Timestamptz  `json:"created_to"`
+	LocationIds    []int64             `json:"location_ids"`
+	HeldBy         pgtype.Int8         `json:"held_by"`
+	Search         string              `json:"search"`
+	PropertyIds    []int64             `json:"property_ids"`
+	PropertyValues []json.RawMessage   `json:"property_values"`
+}
+
+type ListItemGroupsRow struct {
+	ID          int64              `json:"id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Consumption ConsumptionStatus  `json:"consumption"`
+	TypeID      int64              `json:"type_id"`
+	LocationID  pgtype.Int8        `json:"location_id"`
+	Quantity    int64              `json:"quantity"`
+}
+
+// One representative item per equivalent inventory group. `quantity` is the physical-item count.
+func (q *Queries) ListItemGroups(ctx context.Context, arg ListItemGroupsParams) ([]ListItemGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listItemGroups,
+		arg.OrderAsc,
+		arg.OffsetVal,
+		arg.LimitVal,
+		arg.SortPropertyID,
+		arg.ViewerID,
+		arg.UnitValueTypes,
+		arg.UnitNames,
+		arg.UnitFactors,
+		arg.TypeID,
+		arg.Consumption,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.LocationIds,
+		arg.HeldBy,
+		arg.Search,
+		arg.PropertyIds,
+		arg.PropertyValues,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemGroupsRow
+	for rows.Next() {
+		var i ListItemGroupsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Consumption,
+			&i.TypeID,
+			&i.LocationID,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItemTypeFilterableProperties = `-- name: ListItemTypeFilterableProperties :many
 SELECT
   item_type_properties.property_id,
@@ -411,7 +714,7 @@ WHERE ($5::bigint IS NULL OR items.type_id = $5)
   AND ($8::timestamptz IS NULL OR items.created_at <= $8)
   AND ($9::bigint[] IS NULL OR items.location_id = ANY($9::bigint[]))
   AND (
-    $10::bigint IS NULL  
+    $10::bigint IS NULL
     OR ($10::bigint = 0 AND approved_request IS NULL)
     OR approved_request.user_id = $10::bigint
   )
@@ -473,15 +776,6 @@ type ListItemsParams struct {
 	LimitVal       int32               `json:"limit_val"`
 }
 
-// Sorting by a property has to reach into the JSONB value, whose shape depends on the property's
-// value type, so the sort key is built as two columns - one numeric, one text - of which at most one
-// is ever non-null. Mass and volume are compared in their dimension's base unit, with the unit
-// factors arriving as three parallel arrays exactly like SumItemProperties takes them, so
-// dto.MassUnitFactors / dto.VolumeUnitFactors stay their only definition. An amount whose unit has no
-// factor gets a null key on purpose: the item sorts last instead of being read as base units.
-// With no sort property both keys are null for every row, which makes the four sort_key terms of the
-// ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
-// null keys too, and so land last whichever direction is asked for.
 func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error) {
 	rows, err := q.db.Query(ctx, listItems,
 		arg.SortPropertyID,

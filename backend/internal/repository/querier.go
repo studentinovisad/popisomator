@@ -40,6 +40,8 @@ type Querier interface {
 	// The months are generated rather than read off the rows, so a period where nothing expires still
 	// gets a bar. Generating them in the database keeps one clock in charge of which month is current.
 	CountExpiringByMonth(ctx context.Context, arg CountExpiringByMonthParams) ([]CountExpiringByMonthRow, error)
+	// Count grouped rows for pagination. CountItems remains the physical-item count.
+	CountItemGroups(ctx context.Context, arg CountItemGroupsParams) (int64, error)
 	CountItemRequests(ctx context.Context, arg CountItemRequestsParams) (int64, error)
 	CountItemTypes(ctx context.Context, search string) (int64, error)
 	CountItems(ctx context.Context, arg CountItemsParams) (int64, error)
@@ -120,6 +122,8 @@ type Querier interface {
 	// condition above: there is only one copy of it. A cap that hid how much it was hiding would report
 	// the ceiling as though it were the answer.
 	ListExpiringItems(ctx context.Context, arg ListExpiringItemsParams) ([]ListExpiringItemsRow, error)
+	// One representative item per equivalent inventory group. `quantity` is the physical-item count.
+	ListItemGroups(ctx context.Context, arg ListItemGroupsParams) ([]ListItemGroupsRow, error)
 	ListItemPreparationRequests(ctx context.Context, arg ListItemPreparationRequestsParams) ([]ListItemPreparationRequestsRow, error)
 	ListItemRequestUsers(ctx context.Context) ([]ListItemRequestUsersRow, error)
 	ListItemRequests(ctx context.Context, arg ListItemRequestsParams) ([]ListItemRequestsRow, error)
@@ -127,15 +131,6 @@ type Querier interface {
 	ListItemTypeOptions(ctx context.Context) ([]ListItemTypeOptionsRow, error)
 	ListItemTypePropertyValues(ctx context.Context, arg ListItemTypePropertyValuesParams) ([]json.RawMessage, error)
 	ListItemTypes(ctx context.Context, arg ListItemTypesParams) ([]ItemType, error)
-	// Sorting by a property has to reach into the JSONB value, whose shape depends on the property's
-	// value type, so the sort key is built as two columns - one numeric, one text - of which at most one
-	// is ever non-null. Mass and volume are compared in their dimension's base unit, with the unit
-	// factors arriving as three parallel arrays exactly like SumItemProperties takes them, so
-	// dto.MassUnitFactors / dto.VolumeUnitFactors stay their only definition. An amount whose unit has no
-	// factor gets a null key on purpose: the item sorts last instead of being read as base units.
-	// With no sort property both keys are null for every row, which makes the four sort_key terms of the
-	// ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
-	// null keys too, and so land last whichever direction is asked for.
 	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListLocationOptions(ctx context.Context) ([]ListLocationOptionsRow, error)
 	ListLowStockAlerts(ctx context.Context, typeID int64) ([]LowStockAlert, error)

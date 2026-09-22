@@ -16,6 +16,7 @@ import (
 
 // ListItems godoc
 // @Summary List items
+// @Description With `grouped=true`, each row represents equivalent physical items. `total` then paginates grouped rows, while `item_count` is the matching physical-item count.
 // @Tags Items
 // @Produce json
 // @Security CookieAuth
@@ -30,6 +31,7 @@ import (
 // @Param created_to query string false "Filter by creation time, RFC3339"
 // @Param sort query string false "Sort by an item property, as property.{id}; omitted, items sort by creation time"
 // @Param order query string false "Sort order" Enums(asc, desc) default(desc)
+// @Param grouped query bool false "Group otherwise indistinguishable physical items"
 // @Success 200 {object} dto.ItemsPage
 // @Failure 400 {object} response.Error "invalid query parameters"
 // @Failure 401 {object} response.Error "not logged in"
@@ -59,6 +61,15 @@ func ListItems(w http.ResponseWriter, r *http.Request) {
 		Order:    "desc",
 		Search:   search,
 		ViewerID: userID,
+	}
+
+	if val := query.Get("grouped"); val != "" {
+		grouped, err := strconv.ParseBool(val)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid grouped")
+			return
+		}
+		req.Grouped = grouped
 	}
 
 	if val := query.Get("type_id"); val != "" {
