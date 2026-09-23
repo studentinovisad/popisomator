@@ -123,8 +123,30 @@ func ChangePassword(ctx context.Context, id int64, req dto.ChangePasswordRequest
 		return err
 	}
 
-	return db.Queries.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
+	_, err = db.Queries.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
 		ID:           id,
 		PasswordHash: string(hash),
 	})
+	return err
+}
+
+func SetUserPassword(ctx context.Context, actorID int64, id int64, req dto.SetPasswordRequest) error {
+	if actorID == id {
+		return ErrCannotSetOwnPassword
+	}
+
+	if err := dto.Validate(req); err != nil {
+		return err
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Queries.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: string(hash),
+	})
+	return err
 }

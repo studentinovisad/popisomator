@@ -53,6 +53,10 @@ export type ChangePasswordRequest = {
 	new_password: string;
 };
 
+export type SetUserPasswordRequest = {
+	new_password: string;
+};
+
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 

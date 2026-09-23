@@ -5,7 +5,7 @@
 	import { passwordError } from '$lib/domain/form-validation';
 	import { toast } from 'svelte-sonner';
 
-	let { open = $bindable(false) }: { open?: boolean } = $props();
+	let { open = $bindable(false), userID }: { open?: boolean; userID?: number } = $props();
 
 	let oldPassword = $state('');
 	let newPassword = $state('');
@@ -35,7 +35,7 @@
 
 	function validate() {
 		fieldErrors = {
-			oldPassword: oldPassword ? undefined : 'Unesite trenutnu lozinku.',
+			oldPassword: userID === undefined && !oldPassword ? 'Unesite trenutnu lozinku.' : undefined,
 			newPassword: passwordError(newPassword),
 			confirmPassword: confirmPassword === newPassword ? undefined : 'Lozinke se ne poklapaju.'
 		};
@@ -48,11 +48,15 @@
 		saving = true;
 
 		try {
-			await api.changePassword({ old_password: oldPassword, new_password: newPassword });
+			if (userID === undefined) {
+				await api.changePassword({ old_password: oldPassword, new_password: newPassword });
+			} else {
+				await api.setUserPassword(userID, { new_password: newPassword });
+			}
 			toast.success('Lozinka je promenjena.');
 			open = false;
 		} catch (reason) {
-			if (reason instanceof ApiError && reason.status === 400) {
+			if (userID === undefined && reason instanceof ApiError && reason.status === 400) {
 				fieldErrors = { ...fieldErrors, oldPassword: reason.message };
 			} else {
 				toast.error(reason instanceof ApiError ? reason.message : 'Lozinka nije promenjena.');
@@ -73,7 +77,9 @@
 				<div>
 					<Dialog.Title class="text-xl font-semibold text-ink">Promena lozinke</Dialog.Title>
 					<Dialog.Description class="mt-1 text-sm text-muted">
-						Unesite trenutnu i novu lozinku.
+						{userID === undefined
+							? 'Unesite trenutnu i novu lozinku.'
+							: 'Unesite novu lozinku za korisnika.'}
 					</Dialog.Description>
 				</div>
 				<Dialog.Close class="rounded-md px-2 py-1 text-sm text-muted hover:bg-soft hover:text-ink">
@@ -81,25 +87,27 @@
 				</Dialog.Close>
 			</div>
 			<form class="mt-6 grid gap-4" novalidate onsubmit={changePassword}>
-				<div class="block">
-					<Label.Root class="text-sm font-medium text-ink" for="change-password-old">
-						Trenutna lozinka
-					</Label.Root>
-					<PasswordInput
-						id="change-password-old"
-						className="mt-1"
-						bind:value={oldPassword}
-						autocomplete="current-password"
-						invalid={Boolean(fieldErrors.oldPassword)}
-						describedBy={fieldErrors.oldPassword ? 'change-password-old-error' : undefined}
-						oninput={() => clearFieldError('oldPassword')}
-					/>
-					{#if fieldErrors.oldPassword}
-						<p id="change-password-old-error" class="mt-1 text-xs text-danger" role="alert">
-							{fieldErrors.oldPassword}
-						</p>
-					{/if}
-				</div>
+				{#if userID === undefined}
+					<div class="block">
+						<Label.Root class="text-sm font-medium text-ink" for="change-password-old">
+							Trenutna lozinka
+						</Label.Root>
+						<PasswordInput
+							id="change-password-old"
+							className="mt-1"
+							bind:value={oldPassword}
+							autocomplete="current-password"
+							invalid={Boolean(fieldErrors.oldPassword)}
+							describedBy={fieldErrors.oldPassword ? 'change-password-old-error' : undefined}
+							oninput={() => clearFieldError('oldPassword')}
+						/>
+						{#if fieldErrors.oldPassword}
+							<p id="change-password-old-error" class="mt-1 text-xs text-danger" role="alert">
+								{fieldErrors.oldPassword}
+							</p>
+						{/if}
+					</div>
+				{/if}
 				<div class="block">
 					<Label.Root class="text-sm font-medium text-ink" for="change-password-new">
 						Nova lozinka

@@ -24,6 +24,10 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" validate:"required,min=8,password_complexity"`
 }
 
+type SetPasswordRequest struct {
+	NewPassword string `json:"new_password" validate:"required,min=8,password_complexity"`
+}
+
 type UsersPage struct {
 	Items  []User `json:"items"`
 	Limit  int32  `json:"limit"`

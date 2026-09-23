@@ -203,7 +203,7 @@ type Querier interface {
 	UpdateProperty_Name(ctx context.Context, arg UpdateProperty_NameParams) error
 	UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) (User, error)
 	UpdateUserFullName(ctx context.Context, arg UpdateUserFullNameParams) (User, error)
-	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
 	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error)
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	// One action against several targets in a single statement, the way CreateNotifications inserts one

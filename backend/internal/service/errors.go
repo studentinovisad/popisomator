@@ -12,3 +12,4 @@ var ErrInvalidItemTypePropertyOrder = errors.New("invalid item type property ord
 var ErrItemReservedByApproval = errors.New("item already approved to another user")
 var ErrLocationCycleDetected = errors.New("cycles in location ancestry are not allowed")
 var ErrIncorrectPassword = errors.New("incorrect password")
+var ErrCannotSetOwnPassword = errors.New("cannot set your own password through this endpoint")

@@ -848,6 +848,14 @@ definitions:
     - property_ids
     - type_id
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.SetPasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+    required:
+    - new_password
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.StockGroup:
     properties:
       in_stock_count:
@@ -3257,6 +3265,46 @@ paths:
       security:
       - CookieAuth: []
       summary: Update a user's details, role, or status (admin only)
+      tags:
+      - Users
+  /users/{id}/password:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.SetPasswordRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Set a user's password (admin only)
       tags:
       - Users
   /users/me:

@@ -2,6 +2,7 @@ import { jsonRequest, request } from '$lib/api/client';
 import type {
 	ChangePasswordRequest,
 	CreateUserRequest,
+	SetUserPasswordRequest,
 	UpdateUserRequest,
 	ListUsersParams,
 	LoginRequest,
@@ -30,5 +31,7 @@ export const usersApi = {
 		request<User>(`/users/${id}`, jsonRequest('PATCH', payload)),
 	deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' }),
 	changePassword: (payload: ChangePasswordRequest) =>
-		request<void>('/users/me/password', jsonRequest('PATCH', payload))
+		request<void>('/users/me/password', jsonRequest('PATCH', payload)),
+	setUserPassword: (id: number, payload: SetUserPasswordRequest) =>
+		request<void>(`/users/${id}/password`, jsonRequest('PATCH', payload))
 };
