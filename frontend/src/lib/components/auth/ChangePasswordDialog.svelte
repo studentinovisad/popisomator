@@ -54,8 +54,9 @@
 		} catch (reason) {
 			if (reason instanceof ApiError && reason.status === 400) {
 				fieldErrors = { ...fieldErrors, oldPassword: reason.message };
+			} else {
+				toast.error(reason instanceof ApiError ? reason.message : 'Lozinka nije promenjena.');
 			}
-			toast.error(reason instanceof ApiError ? reason.message : 'Lozinka nije promenjena.');
 		} finally {
 			saving = false;
 		}
