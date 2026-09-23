@@ -30,7 +30,7 @@ func ExpiryDateCronjob(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func nextTime() time.Time {
-	t := time.Now()
+	t := time.Now().UTC()
 	nextTime := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 	return nextTime
 }
