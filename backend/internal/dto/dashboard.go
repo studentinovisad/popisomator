@@ -19,13 +19,39 @@ type ConsumptionBucket struct {
 // DashboardStockGroup is a StockGroup that names its own type, because a group name only identifies
 // a stock line within one type and the dashboard counts across all of them.
 type DashboardStockGroup struct {
-	TypeID       int64  `json:"type_id"`
-	TypeName     string `json:"type_name"`
-	Name         string `json:"name"`
-	InStockCount int64  `json:"in_stock_count"`
-	TotalCount   int64  `json:"total_count"`
-	Threshold    *int32 `json:"low_stock_count"`
-	Low          bool   `json:"low"`
+	TypeID       int64               `json:"type_id"`
+	TypeName     string              `json:"type_name"`
+	Name         string              `json:"name"`
+	InStockCount int64               `json:"in_stock_count"`
+	TotalCount   int64               `json:"total_count"`
+	Threshold    *int32              `json:"low_stock_count"`
+	Low          bool                `json:"low"`
+	Totals       []ItemPropertyTotal `json:"totals"`
+}
+
+type QuantityBucket struct {
+	Month  string              `json:"month"`
+	Totals []ItemPropertyTotal `json:"totals"`
+}
+
+type GroupConsumptionQuantity struct {
+	Name         string              `json:"name"`
+	Buckets      []QuantityBucket    `json:"buckets"`
+	PeriodTotals []ItemPropertyTotal `json:"period_totals"`
+}
+
+type TypeConsumptionQuantity struct {
+	TypeID   int64                      `json:"type_id"`
+	TypeName string                     `json:"type_name"`
+	Groups   []GroupConsumptionQuantity `json:"groups"`
+}
+
+type MostConsumedGroup struct {
+	TypeID        int64               `json:"type_id"`
+	TypeName      string              `json:"type_name"`
+	Name          string              `json:"name"`
+	ConsumedCount int64               `json:"consumed_count"`
+	Totals        []ItemPropertyTotal `json:"totals"`
 }
 
 // DashboardExpiringItem is one item worth acting on before it is wasted. DaysRemaining is negative
@@ -48,12 +74,14 @@ type DashboardExpiringItem struct {
 // the cap. Without it the client can only count what it was handed, and would report the ceiling as
 // though it were the answer.
 type Dashboard struct {
-	Months             int32                   `json:"months"`
-	TypeID             *int64                  `json:"type_id"`
-	ExpiringByMonth    []MonthCount            `json:"expiring_by_month"`
-	ExpiredBacklog     int64                   `json:"expired_backlog"`
-	ExpiringItems      []DashboardExpiringItem `json:"expiring_items"`
-	ExpiringItemsTotal int64                   `json:"expiring_items_total"`
-	ConsumptionByMonth []ConsumptionBucket     `json:"consumption_by_month"`
-	StockGroups        []DashboardStockGroup   `json:"stock_groups"`
+	Months              int32                     `json:"months"`
+	TypeID              *int64                    `json:"type_id"`
+	ExpiringByMonth     []MonthCount              `json:"expiring_by_month"`
+	ExpiredBacklog      int64                     `json:"expired_backlog"`
+	ExpiringItems       []DashboardExpiringItem   `json:"expiring_items"`
+	ExpiringItemsTotal  int64                     `json:"expiring_items_total"`
+	ConsumptionByMonth  []ConsumptionBucket       `json:"consumption_by_month"`
+	StockGroups         []DashboardStockGroup     `json:"stock_groups"`
+	ConsumptionQuantity []TypeConsumptionQuantity `json:"consumption_quantity"`
+	MostConsumed        []MostConsumedGroup       `json:"most_consumed"`
 }

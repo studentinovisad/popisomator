@@ -40,6 +40,38 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
 GROUP BY item_types.id, group_name
 ORDER BY in_stock_count, item_types.name, group_name;
 
+-- name: SumStockQuantities :many
+SELECT
+  item_types.id AS type_id,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
+  properties.id AS property_id,
+  properties.name AS property_name,
+  properties.value_type,
+  trim_scale(sum(
+    (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+  ))::text AS total_amount,
+  count(*) AS value_count
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+JOIN item_properties AS item_property ON item_property.item_id = items.id
+JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('mass', 'volume')
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+ AND approved_request.status = 'approved'
+LEFT JOIN ROWS FROM (
+  unnest(sqlc.arg('unit_value_types')::text[]),
+  unnest(sqlc.arg('unit_names')::text[]),
+  unnest(sqlc.arg('unit_factors')::bigint[])
+) AS unit_factor(value_type, unit_name, factor)
+  ON unit_factor.value_type = properties.value_type
+ AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+WHERE items.consumption = 'not_consumed'
+  AND approved_request.item_id IS NULL
+  AND unit_factor.factor IS NOT NULL
+  AND (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+GROUP BY item_types.id, group_name, properties.id, properties.value_type
+ORDER BY item_types.id, group_name, properties.id;
+
 -- name: GroupItemCountsForGroups :many
 WITH requested_groups AS (
   SELECT DISTINCT requested.group_name

@@ -58,6 +58,9 @@ type chemicalRow struct {
 	// one of these is set.
 	PackageMass   *measure
 	PackageVolume *measure
+	// PricePerPackage is what one package cost, in RSD. Unlike mass/volume it is set on every row, so
+	// the seed has spend data to sum regardless of which measure a chemical uses.
+	PricePerPackage float64
 	// PackageCount is how many identical packages of this reagent sit on the shelf. Rows with a
 	// count above one are seeded through the bulk-add path in one call, the same way the UI stocks
 	// several identical bottles at once, so every copy is its own item with its own request state.
@@ -156,6 +159,9 @@ func generateChemicalRows() []chemicalRow {
 	// warning states rather than being uniformly fresh - without that, an expiry notification has
 	// nothing truthful to point at. Cycled by index, so reruns produce the same inventory.
 	expiryOffsetDays := []int{-45, 16, 120, 32, 40, 72, 200, 43, 70, 11, 21, 25, 9, 320, -7, 55}
+	// Per-package price in RSD, cycled the same way as the other made-up fields: cheap solvents
+	// through specialty reagents, in no particular order tied to the real chemical.
+	packagePrices := []float64{950, 1450, 2200, 3100, 4200, 5800, 7900, 11000, 15500, 21000, 27500}
 
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
@@ -169,6 +175,7 @@ func generateChemicalRows() []chemicalRow {
 			PackageCount:     packageCounts[i%len(packageCounts)],
 			ExpiryDate:       expiryDate,
 			ExpiryOffsetDays: expiryOffset,
+			PricePerPackage:  packagePrices[i%len(packagePrices)],
 		}
 		if chemical.solid {
 			packageMass := massPackages[i%len(massPackages)]
@@ -366,6 +373,7 @@ var propertyDefs = []propertyDef{
 	{"purity", "Čistoća", "string", repository.PropertyVisibilityOverview},
 	{"mass", "Masa", "mass", repository.PropertyVisibilityOverview},
 	{"volume", "Zapremina", "volume", repository.PropertyVisibilityOverview},
+	{"price", "Cena", "price", repository.PropertyVisibilityOverview},
 	{"expiry_date", "Istek roka", "expiry", repository.PropertyVisibilityOverview},
 }
 
@@ -970,6 +978,15 @@ func propertyValues(row chemicalRow, propIDs map[string]int64) []dto.ItemPropert
 	addMeasure("volume", row.PackageVolume, func(packageVolume measure) any {
 		return dto.PTVolume{Amount: scaleMeasureAmount(packageVolume.Amount), Unit: packageVolume.Unit}
 	})
+	if row.PricePerPackage > 0 {
+		raw, err := json.Marshal(dto.PTPrice{
+			Amount:   int64(math.Round(row.PricePerPackage * dto.PriceMultiplier)),
+			Currency: "RSD",
+		})
+		if err == nil {
+			properties = append(properties, dto.ItemProperty{ID: propIDs["price"], Value: raw})
+		}
+	}
 	addString("expiry_date", row.ExpiryDate)
 
 	return properties

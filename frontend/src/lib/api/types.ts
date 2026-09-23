@@ -97,6 +97,7 @@ export type ItemsPage = {
 // so one property can appear more than once.
 export type ItemPropertyTotal = {
 	property_id: number;
+	property_name: string;
 	value_type: PropertyValueType;
 	value: object;
 	// How many of the matched items carried the property; compare with ItemsPage.total.
@@ -493,6 +494,32 @@ export type DashboardStockGroup = {
 	total_count: number;
 	low_stock_count: number | null;
 	low: boolean;
+	totals: ItemPropertyTotal[];
+};
+
+export type DashboardQuantityBucket = {
+	month: string;
+	totals: ItemPropertyTotal[];
+};
+
+export type DashboardGroupConsumptionQuantity = {
+	name: string;
+	buckets: DashboardQuantityBucket[];
+	period_totals: ItemPropertyTotal[];
+};
+
+export type DashboardTypeConsumptionQuantity = {
+	type_id: number;
+	type_name: string;
+	groups: DashboardGroupConsumptionQuantity[];
+};
+
+export type DashboardMostConsumedGroup = {
+	type_id: number;
+	type_name: string;
+	name: string;
+	consumed_count: number;
+	totals: ItemPropertyTotal[];
 };
 
 // days_remaining is negative once the date has passed, which is the difference between a warning
@@ -517,6 +544,8 @@ export type Dashboard = {
 	expiring_items_total: number;
 	consumption_by_month: DashboardConsumptionBucket[];
 	stock_groups: DashboardStockGroup[];
+	consumption_quantity: DashboardTypeConsumptionQuantity[];
+	most_consumed: DashboardMostConsumedGroup[];
 };
 
 export type GetDashboardParams = {

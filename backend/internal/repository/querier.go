@@ -138,6 +138,7 @@ type Querier interface {
 	ListLocationOptions(ctx context.Context) ([]ListLocationOptionsRow, error)
 	ListLowStockAlerts(ctx context.Context, typeID int64) ([]LowStockAlert, error)
 	ListLowStockAlertsForGroups(ctx context.Context, arg ListLowStockAlertsForGroupsParams) ([]LowStockAlert, error)
+	ListMostConsumedGroups(ctx context.Context, arg ListMostConsumedGroupsParams) ([]ListMostConsumedGroupsRow, error)
 	// Unread first, then newest first. The id tiebreaker keeps pagination stable: notifications are
 	// bulk-inserted, so a whole batch shares one created_at.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
@@ -175,12 +176,14 @@ type Querier interface {
 	RemoveItemProperty(ctx context.Context, arg RemoveItemPropertyParams) (int64, error)
 	RemoveItemTypeProperty(ctx context.Context, arg RemoveItemTypePropertyParams) (int64, error)
 	SetItemTypePropertyPositions(ctx context.Context, arg SetItemTypePropertyPositionsParams) (int64, error)
+	SumConsumptionQuantityByMonth(ctx context.Context, arg SumConsumptionQuantityByMonthParams) ([]SumConsumptionQuantityByMonthRow, error)
 	// Sums every structured property (price, mass, volume) over the same set of items CountItems
 	// counts, so the WHERE block below has to stay identical to it. Mass and volume are summed in
 	// their dimension's base unit: the unit factors arrive as three parallel arrays instead of being
 	// hardcoded here, so dto.MassUnitFactors / dto.VolumeUnitFactors stay the only definition of them.
 	// Values whose unit has no factor are dropped rather than counted as base units.
 	SumItemProperties(ctx context.Context, arg SumItemPropertiesParams) ([]SumItemPropertiesRow, error)
+	SumStockQuantities(ctx context.Context, arg SumStockQuantitiesParams) ([]SumStockQuantitiesRow, error)
 	UpdateItemProperty(ctx context.Context, arg UpdateItemPropertyParams) (ItemProperty, error)
 	UpdateItemTypeProperty_DefaultValue(ctx context.Context, arg UpdateItemTypeProperty_DefaultValueParams) (ItemTypeProperty, error)
 	UpdateItemTypeProperty_Visibility(ctx context.Context, arg UpdateItemTypeProperty_VisibilityParams) (ItemTypeProperty, error)

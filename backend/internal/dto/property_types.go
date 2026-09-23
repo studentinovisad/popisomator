@@ -2,8 +2,11 @@ package dto
 
 import (
 	"cmp"
+	"encoding/json"
+	"log"
 	"maps"
 	"slices"
+	"strconv"
 )
 
 const PriceMultiplier = 10000
@@ -81,4 +84,56 @@ func ScaleMeasureToLargestUnit(baseAmount int64, unitFactors map[string]int64) (
 
 	baseUnit := largestFirst[len(largestFirst)-1]
 	return baseAmount / unitFactors[baseUnit], baseUnit
+}
+
+type PropertyTotalRow struct {
+	PropertyID   int64
+	PropertyName string
+	ValueType    string
+	Currency     string
+	TotalAmount  string
+	ValueCount   int64
+}
+
+func BuildPropertyTotals(rows []PropertyTotalRow) []ItemPropertyTotal {
+	totals := make([]ItemPropertyTotal, 0, len(rows))
+
+	for _, row := range rows {
+		summedAmount, err := strconv.ParseInt(row.TotalAmount, 10, 64)
+		if err != nil {
+			log.Printf("Couldn't parse %v total %v for property %v. Error: %v",
+				row.ValueType, row.TotalAmount, row.PropertyID, err)
+			continue
+		}
+
+		var value any
+		switch row.ValueType {
+		case "price":
+			value = PTPrice{Amount: summedAmount, Currency: row.Currency}
+		case "mass":
+			amount, unit := ScaleMeasureToLargestUnit(summedAmount, MassUnitFactors)
+			value = PTMass{Amount: amount, Unit: unit}
+		case "volume":
+			amount, unit := ScaleMeasureToLargestUnit(summedAmount, VolumeUnitFactors)
+			value = PTVolume{Amount: amount, Unit: unit}
+		default:
+			continue
+		}
+
+		encodedValue, err := json.Marshal(value)
+		if err != nil {
+			log.Printf("Couldn't marshal %v total for property %v. Error: %v", row.ValueType, row.PropertyID, err)
+			continue
+		}
+
+		totals = append(totals, ItemPropertyTotal{
+			PropertyID:   row.PropertyID,
+			PropertyName: row.PropertyName,
+			ValueType:    row.ValueType,
+			Value:        encodedValue,
+			ValueCount:   row.ValueCount,
+		})
+	}
+
+	return totals
 }

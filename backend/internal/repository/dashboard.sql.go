@@ -277,3 +277,277 @@ func (q *Queries) ListExpiringItems(ctx context.Context, arg ListExpiringItemsPa
 	}
 	return items, nil
 }
+
+const listMostConsumedGroups = `-- name: ListMostConsumedGroups :many
+WITH consumed AS (
+  SELECT
+    items.id,
+    items.type_id,
+    item_types.name AS type_name,
+    render_item_derived_name(items.id, item_types.derived_name_format) AS group_name
+  FROM audit_log
+  JOIN items ON items.id = audit_log.target_id
+  JOIN item_types ON item_types.id = items.type_id
+  WHERE audit_log.action = 'item_consume'
+    AND audit_log.target_type = 'item'
+    AND audit_log.changes->0->>'old' = 'not_consumed'
+    AND audit_log.changes->0->>'new' <> 'not_consumed'
+    AND audit_log.created_at >= date_trunc('month', now())
+      - make_interval(months => $1::int - 1)
+    AND ($2::bigint IS NULL OR items.type_id = $2)
+),
+ranked AS (
+  SELECT
+    type_id, type_name, group_name,
+    count(*) AS consumed_count,
+    row_number() OVER (ORDER BY count(*) DESC, group_name) AS rn
+  FROM consumed
+  GROUP BY type_id, type_name, group_name
+),
+top_groups AS (
+  SELECT type_id, type_name, group_name, consumed_count
+  FROM ranked
+  WHERE rn <= $3::int
+),
+sums AS (
+  SELECT
+    consumed.type_id,
+    consumed.group_name,
+    properties.id AS property_id,
+    properties.name AS property_name,
+    properties.value_type,
+    COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
+    trim_scale(sum(
+      (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+    ))::text AS total_amount,
+    count(*) AS value_count
+  FROM consumed
+  JOIN top_groups ON top_groups.type_id = consumed.type_id AND top_groups.group_name = consumed.group_name
+  JOIN item_properties AS item_property ON item_property.item_id = consumed.id
+  JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('price', 'mass', 'volume')
+  LEFT JOIN ROWS FROM (
+    unnest($4::text[]),
+    unnest($5::text[]),
+    unnest($6::bigint[])
+  ) AS unit_factor(value_type, unit_name, factor)
+    ON unit_factor.value_type = properties.value_type
+   AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+  WHERE properties.value_type = 'price' OR unit_factor.factor IS NOT NULL
+  GROUP BY consumed.type_id, consumed.group_name, properties.id, properties.value_type, currency
+)
+SELECT
+  top_groups.type_id,
+  top_groups.type_name,
+  top_groups.group_name,
+  top_groups.consumed_count,
+  sums.property_id,
+  sums.property_name,
+  sums.value_type,
+  COALESCE(sums.currency, '')::text AS currency,
+  sums.total_amount,
+  sums.value_count
+FROM top_groups
+LEFT JOIN sums ON sums.type_id = top_groups.type_id AND sums.group_name = top_groups.group_name
+ORDER BY top_groups.consumed_count DESC, top_groups.group_name, sums.property_id
+`
+
+type ListMostConsumedGroupsParams struct {
+	Months         int32       `json:"months"`
+	TypeID         pgtype.Int8 `json:"type_id"`
+	LimitVal       int32       `json:"limit_val"`
+	UnitValueTypes []string    `json:"unit_value_types"`
+	UnitNames      []string    `json:"unit_names"`
+	UnitFactors    []int64     `json:"unit_factors"`
+}
+
+type ListMostConsumedGroupsRow struct {
+	TypeID        int64       `json:"type_id"`
+	TypeName      string      `json:"type_name"`
+	GroupName     string      `json:"group_name"`
+	ConsumedCount int64       `json:"consumed_count"`
+	PropertyID    pgtype.Int8 `json:"property_id"`
+	PropertyName  pgtype.Text `json:"property_name"`
+	ValueType     pgtype.Text `json:"value_type"`
+	Currency      string      `json:"currency"`
+	TotalAmount   pgtype.Text `json:"total_amount"`
+	ValueCount    pgtype.Int8 `json:"value_count"`
+}
+
+func (q *Queries) ListMostConsumedGroups(ctx context.Context, arg ListMostConsumedGroupsParams) ([]ListMostConsumedGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listMostConsumedGroups,
+		arg.Months,
+		arg.TypeID,
+		arg.LimitVal,
+		arg.UnitValueTypes,
+		arg.UnitNames,
+		arg.UnitFactors,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMostConsumedGroupsRow
+	for rows.Next() {
+		var i ListMostConsumedGroupsRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.TypeName,
+			&i.GroupName,
+			&i.ConsumedCount,
+			&i.PropertyID,
+			&i.PropertyName,
+			&i.ValueType,
+			&i.Currency,
+			&i.TotalAmount,
+			&i.ValueCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumConsumptionQuantityByMonth = `-- name: SumConsumptionQuantityByMonth :many
+WITH axis AS (
+  SELECT generate_series(
+    date_trunc('month', now()) - make_interval(months => $1::int - 1),
+    date_trunc('month', now()),
+    interval '1 month'
+  )::date AS month
+),
+consumed AS (
+  SELECT
+    items.id,
+    items.type_id,
+    item_types.name AS type_name,
+    render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
+    date_trunc('month', audit_log.created_at)::date AS month
+  FROM audit_log
+  JOIN items ON items.id = audit_log.target_id
+  JOIN item_types ON item_types.id = items.type_id
+  WHERE audit_log.action = 'item_consume'
+    AND audit_log.target_type = 'item'
+    AND audit_log.changes->0->>'old' = 'not_consumed'
+    AND audit_log.changes->0->>'new' <> 'not_consumed'
+    AND audit_log.created_at >= date_trunc('month', now())
+      - make_interval(months => $1::int - 1)
+    AND ($2::bigint IS NULL OR items.type_id = $2)
+),
+relevant_groups AS (
+  SELECT DISTINCT
+    consumed.type_id,
+    consumed.type_name,
+    consumed.group_name,
+    properties.id AS property_id,
+    properties.name AS property_name,
+    properties.value_type
+  FROM consumed
+  JOIN item_properties AS item_property ON item_property.item_id = consumed.id
+  JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('price', 'mass', 'volume')
+),
+sums AS (
+  SELECT
+    consumed.type_id,
+    consumed.group_name,
+    consumed.month,
+    properties.id AS property_id,
+    COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
+    trim_scale(sum(
+      (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+    ))::text AS total_amount,
+    count(*) AS value_count
+  FROM consumed
+  JOIN item_properties AS item_property ON item_property.item_id = consumed.id
+  JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('price', 'mass', 'volume')
+  LEFT JOIN ROWS FROM (
+    unnest($3::text[]),
+    unnest($4::text[]),
+    unnest($5::bigint[])
+  ) AS unit_factor(value_type, unit_name, factor)
+    ON unit_factor.value_type = properties.value_type
+   AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+  WHERE properties.value_type = 'price' OR unit_factor.factor IS NOT NULL
+  GROUP BY consumed.type_id, consumed.group_name, consumed.month, properties.id, currency
+)
+SELECT
+  relevant_groups.type_id,
+  relevant_groups.type_name,
+  relevant_groups.group_name,
+  axis.month,
+  relevant_groups.property_id,
+  relevant_groups.property_name,
+  relevant_groups.value_type,
+  COALESCE(sums.currency, '')::text AS currency,
+  COALESCE(sums.total_amount, '0')::text AS total_amount,
+  COALESCE(sums.value_count, 0)::bigint AS value_count
+FROM relevant_groups
+CROSS JOIN axis
+LEFT JOIN sums
+  ON sums.type_id = relevant_groups.type_id
+ AND sums.group_name = relevant_groups.group_name
+ AND sums.month = axis.month
+ AND sums.property_id = relevant_groups.property_id
+ORDER BY relevant_groups.type_name, relevant_groups.group_name, relevant_groups.property_id, axis.month
+`
+
+type SumConsumptionQuantityByMonthParams struct {
+	Months         int32       `json:"months"`
+	TypeID         pgtype.Int8 `json:"type_id"`
+	UnitValueTypes []string    `json:"unit_value_types"`
+	UnitNames      []string    `json:"unit_names"`
+	UnitFactors    []int64     `json:"unit_factors"`
+}
+
+type SumConsumptionQuantityByMonthRow struct {
+	TypeID       int64       `json:"type_id"`
+	TypeName     string      `json:"type_name"`
+	GroupName    string      `json:"group_name"`
+	Month        pgtype.Date `json:"month"`
+	PropertyID   int64       `json:"property_id"`
+	PropertyName string      `json:"property_name"`
+	ValueType    string      `json:"value_type"`
+	Currency     string      `json:"currency"`
+	TotalAmount  string      `json:"total_amount"`
+	ValueCount   int64       `json:"value_count"`
+}
+
+func (q *Queries) SumConsumptionQuantityByMonth(ctx context.Context, arg SumConsumptionQuantityByMonthParams) ([]SumConsumptionQuantityByMonthRow, error) {
+	rows, err := q.db.Query(ctx, sumConsumptionQuantityByMonth,
+		arg.Months,
+		arg.TypeID,
+		arg.UnitValueTypes,
+		arg.UnitNames,
+		arg.UnitFactors,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumConsumptionQuantityByMonthRow
+	for rows.Next() {
+		var i SumConsumptionQuantityByMonthRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.TypeName,
+			&i.GroupName,
+			&i.Month,
+			&i.PropertyID,
+			&i.PropertyName,
+			&i.ValueType,
+			&i.Currency,
+			&i.TotalAmount,
+			&i.ValueCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

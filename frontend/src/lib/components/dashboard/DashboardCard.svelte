@@ -22,7 +22,7 @@
 	} = $props();
 </script>
 
-<section class="flex flex-col rounded-md border border-line bg-surface">
+<section class="flex min-w-0 flex-col rounded-md border border-line bg-surface">
 	<header class="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
 		<div class="min-w-0">
 			<h2 class="text-sm font-semibold text-ink">{title}</h2>

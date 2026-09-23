@@ -228,3 +228,4 @@ CREATE INDEX idx_audit_log_created_at ON audit_log (created_at DESC, id DESC);
 CREATE INDEX idx_audit_log_target ON audit_log (target_type, target_id, created_at DESC, id DESC);
 -- The actor filter, and the actor option list behind it.
 CREATE INDEX idx_audit_log_actor ON audit_log (actor_id, created_at DESC, id DESC);
+CREATE INDEX idx_audit_log_action_target_type ON audit_log (action, target_type, created_at DESC);

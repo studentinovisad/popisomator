@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,6 +17,8 @@ import (
 // the whole inventory.
 const dashboardExpiringItemsLimit = 200
 
+const dashboardMostConsumedLimit = 20
+
 // GetDashboard collects every widget in one read. months is expected to already be one of the
 // offered ranges; typeID narrows all four figures to one item type, or is nil for the whole
 // inventory.
@@ -23,6 +27,7 @@ func GetDashboard(ctx context.Context, months int32, typeID *int64) (dto.Dashboa
 	if typeID != nil {
 		typeFilter = pgtype.Int8{Int64: *typeID, Valid: true}
 	}
+	unitValueTypes, unitNames, unitFactors := dto.MeasureUnitFactorRows()
 
 	expiringRows, err := db.Queries.CountExpiringByMonth(ctx, repository.CountExpiringByMonthParams{
 		Months: months,
@@ -50,6 +55,16 @@ func GetDashboard(ctx context.Context, months int32, typeID *int64) (dto.Dashboa
 		return dto.Dashboard{}, err
 	}
 
+	stockQuantityRows, err := db.Queries.SumStockQuantities(ctx, repository.SumStockQuantitiesParams{
+		UnitValueTypes: unitValueTypes,
+		UnitNames:      unitNames,
+		UnitFactors:    unitFactors,
+		TypeID:         typeFilter,
+	})
+	if err != nil {
+		return dto.Dashboard{}, err
+	}
+
 	expiringItemRows, err := db.Queries.ListExpiringItems(ctx, repository.ListExpiringItemsParams{
 		LimitVal: dashboardExpiringItemsLimit,
 		TypeID:   typeFilter,
@@ -58,14 +73,39 @@ func GetDashboard(ctx context.Context, months int32, typeID *int64) (dto.Dashboa
 		return dto.Dashboard{}, err
 	}
 
+	consumptionQuantityRows, err := db.Queries.SumConsumptionQuantityByMonth(ctx, repository.SumConsumptionQuantityByMonthParams{
+		Months:         months,
+		TypeID:         typeFilter,
+		UnitValueTypes: unitValueTypes,
+		UnitNames:      unitNames,
+		UnitFactors:    unitFactors,
+	})
+	if err != nil {
+		return dto.Dashboard{}, err
+	}
+
+	mostConsumedRows, err := db.Queries.ListMostConsumedGroups(ctx, repository.ListMostConsumedGroupsParams{
+		Months:         months,
+		TypeID:         typeFilter,
+		LimitVal:       dashboardMostConsumedLimit,
+		UnitValueTypes: unitValueTypes,
+		UnitNames:      unitNames,
+		UnitFactors:    unitFactors,
+	})
+	if err != nil {
+		return dto.Dashboard{}, err
+	}
+
 	dashboard := dto.Dashboard{
-		Months:             months,
-		TypeID:             typeID,
-		ExpiredBacklog:     expiredBacklog,
-		ExpiringByMonth:    make([]dto.MonthCount, len(expiringRows)),
-		ConsumptionByMonth: make([]dto.ConsumptionBucket, len(consumptionRows)),
-		ExpiringItems:      make([]dto.DashboardExpiringItem, len(expiringItemRows)),
-		StockGroups:        make([]dto.DashboardStockGroup, len(stockRows)),
+		Months:              months,
+		TypeID:              typeID,
+		ExpiredBacklog:      expiredBacklog,
+		ExpiringByMonth:     make([]dto.MonthCount, len(expiringRows)),
+		ConsumptionByMonth:  make([]dto.ConsumptionBucket, len(consumptionRows)),
+		ExpiringItems:       make([]dto.DashboardExpiringItem, len(expiringItemRows)),
+		StockGroups:         make([]dto.DashboardStockGroup, len(stockRows)),
+		ConsumptionQuantity: buildConsumptionQuantity(consumptionQuantityRows),
+		MostConsumed:        buildMostConsumedGroups(mostConsumedRows),
 	}
 
 	for index, row := range expiringRows {
@@ -100,6 +140,18 @@ func GetDashboard(ctx context.Context, months int32, typeID *int64) (dto.Dashboa
 		}
 	}
 
+	stockTotalsByGroup := make(map[dashboardGroupKey][]dto.PropertyTotalRow, len(stockQuantityRows))
+	for _, row := range stockQuantityRows {
+		key := dashboardGroupKey{typeID: row.TypeID, groupName: row.GroupName}
+		stockTotalsByGroup[key] = append(stockTotalsByGroup[key], dto.PropertyTotalRow{
+			PropertyID:   row.PropertyID,
+			PropertyName: row.PropertyName,
+			ValueType:    row.ValueType,
+			TotalAmount:  row.TotalAmount,
+			ValueCount:   row.ValueCount,
+		})
+	}
+
 	for index, row := range stockRows {
 		group := dto.DashboardStockGroup{
 			TypeID:       row.TypeID,
@@ -108,6 +160,7 @@ func GetDashboard(ctx context.Context, months int32, typeID *int64) (dto.Dashboa
 			InStockCount: row.InStockCount,
 			TotalCount:   row.TotalCount,
 			Low:          isLowStock(row.InStockCount, row.LowStockCount.Int32, row.LowStockCount.Valid),
+			Totals:       dto.BuildPropertyTotals(stockTotalsByGroup[dashboardGroupKey{typeID: row.TypeID, groupName: row.GroupName}]),
 		}
 		if row.LowStockCount.Valid {
 			group.Threshold = &row.LowStockCount.Int32
@@ -116,4 +169,156 @@ func GetDashboard(ctx context.Context, months int32, typeID *int64) (dto.Dashboa
 	}
 
 	return dashboard, nil
+}
+
+type dashboardGroupKey struct {
+	typeID    int64
+	groupName string
+}
+
+type dashboardGroupPropertyKey struct {
+	typeID     int64
+	groupName  string
+	propertyID int64
+}
+
+func sumPropertyTotalRows(rows []dto.PropertyTotalRow) dto.PropertyTotalRow {
+	sum := dto.PropertyTotalRow{
+		PropertyID:   rows[0].PropertyID,
+		PropertyName: rows[0].PropertyName,
+		ValueType:    rows[0].ValueType,
+	}
+
+	for _, row := range rows {
+		if row.Currency != "" {
+			sum.Currency = row.Currency
+			break
+		}
+	}
+
+	var totalAmount, valueCount int64
+	for _, row := range rows {
+		amount, _ := strconv.ParseInt(row.TotalAmount, 10, 64)
+		totalAmount += amount
+		valueCount += row.ValueCount
+	}
+
+	sum.TotalAmount = strconv.FormatInt(totalAmount, 10)
+	sum.ValueCount = valueCount
+	return sum
+}
+
+func buildConsumptionQuantity(rows []repository.SumConsumptionQuantityByMonthRow) []dto.TypeConsumptionQuantity {
+	typeOrder := make([]int64, 0)
+	typeNames := make(map[int64]string)
+	groupOrderByType := make(map[int64][]string)
+	monthOrderByGroup := make(map[dashboardGroupKey][]string)
+	monthRowsByGroup := make(map[dashboardGroupKey]map[string][]dto.PropertyTotalRow)
+	periodRowsByKey := make(map[dashboardGroupPropertyKey][]dto.PropertyTotalRow)
+
+	for _, row := range rows {
+		if _, seen := typeNames[row.TypeID]; !seen {
+			typeOrder = append(typeOrder, row.TypeID)
+			typeNames[row.TypeID] = row.TypeName
+		}
+
+		groupKey := dashboardGroupKey{typeID: row.TypeID, groupName: row.GroupName}
+		if _, seen := monthRowsByGroup[groupKey]; !seen {
+			groupOrderByType[row.TypeID] = append(groupOrderByType[row.TypeID], row.GroupName)
+			monthRowsByGroup[groupKey] = make(map[string][]dto.PropertyTotalRow)
+		}
+
+		month := row.Month.Time.Format(time.DateOnly)
+		if _, seen := monthRowsByGroup[groupKey][month]; !seen {
+			monthOrderByGroup[groupKey] = append(monthOrderByGroup[groupKey], month)
+		}
+
+		totalRow := dto.PropertyTotalRow{
+			PropertyID:   row.PropertyID,
+			PropertyName: row.PropertyName,
+			ValueType:    row.ValueType,
+			Currency:     row.Currency,
+			TotalAmount:  row.TotalAmount,
+			ValueCount:   row.ValueCount,
+		}
+		monthRowsByGroup[groupKey][month] = append(monthRowsByGroup[groupKey][month], totalRow)
+
+		periodKey := dashboardGroupPropertyKey{typeID: row.TypeID, groupName: row.GroupName, propertyID: row.PropertyID}
+		periodRowsByKey[periodKey] = append(periodRowsByKey[periodKey], totalRow)
+	}
+
+	result := make([]dto.TypeConsumptionQuantity, 0, len(typeOrder))
+	for _, typeID := range typeOrder {
+		groupNames := groupOrderByType[typeID]
+		groups := make([]dto.GroupConsumptionQuantity, 0, len(groupNames))
+
+		for _, groupName := range groupNames {
+			groupKey := dashboardGroupKey{typeID: typeID, groupName: groupName}
+			months := monthOrderByGroup[groupKey]
+			buckets := make([]dto.QuantityBucket, 0, len(months))
+			for _, month := range months {
+				buckets = append(buckets, dto.QuantityBucket{
+					Month:  month,
+					Totals: dto.BuildPropertyTotals(monthRowsByGroup[groupKey][month]),
+				})
+			}
+
+			periodRows := make([]dto.PropertyTotalRow, 0)
+			for key, keyRows := range periodRowsByKey {
+				if key.typeID == typeID && key.groupName == groupName {
+					periodRows = append(periodRows, sumPropertyTotalRows(keyRows))
+				}
+			}
+			sort.Slice(periodRows, func(i, j int) bool { return periodRows[i].PropertyID < periodRows[j].PropertyID })
+
+			groups = append(groups, dto.GroupConsumptionQuantity{
+				Name:         stockGroupLabel(groupName, typeNames[typeID]),
+				Buckets:      buckets,
+				PeriodTotals: dto.BuildPropertyTotals(periodRows),
+			})
+		}
+
+		result = append(result, dto.TypeConsumptionQuantity{
+			TypeID:   typeID,
+			TypeName: typeNames[typeID],
+			Groups:   groups,
+		})
+	}
+
+	return result
+}
+
+func buildMostConsumedGroups(rows []repository.ListMostConsumedGroupsRow) []dto.MostConsumedGroup {
+	groups := make([]dto.MostConsumedGroup, 0)
+	groupIndexByKey := make(map[dashboardGroupKey]int)
+
+	for _, row := range rows {
+		key := dashboardGroupKey{typeID: row.TypeID, groupName: row.GroupName}
+		groupIndex, exists := groupIndexByKey[key]
+		if !exists {
+			groupIndex = len(groups)
+			groupIndexByKey[key] = groupIndex
+			groups = append(groups, dto.MostConsumedGroup{
+				TypeID:        row.TypeID,
+				TypeName:      row.TypeName,
+				Name:          stockGroupLabel(row.GroupName, row.TypeName),
+				ConsumedCount: row.ConsumedCount,
+			})
+		}
+
+		if !row.PropertyID.Valid {
+			continue
+		}
+
+		groups[groupIndex].Totals = append(groups[groupIndex].Totals, dto.BuildPropertyTotals([]dto.PropertyTotalRow{{
+			PropertyID:   row.PropertyID.Int64,
+			PropertyName: row.PropertyName.String,
+			ValueType:    row.ValueType.String,
+			Currency:     row.Currency,
+			TotalAmount:  row.TotalAmount.String,
+			ValueCount:   row.ValueCount.Int64,
+		}})...)
+	}
+
+	return groups
 }

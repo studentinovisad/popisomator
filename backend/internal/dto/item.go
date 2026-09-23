@@ -103,9 +103,10 @@ type ItemsPage struct {
 // PTPrice, PTMass or PTVolume - so the frontend renders it with the formatter it already has.
 // Prices are reported per currency, so one property can appear more than once.
 type ItemPropertyTotal struct {
-	PropertyID int64           `json:"property_id"`
-	ValueType  string          `json:"value_type"`
-	Value      json.RawMessage `json:"value"`
+	PropertyID   int64           `json:"property_id"`
+	PropertyName string          `json:"property_name"`
+	ValueType    string          `json:"value_type"`
+	Value        json.RawMessage `json:"value"`
 	// ValueCount is how many of the matched physical items carried the property. Compare it with
 	// ItemsPage.ItemCount to see whether the sum covers all of them.
 	ValueCount int64 `json:"value_count"`

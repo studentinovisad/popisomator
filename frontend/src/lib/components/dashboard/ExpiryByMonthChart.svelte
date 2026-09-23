@@ -16,7 +16,7 @@
 	);
 </script>
 
-<div class="h-64">
+<div class="h-64 overflow-hidden">
 	<BarChart
 		data={buckets}
 		x="month"

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, setContext } from 'svelte';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -14,12 +15,14 @@
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import X from '@lucide/svelte/icons/x';
-	import { api, type ItemRequestPreparationReport } from '$lib/api';
+	import { api, type Dashboard, type ItemRequestPreparationReport } from '$lib/api';
 	import AccountLink from '$lib/components/app/AccountLink.svelte';
 	import CountBadge from '$lib/components/shared/CountBadge.svelte';
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
 	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
 	import PreparationReport from '$lib/components/admin/ItemRequestPreparationReport.svelte';
+	import DashboardReportPrintTrends from '$lib/components/dashboard/DashboardReportPrintTrends.svelte';
+	import DashboardReportPrintStock from '$lib/components/dashboard/DashboardReportPrintStock.svelte';
 	import {
 		getPageMetadata,
 		notificationsNavigationItem,
@@ -32,6 +35,11 @@
 		preparationReportPrintContextKey,
 		type PreparationReportPrintContext
 	} from '$lib/state/preparation-report-print-context';
+	import {
+		dashboardReportPrintContextKey,
+		type DashboardReportPrintContext,
+		type DashboardReportPrintMode
+	} from '$lib/state/dashboard-report-print-context';
 	import { theme } from '$lib/state/theme.svelte';
 	import { Button, Collapsible, Popover, ScrollArea } from 'bits-ui';
 	import { Toaster } from 'svelte-sonner';
@@ -56,6 +64,8 @@
 		)
 	);
 	let preparationReports = $state<ItemRequestPreparationReport[]>([]);
+	let dashboardReport = $state<Dashboard | null>(null);
+	let dashboardPrintMode = $state<DashboardReportPrintMode | null>(null);
 
 	// svelte-ignore state_referenced_locally
 	if (!data.sidebarExpanded) {
@@ -70,6 +80,36 @@
 		},
 		print: () => window.print()
 	});
+
+	setContext<DashboardReportPrintContext>(dashboardReportPrintContextKey, {
+		setDashboardReport: (report) => {
+			dashboardReport = report;
+		},
+		setPrintMode: (mode) => {
+			dashboardPrintMode = mode;
+			applyDashboardPrintPageSize(mode);
+		},
+		print: () => window.print()
+	});
+
+	function applyDashboardPrintPageSize(mode: DashboardReportPrintMode | null) {
+		if (!browser) return;
+
+		const styleID = 'dashboard-print-page-size';
+		let styleElement = document.getElementById(styleID) as HTMLStyleElement | null;
+
+		if (mode === null) {
+			styleElement?.remove();
+			return;
+		}
+
+		if (!styleElement) {
+			styleElement = document.createElement('style');
+			styleElement.id = styleID;
+			document.head.appendChild(styleElement);
+		}
+		styleElement.textContent = `@page { size: ${mode === 'trends' ? 'landscape' : 'portrait'}; }`;
+	}
 
 	onMount(() => {
 		if (data.currentUser) {
@@ -372,6 +412,13 @@
 	{#each preparationReports as report, index (report.user.id)}
 		<PreparationReport {report} pageBreakAfter={index < preparationReports.length - 1} />
 	{/each}
+{/if}
+
+{#if dashboardReport && dashboardPrintMode === 'trends'}
+	<DashboardReportPrintTrends report={dashboardReport} />
+{/if}
+{#if dashboardReport && dashboardPrintMode === 'stock'}
+	<DashboardReportPrintStock report={dashboardReport} />
 {/if}
 
 {#snippet sonnerInfoIcon()}
