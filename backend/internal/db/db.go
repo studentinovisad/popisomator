@@ -17,20 +17,23 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	// consumption_status is a Postgres enum; pgx needs its OID (and its array OID, for
+	// consumption_status (and similar) are a Postgres enum; pgx needs its OID (and its array OID, for
 	// ANY($1::consumption_status[]) filters) registered before it can encode/decode it.
 	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		enumType, err := conn.LoadType(ctx, "consumption_status")
-		if err != nil {
-			return err
-		}
-		conn.TypeMap().RegisterType(enumType)
+		typeNames := []string{"consumption_status", "user_status", "user_role"}
+		for _, typeName := range typeNames {
+			enumType, err := conn.LoadType(ctx, typeName)
+			if err != nil {
+				return err
+			}
+			conn.TypeMap().RegisterType(enumType)
 
-		arrayType, err := conn.LoadType(ctx, "_consumption_status")
-		if err != nil {
-			return err
+			arrayType, err := conn.LoadType(ctx, "_"+typeName)
+			if err != nil {
+				return err
+			}
+			conn.TypeMap().RegisterType(arrayType)
 		}
-		conn.TypeMap().RegisterType(arrayType)
 
 		return nil
 	}

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/studentinovisad/popisomator/backend/internal/config"
+	"github.com/studentinovisad/popisomator/backend/internal/cron"
 	"github.com/studentinovisad/popisomator/backend/internal/db"
 	"github.com/studentinovisad/popisomator/backend/internal/router"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
@@ -39,10 +41,16 @@ func main() {
 
 	mux := router.New()
 
+	// Start cronjobs
+	var wg sync.WaitGroup
+	go cron.ExpiryDateCronjob(ctx, &wg)
+
 	// Listen for requests
 	address := config.CurrentConfig.Address()
 	fmt.Println("Starting backend server on", address)
 	if err := http.ListenAndServe(address, mux); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}
+
+	wg.Wait()
 }

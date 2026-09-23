@@ -2,13 +2,12 @@ package controller
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/pagination"
+	"github.com/studentinovisad/popisomator/backend/internal/repository"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
 	"github.com/studentinovisad/popisomator/backend/internal/service"
 )
@@ -93,28 +92,24 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role := strings.TrimSpace(r.URL.Query().Get("role"))
-	if role != "" && role != "admin" && role != "manager" && role != "user" {
-		response.WriteError(w, http.StatusBadRequest, "invalid role")
-		return
-	}
-
-	status := strings.TrimSpace(r.URL.Query().Get("status"))
-	if status != "" && status != "requested" && status != "active" {
-		response.WriteError(w, http.StatusBadRequest, "invalid status")
-		return
-	}
-
-	users, err := service.ListUsers(r.Context(), dto.ListUsersRequest{
+	req := dto.ListUsersRequest{
 		Limit:  limit,
 		Offset: offset,
 		Search: search,
-		Role:   role,
-		Status: status,
-	})
+	}
+
+	query := r.URL.Query()
+	if val := query.Get("role"); val != "" {
+		req.Role = (*repository.UserRole)(&val)
+	}
+
+	if val := query.Get("status"); val != "" {
+		req.Status = (*repository.UserStatus)(&val)
+	}
+
+	users, err := service.ListUsers(r.Context(), req)
 	if err != nil {
-		response.WriteError(w, http.StatusInternalServerError, "error fetching users")
-		log.Printf("error fetching users: %v", err)
+		writeServiceError(w, err, "error fetching users")
 		return
 	}
 

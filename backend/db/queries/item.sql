@@ -470,3 +470,11 @@ UPDATE item_properties SET property_value = $3 WHERE item_id = $1 AND property_i
 
 -- name: RemoveItemProperty :execrows
 DELETE FROM item_properties WHERE item_id = $1 AND property_id = $2;
+
+-- name: GetExpiryValuesForItems :many
+SELECT i.id AS item_id, ip.property_value, itype.expiring_soon_days
+FROM items i
+INNER JOIN item_properties ip ON i.id = ip.item_id
+INNER JOIN properties p ON ip.property_id = p.id
+INNER JOIN item_types itype ON i.type_id = itype.id
+WHERE p.value_type = 'expiry';

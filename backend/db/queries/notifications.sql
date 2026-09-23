@@ -60,3 +60,16 @@ WHERE read = false AND recipient_id = $1;
 
 -- name: DeleteNotification :execrows
 DELETE FROM notifications WHERE id = $1 AND recipient_id = $2;
+
+-- name: GetExistingExpiryNotifications :many
+SELECT n.recipient_id FROM notifications n
+INNER JOIN notifdesc_item_expiry expiry
+    ON n.id = expiry.notification_id
+WHERE n.recipient_id = ANY(sqlc.arg('recipient_ids')::bigint[])
+AND expiry.item_id = $1
+AND expiry.expiry_type = $2;
+
+-- name: DeleteItemRequestNotifications :execrows
+DELETE FROM notifications n
+USING notifdesc_item_request request
+WHERE n.id = request.notification_id AND request.item_id = $1;
