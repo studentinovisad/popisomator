@@ -36,6 +36,39 @@ func UserDetailsPersonal(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, user)
 }
 
+// ChangePassword godoc
+// @Summary Change the currently authenticated user's own password
+// @Tags Users
+// @Accept json
+// @Security CookieAuth
+// @Param body body dto.ChangePasswordRequest true "Old and new password"
+// @Success 200
+// @Failure 400 {object} response.Error "invalid request / incorrect old password"
+// @Failure 401 {object} response.Error "not logged in"
+// @Router /users/me/password [patch]
+func ChangePassword(w http.ResponseWriter, r *http.Request) {
+	id, ok := r.Context().Value("userID").(int64)
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
+		return
+	}
+
+	body := http.MaxBytesReader(w, r.Body, 1024)
+
+	var req dto.ChangePasswordRequest
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	if err := service.ChangePassword(r.Context(), id, req); err != nil {
+		writeServiceError(w, err, "couldn't change password")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 // GetUser godoc
 // @Summary Get a user by ID (admin only)
 // @Tags Users

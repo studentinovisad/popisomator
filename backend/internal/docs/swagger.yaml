@@ -160,6 +160,17 @@ definitions:
       value_type:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket:
     properties:
       damaged:
@@ -279,6 +290,10 @@ definitions:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket'
         type: array
+      consumption_quantity:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity'
+        type: array
       expired_backlog:
         type: integer
       expiring_by_month:
@@ -293,6 +308,10 @@ definitions:
         type: integer
       months:
         type: integer
+      most_consumed:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup'
+        type: array
       stock_groups:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.DashboardStockGroup'
@@ -325,10 +344,27 @@ definitions:
         type: string
       total_count:
         type: integer
+      totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
       type_id:
         type: integer
       type_name:
         type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity:
+    properties:
+      buckets:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket'
+        type: array
+      name:
+        type: string
+      period_totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.Item:
     properties:
@@ -377,6 +413,8 @@ definitions:
     properties:
       property_id:
         type: integer
+      property_name:
+        type: string
       value:
         items:
           type: integer
@@ -668,6 +706,21 @@ definitions:
       month:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup:
+    properties:
+      consumed_count:
+        type: integer
+      name:
+        type: string
+      totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
+      type_id:
+        type: integer
+      type_name:
+        type: string
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.Notification:
     properties:
       created_at:
@@ -764,6 +817,15 @@ definitions:
       value_type:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket:
+    properties:
+      month:
+        type: string
+      totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.RegistrationRequest:
     properties:
       email:
@@ -796,6 +858,17 @@ definitions:
         type: string
       total_count:
         type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity'
+        type: array
+      type_id:
+        type: integer
+      type_name:
+        type: string
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest:
     properties:
@@ -3202,6 +3275,33 @@ paths:
       security:
       - CookieAuth: []
       summary: Get the currently authenticated user's own details
+      tags:
+      - Users
+  /users/me/password:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Old and new password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ChangePasswordRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request / incorrect old password
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Change the currently authenticated user's own password
       tags:
       - Users
 securityDefinitions:

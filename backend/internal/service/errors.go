@@ -11,3 +11,4 @@ var ErrDerivedNamePropertyInUse = errors.New("property is used by a derived name
 var ErrInvalidItemTypePropertyOrder = errors.New("invalid item type property order")
 var ErrItemReservedByApproval = errors.New("item already approved to another user")
 var ErrLocationCycleDetected = errors.New("cycles in location ancestry are not allowed")
+var ErrIncorrectPassword = errors.New("incorrect password")

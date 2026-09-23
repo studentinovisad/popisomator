@@ -41,5 +41,8 @@ UPDATE users SET full_name = $2 WHERE id = $1 RETURNING *;
 -- name: UpdateUserStatus :one
 UPDATE users SET status = $2 WHERE id = $1 RETURNING *;
 
+-- name: UpdateUserPassword :exec
+UPDATE users SET password_hash = $2 WHERE id = $1;
+
 -- name: DeleteUser :execrows
 DELETE FROM users WHERE id = $1;

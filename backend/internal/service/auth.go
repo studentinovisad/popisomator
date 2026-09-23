@@ -103,3 +103,28 @@ func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error
 
 	return dto.ToUserDTO(user), nil
 }
+
+func ChangePassword(ctx context.Context, id int64, req dto.ChangePasswordRequest) error {
+	if err := dto.Validate(req); err != nil {
+		return err
+	}
+
+	user, err := db.Queries.GetUserByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		return ErrIncorrectPassword
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return db.Queries.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: string(hash),
+	})
+}

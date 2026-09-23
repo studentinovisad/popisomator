@@ -48,6 +48,11 @@ export type UpdateUserRequest = {
 	status?: UserStatus;
 };
 
+export type ChangePasswordRequest = {
+	old_password: string;
+	new_password: string;
+};
+
 export type ConsumptionStatus =
 	'not_consumed' | 'partially_consumed' | 'fully_consumed' | 'damaged';
 

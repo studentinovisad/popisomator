@@ -9,6 +9,7 @@ export class ApiError extends Error {
 
 const apiErrorMessages: Record<string, string> = {
 	'invalid credentials': 'Email adresa ili lozinka nisu ispravni.',
+	'incorrect password': 'Trenutna lozinka nije ispravna.',
 	'User status not active': 'Vaš zahtev za registraciju još nije odobren.',
 	'user with this email already exists': 'Korisnik sa ovom email adresom već postoji.',
 	'item already approved to another user': 'Stavka je već odobrena drugom korisniku.',
