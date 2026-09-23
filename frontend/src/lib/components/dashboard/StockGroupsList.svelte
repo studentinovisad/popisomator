@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import type { DashboardStockGroup } from '$lib/api';
+	import { formatPropertyTotals } from '$lib/domain/dashboard';
 
 	let {
 		groups,
@@ -34,6 +35,9 @@
 					<p class="truncate text-sm text-ink">{group.name}</p>
 					{#if showTypeName}
 						<p class="truncate text-xs text-muted">{group.type_name}</p>
+					{/if}
+					{#if group.totals.length > 0}
+						<p class="truncate text-xs text-muted">{formatPropertyTotals(group.totals)}</p>
 					{/if}
 				</div>
 				<!-- The threshold is shown only where the count is short of it; against a healthy group it

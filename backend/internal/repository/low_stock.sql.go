@@ -245,3 +245,86 @@ func (q *Queries) ListStockGroups(ctx context.Context, typeID pgtype.Int8) ([]Li
 	}
 	return items, nil
 }
+
+const sumStockQuantities = `-- name: SumStockQuantities :many
+SELECT
+  item_types.id AS type_id,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
+  properties.id AS property_id,
+  properties.name AS property_name,
+  properties.value_type,
+  trim_scale(sum(
+    (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+  ))::text AS total_amount,
+  count(*) AS value_count
+FROM items
+JOIN item_types ON item_types.id = items.type_id
+JOIN item_properties AS item_property ON item_property.item_id = items.id
+JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('mass', 'volume')
+LEFT JOIN item_requests AS approved_request
+  ON approved_request.item_id = items.id
+ AND approved_request.status = 'approved'
+LEFT JOIN ROWS FROM (
+  unnest($1::text[]),
+  unnest($2::text[]),
+  unnest($3::bigint[])
+) AS unit_factor(value_type, unit_name, factor)
+  ON unit_factor.value_type = properties.value_type
+ AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+WHERE items.consumption = 'not_consumed'
+  AND approved_request.item_id IS NULL
+  AND unit_factor.factor IS NOT NULL
+  AND ($4::bigint IS NULL OR items.type_id = $4)
+GROUP BY item_types.id, group_name, properties.id, properties.value_type
+ORDER BY item_types.id, group_name, properties.id
+`
+
+type SumStockQuantitiesParams struct {
+	UnitValueTypes []string    `json:"unit_value_types"`
+	UnitNames      []string    `json:"unit_names"`
+	UnitFactors    []int64     `json:"unit_factors"`
+	TypeID         pgtype.Int8 `json:"type_id"`
+}
+
+type SumStockQuantitiesRow struct {
+	TypeID       int64  `json:"type_id"`
+	GroupName    string `json:"group_name"`
+	PropertyID   int64  `json:"property_id"`
+	PropertyName string `json:"property_name"`
+	ValueType    string `json:"value_type"`
+	TotalAmount  string `json:"total_amount"`
+	ValueCount   int64  `json:"value_count"`
+}
+
+func (q *Queries) SumStockQuantities(ctx context.Context, arg SumStockQuantitiesParams) ([]SumStockQuantitiesRow, error) {
+	rows, err := q.db.Query(ctx, sumStockQuantities,
+		arg.UnitValueTypes,
+		arg.UnitNames,
+		arg.UnitFactors,
+		arg.TypeID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumStockQuantitiesRow
+	for rows.Next() {
+		var i SumStockQuantitiesRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.GroupName,
+			&i.PropertyID,
+			&i.PropertyName,
+			&i.ValueType,
+			&i.TotalAmount,
+			&i.ValueCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

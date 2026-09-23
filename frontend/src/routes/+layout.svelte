@@ -14,12 +14,13 @@
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import X from '@lucide/svelte/icons/x';
-	import { api, type ItemRequestPreparationReport } from '$lib/api';
+	import { api, type Dashboard, type ItemRequestPreparationReport } from '$lib/api';
 	import AccountLink from '$lib/components/app/AccountLink.svelte';
 	import CountBadge from '$lib/components/shared/CountBadge.svelte';
 	import NavigationLinks from '$lib/components/app/NavigationLinks.svelte';
 	import UserAvatar from '$lib/components/app/UserAvatar.svelte';
 	import PreparationReport from '$lib/components/admin/ItemRequestPreparationReport.svelte';
+	import DashboardReportPrint from '$lib/components/dashboard/DashboardReportPrint.svelte';
 	import {
 		getPageMetadata,
 		notificationsNavigationItem,
@@ -32,6 +33,10 @@
 		preparationReportPrintContextKey,
 		type PreparationReportPrintContext
 	} from '$lib/state/preparation-report-print-context';
+	import {
+		dashboardReportPrintContextKey,
+		type DashboardReportPrintContext
+	} from '$lib/state/dashboard-report-print-context';
 	import { theme } from '$lib/state/theme.svelte';
 	import { Button, Collapsible, Popover, ScrollArea } from 'bits-ui';
 	import { Toaster } from 'svelte-sonner';
@@ -56,6 +61,7 @@
 		)
 	);
 	let preparationReports = $state<ItemRequestPreparationReport[]>([]);
+	let dashboardReport = $state<Dashboard | null>(null);
 
 	// svelte-ignore state_referenced_locally
 	if (!data.sidebarExpanded) {
@@ -67,6 +73,13 @@
 	setContext<PreparationReportPrintContext>(preparationReportPrintContextKey, {
 		setPreparationReports: (reports) => {
 			preparationReports = reports;
+		},
+		print: () => window.print()
+	});
+
+	setContext<DashboardReportPrintContext>(dashboardReportPrintContextKey, {
+		setDashboardReport: (report) => {
+			dashboardReport = report;
 		},
 		print: () => window.print()
 	});
@@ -372,6 +385,10 @@
 	{#each preparationReports as report, index (report.user.id)}
 		<PreparationReport {report} pageBreakAfter={index < preparationReports.length - 1} />
 	{/each}
+{/if}
+
+{#if dashboardReport}
+	<DashboardReportPrint report={dashboardReport} />
 {/if}
 
 {#snippet sonnerInfoIcon()}

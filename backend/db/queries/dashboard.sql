@@ -145,3 +145,144 @@ FROM axis
 LEFT JOIN consumed ON consumed.month = axis.month
 GROUP BY axis.month
 ORDER BY axis.month;
+
+-- name: SumConsumptionQuantityByMonth :many
+WITH axis AS (
+  SELECT generate_series(
+    date_trunc('month', now()) - make_interval(months => sqlc.arg('months')::int - 1),
+    date_trunc('month', now()),
+    interval '1 month'
+  )::date AS month
+),
+consumed AS (
+  SELECT items.id, items.type_id, date_trunc('month', audit_log.created_at)::date AS month
+  FROM audit_log
+  JOIN items ON items.id = audit_log.target_id
+  WHERE audit_log.action = 'item_consume'
+    AND audit_log.target_type = 'item'
+    AND audit_log.changes->0->>'old' = 'not_consumed'
+    AND audit_log.changes->0->>'new' <> 'not_consumed'
+    AND audit_log.created_at >= date_trunc('month', now())
+      - make_interval(months => sqlc.arg('months')::int - 1)
+    AND (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+),
+relevant_properties AS (
+  SELECT DISTINCT item_type_properties.type_id, properties.id AS property_id, properties.name AS property_name, properties.value_type
+  FROM item_type_properties
+  JOIN properties ON properties.id = item_type_properties.property_id
+  WHERE properties.value_type IN ('price', 'mass', 'volume')
+    AND (sqlc.narg('type_id')::bigint IS NULL OR item_type_properties.type_id = sqlc.narg('type_id'))
+),
+sums AS (
+  SELECT
+    consumed.type_id,
+    consumed.month,
+    properties.id AS property_id,
+    COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
+    trim_scale(sum(
+      (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+    ))::text AS total_amount,
+    count(*) AS value_count
+  FROM consumed
+  JOIN item_properties AS item_property ON item_property.item_id = consumed.id
+  JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('price', 'mass', 'volume')
+  LEFT JOIN ROWS FROM (
+    unnest(sqlc.arg('unit_value_types')::text[]),
+    unnest(sqlc.arg('unit_names')::text[]),
+    unnest(sqlc.arg('unit_factors')::bigint[])
+  ) AS unit_factor(value_type, unit_name, factor)
+    ON unit_factor.value_type = properties.value_type
+   AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+  WHERE properties.value_type = 'price' OR unit_factor.factor IS NOT NULL
+  GROUP BY consumed.type_id, consumed.month, properties.id, currency
+)
+SELECT
+  relevant_properties.type_id,
+  item_types.name AS type_name,
+  axis.month,
+  relevant_properties.property_id,
+  relevant_properties.property_name,
+  relevant_properties.value_type,
+  COALESCE(sums.currency, '')::text AS currency,
+  COALESCE(sums.total_amount, '0')::text AS total_amount,
+  COALESCE(sums.value_count, 0)::bigint AS value_count
+FROM relevant_properties
+JOIN item_types ON item_types.id = relevant_properties.type_id
+CROSS JOIN axis
+LEFT JOIN sums
+  ON sums.type_id = relevant_properties.type_id
+ AND sums.month = axis.month
+ AND sums.property_id = relevant_properties.property_id
+ORDER BY item_types.name, relevant_properties.property_id, axis.month;
+
+-- name: ListMostConsumedGroups :many
+WITH consumed AS (
+  SELECT
+    items.id,
+    items.type_id,
+    item_types.name AS type_name,
+    render_item_derived_name(items.id, item_types.derived_name_format) AS group_name
+  FROM audit_log
+  JOIN items ON items.id = audit_log.target_id
+  JOIN item_types ON item_types.id = items.type_id
+  WHERE audit_log.action = 'item_consume'
+    AND audit_log.target_type = 'item'
+    AND audit_log.changes->0->>'old' = 'not_consumed'
+    AND audit_log.changes->0->>'new' <> 'not_consumed'
+    AND audit_log.created_at >= date_trunc('month', now())
+      - make_interval(months => sqlc.arg('months')::int - 1)
+    AND (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+),
+ranked AS (
+  SELECT
+    type_id, type_name, group_name,
+    count(*) AS consumed_count,
+    row_number() OVER (ORDER BY count(*) DESC, group_name) AS rn
+  FROM consumed
+  GROUP BY type_id, type_name, group_name
+),
+top_groups AS (
+  SELECT type_id, type_name, group_name, consumed_count
+  FROM ranked
+  WHERE rn <= sqlc.arg('limit_val')::int
+),
+sums AS (
+  SELECT
+    consumed.type_id,
+    consumed.group_name,
+    properties.id AS property_id,
+    properties.name AS property_name,
+    properties.value_type,
+    COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
+    trim_scale(sum(
+      (item_property.property_value ->> 'amount')::numeric * COALESCE(unit_factor.factor, 1)
+    ))::text AS total_amount,
+    count(*) AS value_count
+  FROM consumed
+  JOIN top_groups ON top_groups.type_id = consumed.type_id AND top_groups.group_name = consumed.group_name
+  JOIN item_properties AS item_property ON item_property.item_id = consumed.id
+  JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('price', 'mass', 'volume')
+  LEFT JOIN ROWS FROM (
+    unnest(sqlc.arg('unit_value_types')::text[]),
+    unnest(sqlc.arg('unit_names')::text[]),
+    unnest(sqlc.arg('unit_factors')::bigint[])
+  ) AS unit_factor(value_type, unit_name, factor)
+    ON unit_factor.value_type = properties.value_type
+   AND unit_factor.unit_name = item_property.property_value ->> 'unit'
+  WHERE properties.value_type = 'price' OR unit_factor.factor IS NOT NULL
+  GROUP BY consumed.type_id, consumed.group_name, properties.id, properties.value_type, currency
+)
+SELECT
+  top_groups.type_id,
+  top_groups.type_name,
+  top_groups.group_name,
+  top_groups.consumed_count,
+  sums.property_id,
+  sums.property_name,
+  sums.value_type,
+  COALESCE(sums.currency, '')::text AS currency,
+  sums.total_amount,
+  sums.value_count
+FROM top_groups
+LEFT JOIN sums ON sums.type_id = top_groups.type_id AND sums.group_name = top_groups.group_name
+ORDER BY top_groups.consumed_count DESC, top_groups.group_name, sums.property_id;

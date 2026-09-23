@@ -545,6 +545,7 @@ func (q *Queries) RemoveItemProperty(ctx context.Context, arg RemoveItemProperty
 const sumItemProperties = `-- name: SumItemProperties :many
 SELECT
   properties.id AS property_id,
+  properties.name AS property_name,
   properties.value_type,
   COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
   trim_scale(sum(
@@ -624,11 +625,12 @@ type SumItemPropertiesParams struct {
 }
 
 type SumItemPropertiesRow struct {
-	PropertyID  int64  `json:"property_id"`
-	ValueType   string `json:"value_type"`
-	Currency    string `json:"currency"`
-	TotalAmount string `json:"total_amount"`
-	ValueCount  int64  `json:"value_count"`
+	PropertyID   int64  `json:"property_id"`
+	PropertyName string `json:"property_name"`
+	ValueType    string `json:"value_type"`
+	Currency     string `json:"currency"`
+	TotalAmount  string `json:"total_amount"`
+	ValueCount   int64  `json:"value_count"`
 }
 
 // Sums every structured property (price, mass, volume) over the same set of items CountItems
@@ -660,6 +662,7 @@ func (q *Queries) SumItemProperties(ctx context.Context, arg SumItemPropertiesPa
 		var i SumItemPropertiesRow
 		if err := rows.Scan(
 			&i.PropertyID,
+			&i.PropertyName,
 			&i.ValueType,
 			&i.Currency,
 			&i.TotalAmount,

@@ -1,5 +1,10 @@
-import type { DashboardConsumptionBucket, DashboardMonths } from '$lib/api';
-import { consumptionLabel } from '$lib/domain/items';
+import type {
+	DashboardConsumptionBucket,
+	DashboardMonths,
+	DashboardTypeConsumptionQuantity,
+	ItemPropertyTotal
+} from '$lib/api';
+import { consumptionLabel, displayJson } from '$lib/domain/items';
 
 export const dashboardMonthRanges: { value: DashboardMonths; label: string }[] = [
 	{ value: 3, label: 'Tromesečje' },
@@ -40,7 +45,10 @@ export function consumptionSeriesLabel(key: keyof Omit<DashboardConsumptionBucke
 }
 
 const monthFormatter = new Intl.DateTimeFormat('sr-Latn-RS', { month: 'short' });
-const monthYearFormatter = new Intl.DateTimeFormat('sr-Latn-RS', { month: 'long', year: 'numeric' });
+const monthYearFormatter = new Intl.DateTimeFormat('sr-Latn-RS', {
+	month: 'long',
+	year: 'numeric'
+});
 const dateFormatter = new Intl.DateTimeFormat('sr-Latn-RS', { dateStyle: 'medium' });
 
 // Dates arrive as plain YYYY-MM-DD and are read as UTC, since a local reading would step one near
@@ -79,6 +87,32 @@ export function formatMonthTick(month: string, previousMonth?: string) {
 
 export function formatMonthLong(month: string) {
 	return monthYearFormatter.format(parseMonth(month));
+}
+
+export function formatPropertyTotal(total: ItemPropertyTotal) {
+	return displayJson(total.value_type, total.value);
+}
+
+export function formatPropertyTotals(totals: ItemPropertyTotal[]) {
+	return totals.map((total) => `${total.property_name}: ${formatPropertyTotal(total)}`).join(' · ');
+}
+
+export type ConsumptionPropertyRow = {
+	propertyID: number;
+	periodTotal: ItemPropertyTotal;
+	cells: (ItemPropertyTotal | undefined)[];
+};
+
+export function consumptionPropertyRows(
+	type: DashboardTypeConsumptionQuantity
+): ConsumptionPropertyRow[] {
+	return type.period_totals.map((periodTotal) => ({
+		propertyID: periodTotal.property_id,
+		periodTotal,
+		cells: type.buckets.map((bucket) =>
+			bucket.totals.find((total) => total.property_id === periodTotal.property_id)
+		)
+	}));
 }
 
 // Serbian counts three ways, and "stavka" happens to need all three.

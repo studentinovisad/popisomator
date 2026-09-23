@@ -144,6 +144,7 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
 -- name: SumItemProperties :many
 SELECT
   properties.id AS property_id,
+  properties.name AS property_name,
   properties.value_type,
   COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
   trim_scale(sum(
