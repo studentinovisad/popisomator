@@ -99,6 +99,8 @@
 		printMenuOpen = false;
 		printContext.setPrintMode(mode);
 		await tick();
+		// Temporary fix, TODO: look into issue more thoroughly
+		await new Promise(r => setTimeout(r, 200));
 		printContext.print();
 	}
 
