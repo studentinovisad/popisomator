@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"sort"
 	"time"
@@ -14,6 +15,28 @@ import (
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 )
+
+func checkExpiryType(rawValue json.RawMessage, itemType *dto.ItemType) (string, error) {
+	var propertyValue string
+	if err := json.Unmarshal(rawValue, &propertyValue); err != nil {
+		return "", fmt.Errorf("Couldn't unmarshal expiry date value %v. Error: %v", string(rawValue), err)
+	}
+	expiryTime, err := time.Parse(time.DateOnly, propertyValue)
+	if err != nil {
+		return "", fmt.Errorf("Couldn't parse expiry date %v. Error: %v", propertyValue, err)
+	}
+	currentTime := time.Now().UTC()
+	if currentTime.After(expiryTime) {
+		return "expired", nil
+	} else if itemType != nil && itemType.ExpiringSoonDays != nil {
+		difference := expiryTime.Sub(currentTime)
+		days := int16(difference.Hours() / 24)
+		if days < *itemType.ExpiringSoonDays {
+			return "expiring_soon", nil
+		}
+	}
+	return "none", nil
+}
 
 func populateItemRequestInformation(ctx context.Context, items []dto.Item, viewerID int64) error {
 	itemIndexes := make(map[int64]int, len(items))
@@ -86,25 +109,16 @@ func populateItemDetails(
 		property.ValueType = row.PropertyType
 		switch property.ValueType {
 		case "expiry":
-			var propertyValue string
-			if err := json.Unmarshal(property.Value, &propertyValue); err != nil {
-				log.Printf("Couldn't unmarshal expiry date value %v. Error: %v", string(property.Value), err)
-				continue
+			var itemTypeRef *dto.ItemType
+			if itemTypeExists {
+				itemTypeRef = &itemType
 			}
-			expiryTime, err := time.Parse(time.DateOnly, propertyValue)
+			expiryType, err := checkExpiryType(property.Value, itemTypeRef)
 			if err != nil {
-				log.Printf("Couldn't parse expiry date %v. Error: %v", propertyValue, err)
-				continue
+				log.Println(err.Error())
 			}
-			currentTime := time.Now().UTC()
-			if currentTime.After(expiryTime) {
-				property.SmartData = "expired"
-			} else if itemTypeExists && itemType.ExpiringSoonDays != nil {
-				difference := expiryTime.Sub(currentTime)
-				days := int16(difference.Hours() / 24)
-				if days < *itemTypesDTO[item.ID].ExpiringSoonDays {
-					property.SmartData = "expiring_soon"
-				}
+			if expiryType != "none" {
+				property.SmartData = expiryType
 			}
 		}
 		item.Properties = append(item.Properties, property)
@@ -269,7 +283,7 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		sortPropertyID = pgtype.Int8{Int64: *req.SortPropertyID, Valid: true}
 	}
 
-	// Both ListItems and SumItemProperties need the unit factor table: the first to compare masses
+	// Item-list queries and SumItemProperties need the unit factor table to compare masses
 	// and volumes recorded in different units, the second to add them up.
 	unitValueTypes, unitNames, unitFactors := dto.MeasureUnitFactorRows()
 
@@ -298,33 +312,85 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		return dto.ItemsPage{}, err
 	}
 
-	items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
-		TypeID:         typeID,
-		Consumption:    req.Consumption,
-		CreatedFrom:    createdFrom,
-		CreatedTo:      createdTo,
-		Search:         req.Search,
-		PropertyIds:    propertyIDs,
-		PropertyValues: propertyValues,
-		LimitVal:       req.Limit,
-		OffsetVal:      req.Offset,
-		OrderAsc:       req.Order == "asc",
-		SortPropertyID: sortPropertyID,
-		UnitValueTypes: unitValueTypes,
-		UnitNames:      unitNames,
-		UnitFactors:    unitFactors,
-		HeldBy:         heldByID,
-		LocationIds:    locationIDs,
-	})
-	if err != nil {
-		return dto.ItemsPage{}, err
-	}
+	pageTotal := totalItems
+	var itemsDTO []dto.Item
+	var itemIDs []int64
 
-	itemsDTO := make([]dto.Item, len(items))
-	itemIDs := make([]int64, len(items))
-	for i, item := range items {
-		itemsDTO[i] = dto.ToItemDTO(item)
-		itemIDs[i] = item.ID
+	if req.Grouped {
+		pageTotal, err = db.Queries.CountItemGroups(ctx, repository.CountItemGroupsParams{
+			ViewerID:       req.ViewerID,
+			TypeID:         typeID,
+			Consumption:    req.Consumption,
+			CreatedFrom:    createdFrom,
+			CreatedTo:      createdTo,
+			Search:         req.Search,
+			PropertyIds:    propertyIDs,
+			PropertyValues: propertyValues,
+			HeldBy:         heldByID,
+			LocationIds:    locationIDs,
+		})
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+
+		itemGroups, err := db.Queries.ListItemGroups(ctx, repository.ListItemGroupsParams{
+			TypeID:         typeID,
+			Consumption:    req.Consumption,
+			CreatedFrom:    createdFrom,
+			CreatedTo:      createdTo,
+			Search:         req.Search,
+			PropertyIds:    propertyIDs,
+			PropertyValues: propertyValues,
+			LimitVal:       req.Limit,
+			OffsetVal:      req.Offset,
+			OrderAsc:       req.Order == "asc",
+			SortPropertyID: sortPropertyID,
+			ViewerID:       req.ViewerID,
+			UnitValueTypes: unitValueTypes,
+			UnitNames:      unitNames,
+			UnitFactors:    unitFactors,
+			HeldBy:         heldByID,
+			LocationIds:    locationIDs,
+		})
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+
+		itemsDTO = make([]dto.Item, len(itemGroups))
+		itemIDs = make([]int64, len(itemGroups))
+		for index, itemGroup := range itemGroups {
+			itemsDTO[index] = dto.ToItemGroupDTO(itemGroup)
+			itemIDs[index] = itemGroup.ID
+		}
+	} else {
+		items, err := db.Queries.ListItems(ctx, repository.ListItemsParams{
+			TypeID:         typeID,
+			Consumption:    req.Consumption,
+			CreatedFrom:    createdFrom,
+			CreatedTo:      createdTo,
+			Search:         req.Search,
+			PropertyIds:    propertyIDs,
+			PropertyValues: propertyValues,
+			LimitVal:       req.Limit,
+			OffsetVal:      req.Offset,
+			OrderAsc:       req.Order == "asc",
+			SortPropertyID: sortPropertyID,
+			UnitValueTypes: unitValueTypes,
+			UnitNames:      unitNames,
+			UnitFactors:    unitFactors,
+			HeldBy:         heldByID,
+			LocationIds:    locationIDs,
+		})
+		if err != nil {
+			return dto.ItemsPage{}, err
+		}
+
+		itemsDTO = make([]dto.Item, len(items))
+		itemIDs = make([]int64, len(items))
+		for index, item := range items {
+			itemsDTO[index] = dto.ToItemDTO(item)
+			itemIDs[index] = item.ID
+		}
 	}
 
 	if len(itemIDs) > 0 {
@@ -358,7 +424,8 @@ func ListItems(ctx context.Context, req dto.ListItemsRequest) (dto.ItemsPage, er
 		Items:          itemsDTO,
 		Limit:          req.Limit,
 		Offset:         req.Offset,
-		Total:          totalItems,
+		Total:          pageTotal,
+		ItemCount:      totalItems,
 		PropertyTotals: dto.BuildPropertyTotals(toPropertyTotalRows(totalRows)),
 	}, nil
 }
@@ -831,4 +898,27 @@ func itemPropertyValue(ctx context.Context, q repository.Querier, itemID, proper
 	}
 
 	return nil, nil
+}
+
+// Check which items have expired and send out notifications for them
+func CheckExpiredItems(ctx context.Context) error {
+	expiryRows, err := db.Queries.GetExpiryValuesForItems(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, row := range expiryRows {
+		expiryType, err := checkExpiryType(row.PropertyValue, &dto.ItemType{ExpiringSoonDays: &row.ExpiringSoonDays.Int16})
+		if err != nil {
+			log.Printf("Couldn't get expiry type for item ID %v - %v", row.ItemID, err.Error())
+		}
+		if expiryType != "none" {
+			_, err = CreateItemExpiryNotifications(ctx, row.ItemID, repository.NotifdescExpiryType(expiryType))
+		}
+		if err != nil {
+			log.Printf("Couldn't create expiry notifications for item ID %v - %v", row.ItemID, err.Error())
+		}
+	}
+
+	return nil
 }

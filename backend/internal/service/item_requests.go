@@ -46,6 +46,11 @@ func CreateItemRequest(ctx context.Context, req dto.ItemRequestCreateRequest) (d
 		return dto.ItemRequest{}, err
 	}
 
+	_, err = CreateItemRequestNotifications(ctx, queriesTx, req.UserID, req.ItemID, false)
+	if err != nil {
+		return dto.ItemRequest{}, err
+	}
+
 	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestCreate,
 		req.ItemID, req.UserID, req.Reason, ""); err != nil {
 		return dto.ItemRequest{}, err
@@ -73,7 +78,9 @@ func GetItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) (
 		return dto.ItemRequest{}, err
 	}
 
-	itemRequestDTO := dto.ToItemRequestDTO(itemRequest)
+	itemRequestDTO := dto.ToItemRequestDTO(itemRequest.ItemRequest)
+	itemRequestDTO.UserName = itemRequest.UserName
+	itemRequestDTO.ItemName = itemRequest.ItemName
 
 	return itemRequestDTO, nil
 }
@@ -117,6 +124,11 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 		UserID: req.UserID,
 		ItemID: req.ItemID,
 	})
+	if err != nil {
+		return dto.ItemRequest{}, err
+	}
+
+	_, err = CreateItemRequestNotifications(ctx, queriesTx, req.UserID, req.ItemID, true)
 	if err != nil {
 		return dto.ItemRequest{}, err
 	}
@@ -369,7 +381,7 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 	}
 
 	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestDelete,
-		req.ItemID, req.UserID, existing.Reason, string(existing.Status)); err != nil {
+		req.ItemID, req.UserID, existing.ItemRequest.Reason, string(existing.ItemRequest.Status)); err != nil {
 		return err
 	}
 

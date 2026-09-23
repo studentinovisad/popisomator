@@ -155,8 +155,14 @@ func (q *Queries) DeleteNonApprovedItemRequests(ctx context.Context, itemID int6
 }
 
 const getItemRequest = `-- name: GetItemRequest :one
-SELECT user_id, item_id, created_at, status, reason FROM item_requests
-WHERE user_id = $1 AND item_id = $2
+SELECT item_requests.user_id, item_requests.item_id, item_requests.created_at, item_requests.status, item_requests.reason,
+  users.full_name AS user_name,
+  render_item_derived_name(items.id, item_types.derived_name_format) AS item_name
+FROM item_requests
+JOIN users ON users.id = item_requests.user_id
+JOIN items ON items.id = item_requests.item_id
+JOIN item_types ON item_types.id = items.type_id
+WHERE item_requests.user_id = $1 AND item_requests.item_id = $2
 `
 
 type GetItemRequestParams struct {
@@ -164,15 +170,23 @@ type GetItemRequestParams struct {
 	ItemID int64 `json:"item_id"`
 }
 
-func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) (ItemRequest, error) {
+type GetItemRequestRow struct {
+	ItemRequest ItemRequest `json:"item_request"`
+	UserName    string      `json:"user_name"`
+	ItemName    string      `json:"item_name"`
+}
+
+func (q *Queries) GetItemRequest(ctx context.Context, arg GetItemRequestParams) (GetItemRequestRow, error) {
 	row := q.db.QueryRow(ctx, getItemRequest, arg.UserID, arg.ItemID)
-	var i ItemRequest
+	var i GetItemRequestRow
 	err := row.Scan(
-		&i.UserID,
-		&i.ItemID,
-		&i.CreatedAt,
-		&i.Status,
-		&i.Reason,
+		&i.ItemRequest.UserID,
+		&i.ItemRequest.ItemID,
+		&i.ItemRequest.CreatedAt,
+		&i.ItemRequest.Status,
+		&i.ItemRequest.Reason,
+		&i.UserName,
+		&i.ItemName,
 	)
 	return i, err
 }

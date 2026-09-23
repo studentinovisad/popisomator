@@ -10,20 +10,20 @@ import (
 )
 
 const countUsers = `-- name: CountUsers :one
-SELECT count(*) FROM users
-WHERE full_name ILIKE '%' || escape_like_pattern($1::text) || '%'
-  AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
-  AND status = COALESCE(NULLIF($3::text, '')::user_status, status)
+SELECT count(*) FROM users u
+WHERE u.full_name ILIKE '%' || escape_like_pattern($1::text) || '%'
+  AND ($2::user_role IS NULL OR u.role = $2::user_role)
+  AND ($3::user_status IS NULL OR u.status = $3::user_status)
 `
 
 type CountUsersParams struct {
-	Search       string `json:"search"`
-	RoleFilter   string `json:"role_filter"`
-	StatusFilter string `json:"status_filter"`
+	Search string         `json:"search"`
+	Role   NullUserRole   `json:"role"`
+	Status NullUserStatus `json:"status"`
 }
 
 func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsers, arg.Search, arg.RoleFilter, arg.StatusFilter)
+	row := q.db.QueryRow(ctx, countUsers, arg.Search, arg.Role, arg.Status)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -73,6 +73,40 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getActiveUsersByRoles = `-- name: GetActiveUsersByRoles :many
+SELECT id, email, password_hash, full_name, role, status FROM users u
+WHERE u.role = ANY($1::user_role[])
+  AND u.status = 'active'
+ORDER BY id
+`
+
+func (q *Queries) GetActiveUsersByRoles(ctx context.Context, roles []UserRole) ([]User, error) {
+	rows, err := q.db.Query(ctx, getActiveUsersByRoles, roles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.FullName,
+			&i.Role,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, password_hash, full_name, role, status FROM users
 WHERE email = $1 LIMIT 1
@@ -111,67 +145,28 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
-const getUsersByRoles = `-- name: GetUsersByRoles :many
-SELECT id, email, password_hash, full_name, role, status FROM users
-WHERE role::text = ANY($1::text[])
-  AND status = COALESCE(NULLIF($2::text, '')::user_status, status)
-ORDER BY id
-`
-
-type GetUsersByRolesParams struct {
-	Roles        []string `json:"roles"`
-	StatusFilter string   `json:"status_filter"`
-}
-
-func (q *Queries) GetUsersByRoles(ctx context.Context, arg GetUsersByRolesParams) ([]User, error) {
-	rows, err := q.db.Query(ctx, getUsersByRoles, arg.Roles, arg.StatusFilter)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []User
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Email,
-			&i.PasswordHash,
-			&i.FullName,
-			&i.Role,
-			&i.Status,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, password_hash, full_name, role, status FROM users
-WHERE full_name ILIKE '%' || escape_like_pattern($1::text) || '%'
-  AND role = COALESCE(NULLIF($2::text, '')::user_role, role)
-  AND status = COALESCE(NULLIF($3::text, '')::user_status, status)
+SELECT id, email, password_hash, full_name, role, status FROM users u
+WHERE u.full_name ILIKE '%' || escape_like_pattern($1::text) || '%'
+  AND ($2::user_role IS NULL OR u.role = $2::user_role)
+  AND ($3::user_status IS NULL OR u.status = $3::user_status)
 ORDER BY id
 LIMIT $5 OFFSET $4
 `
 
 type ListUsersParams struct {
-	Search       string `json:"search"`
-	RoleFilter   string `json:"role_filter"`
-	StatusFilter string `json:"status_filter"`
-	PageOffset   int32  `json:"page_offset"`
-	PageLimit    int32  `json:"page_limit"`
+	Search     string         `json:"search"`
+	Role       NullUserRole   `json:"role"`
+	Status     NullUserStatus `json:"status"`
+	PageOffset int32          `json:"page_offset"`
+	PageLimit  int32          `json:"page_limit"`
 }
 
 func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
 	rows, err := q.db.Query(ctx, listUsers,
 		arg.Search,
-		arg.RoleFilter,
-		arg.StatusFilter,
+		arg.Role,
+		arg.Status,
 		arg.PageOffset,
 		arg.PageLimit,
 	)

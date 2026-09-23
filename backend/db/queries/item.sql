@@ -2,15 +2,6 @@
 SELECT * FROM items
 WHERE id = $1 LIMIT 1;
 
--- Sorting by a property has to reach into the JSONB value, whose shape depends on the property's
--- value type, so the sort key is built as two columns - one numeric, one text - of which at most one
--- is ever non-null. Mass and volume are compared in their dimension's base unit, with the unit
--- factors arriving as three parallel arrays exactly like SumItemProperties takes them, so
--- dto.MassUnitFactors / dto.VolumeUnitFactors stay their only definition. An amount whose unit has no
--- factor gets a null key on purpose: the item sorts last instead of being read as base units.
--- With no sort property both keys are null for every row, which makes the four sort_key terms of the
--- ORDER BY a no-op and leaves creation order as the only one. Items missing the sorted property keep
--- null keys too, and so land last whichever direction is asked for.
 -- name: ListItems :many
 SELECT items.* FROM items
 JOIN item_types ON item_types.id = items.type_id
@@ -50,7 +41,7 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
   AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
   AND (sqlc.narg('location_ids')::bigint[] IS NULL OR items.location_id = ANY(sqlc.narg('location_ids')::bigint[]))
   AND (
-    sqlc.narg('held_by')::bigint IS NULL  
+    sqlc.narg('held_by')::bigint IS NULL
     OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
     OR approved_request.user_id = sqlc.narg('held_by')::bigint
   )
@@ -90,6 +81,131 @@ ORDER BY
   CASE WHEN sqlc.arg('order_asc')::bool THEN items.id END ASC,
   CASE WHEN NOT sqlc.arg('order_asc')::bool THEN items.created_at END DESC,
   CASE WHEN NOT sqlc.arg('order_asc')::bool THEN items.id END DESC
+LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
+
+-- One representative item per equivalent inventory group. `quantity` is the physical-item count.
+-- name: ListItemGroups :many
+WITH filtered_items AS (
+  SELECT
+    items.id,
+    items.created_at,
+    items.consumption,
+    items.type_id,
+    items.location_id,
+    item_values.values AS property_values,
+    viewer_request.status AS viewer_request_status,
+    approved_request.user_id AS holder_id,
+    sort_key.number_key,
+    sort_key.text_key
+  FROM items
+  JOIN item_types ON item_types.id = items.type_id
+  LEFT JOIN item_properties AS sort_property
+    ON sort_property.item_id = items.id
+   AND sort_property.property_id = sqlc.narg('sort_property_id')::bigint
+  LEFT JOIN item_requests AS viewer_request
+    ON viewer_request.item_id = items.id
+   AND viewer_request.user_id = sqlc.arg('viewer_id')::bigint
+  LEFT JOIN item_requests AS approved_request
+    ON approved_request.item_id = items.id
+   AND approved_request.status = 'approved'
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(
+      jsonb_object_agg(item_properties.property_id, item_properties.property_value),
+      '{}'::jsonb
+    ) AS values
+    FROM item_properties
+    WHERE item_properties.item_id = items.id
+  ) AS item_values ON true
+  LEFT JOIN LATERAL (
+    SELECT
+      CASE sort_property_definition.value_type
+        WHEN 'number'  THEN (sort_property.property_value #>> '{}')::numeric
+        WHEN 'boolean' THEN (sort_property.property_value #>> '{}')::boolean::int::numeric
+        WHEN 'price'   THEN (sort_property.property_value ->> 'amount')::numeric
+        WHEN 'mass'    THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+        WHEN 'volume'  THEN (sort_property.property_value ->> 'amount')::numeric * sort_unit_factor.factor
+      END AS number_key,
+      CASE sort_property_definition.value_type
+        WHEN 'string' THEN lower(sort_property.property_value #>> '{}')
+        -- An expiry is stored as an ISO date string, which already sorts chronologically as text.
+        WHEN 'expiry' THEN sort_property.property_value #>> '{}'
+      END AS text_key
+    FROM properties AS sort_property_definition
+    LEFT JOIN ROWS FROM (
+      unnest(sqlc.arg('unit_value_types')::text[]),
+      unnest(sqlc.arg('unit_names')::text[]),
+      unnest(sqlc.arg('unit_factors')::bigint[])
+    ) AS sort_unit_factor(value_type, unit_name, factor)
+      ON sort_unit_factor.value_type = sort_property_definition.value_type
+     AND sort_unit_factor.unit_name = sort_property.property_value ->> 'unit'
+    WHERE sort_property_definition.id = sort_property.property_id
+  ) AS sort_key ON true
+  WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+    AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+    AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
+    AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+    AND (sqlc.narg('location_ids')::bigint[] IS NULL OR items.location_id = ANY(sqlc.narg('location_ids')::bigint[]))
+    AND (
+      sqlc.narg('held_by')::bigint IS NULL
+      OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
+      OR approved_request.user_id = sqlc.narg('held_by')::bigint
+    )
+    AND (
+      sqlc.arg('search')::text = ''
+      OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+      OR EXISTS (
+        SELECT 1 FROM item_properties
+        JOIN properties ON properties.id = item_properties.property_id
+        WHERE item_properties.item_id = items.id
+          AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+          AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+      )
+      OR render_item_derived_name(items.id, item_types.derived_name_format)
+        ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM ROWS FROM (
+        unnest(sqlc.arg('property_ids')::bigint[]),
+        unnest(sqlc.arg('property_values')::jsonb[])
+      ) AS filters(property_id, property_value)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM item_properties
+        WHERE item_properties.item_id = items.id
+          AND item_properties.property_id = filters.property_id
+          AND item_properties.property_value = filters.property_value
+      )
+    )
+), grouped_items AS (
+  SELECT
+    min(id) AS representative_id,
+    count(*) AS quantity,
+    min(created_at) AS oldest_created_at,
+    max(created_at) AS newest_created_at,
+    consumption,
+    type_id,
+    location_id,
+    property_values,
+    viewer_request_status,
+    holder_id,
+    min(number_key) AS number_key,
+    min(text_key) AS text_key
+  FROM filtered_items
+  GROUP BY consumption, type_id, location_id, property_values, viewer_request_status, holder_id
+)
+SELECT representative_item.*, grouped_items.quantity
+FROM grouped_items
+JOIN items AS representative_item ON representative_item.id = grouped_items.representative_id
+ORDER BY
+  CASE WHEN sqlc.arg('order_asc')::bool THEN grouped_items.number_key END ASC NULLS LAST,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN grouped_items.number_key END DESC NULLS LAST,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN grouped_items.text_key END ASC NULLS LAST,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN grouped_items.text_key END DESC NULLS LAST,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN grouped_items.oldest_created_at END ASC,
+  CASE WHEN sqlc.arg('order_asc')::bool THEN grouped_items.representative_id END ASC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN grouped_items.newest_created_at END DESC,
+  CASE WHEN NOT sqlc.arg('order_asc')::bool THEN grouped_items.representative_id END DESC
 LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: CountItems :one
@@ -135,6 +251,77 @@ WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_i
         AND item_properties.property_value = filters.property_value
     )
   );
+
+-- Count grouped rows for pagination. CountItems remains the physical-item count.
+-- name: CountItemGroups :one
+WITH filtered_items AS (
+  SELECT
+    items.consumption,
+    items.type_id,
+    items.location_id,
+    item_values.values AS property_values,
+    viewer_request.status AS viewer_request_status,
+    approved_request.user_id AS holder_id
+  FROM items
+  JOIN item_types ON item_types.id = items.type_id
+  LEFT JOIN item_requests AS viewer_request
+    ON viewer_request.item_id = items.id
+   AND viewer_request.user_id = sqlc.arg('viewer_id')::bigint
+  LEFT JOIN item_requests AS approved_request
+    ON approved_request.item_id = items.id
+   AND approved_request.status = 'approved'
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(
+      jsonb_object_agg(item_properties.property_id, item_properties.property_value),
+      '{}'::jsonb
+    ) AS values
+    FROM item_properties
+    WHERE item_properties.item_id = items.id
+  ) AS item_values ON true
+  WHERE (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
+    AND (sqlc.narg('consumption')::consumption_status[] IS NULL OR items.consumption = ANY(sqlc.narg('consumption')::consumption_status[]))
+    AND (sqlc.narg('created_from')::timestamptz IS NULL OR items.created_at >= sqlc.narg('created_from'))
+    AND (sqlc.narg('created_to')::timestamptz IS NULL OR items.created_at <= sqlc.narg('created_to'))
+    AND (sqlc.narg('location_ids')::bigint[] IS NULL OR items.location_id = ANY(sqlc.narg('location_ids')::bigint[]))
+    AND (
+      sqlc.narg('held_by')::bigint IS NULL
+      OR (sqlc.narg('held_by')::bigint = 0 AND approved_request IS NULL)
+      OR approved_request.user_id = sqlc.narg('held_by')::bigint
+    )
+    AND (
+      sqlc.arg('search')::text = ''
+      OR item_types.derived_name_format ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+      OR EXISTS (
+        SELECT 1 FROM item_properties
+        JOIN properties ON properties.id = item_properties.property_id
+        WHERE item_properties.item_id = items.id
+          AND item_types.derived_name_format LIKE '%{' || escape_like_pattern(properties.name) || '}%'
+          AND item_properties.property_value #>> '{}' ILIKE '%' || escape_like_pattern(sqlc.arg('search')::text) || '%'
+      )
+      OR render_item_derived_name(items.id, item_types.derived_name_format)
+        ILIKE '%' || replace(escape_like_pattern(trim(sqlc.arg('search')::text)), ' ', '%') || '%'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM ROWS FROM (
+        unnest(sqlc.arg('property_ids')::bigint[]),
+        unnest(sqlc.arg('property_values')::jsonb[])
+      ) AS filters(property_id, property_value)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM item_properties
+        WHERE item_properties.item_id = items.id
+          AND item_properties.property_id = filters.property_id
+          AND item_properties.property_value = filters.property_value
+      )
+    )
+)
+SELECT count(*)
+FROM (
+  SELECT 1
+  FROM filtered_items
+  GROUP BY consumption, type_id, location_id, property_values, viewer_request_status, holder_id
+) AS groups;
 
 -- Sums every structured property (price, mass, volume) over the same set of items CountItems
 -- counts, so the WHERE block below has to stay identical to it. Mass and volume are summed in
@@ -284,3 +471,11 @@ UPDATE item_properties SET property_value = $3 WHERE item_id = $1 AND property_i
 
 -- name: RemoveItemProperty :execrows
 DELETE FROM item_properties WHERE item_id = $1 AND property_id = $2;
+
+-- name: GetExpiryValuesForItems :many
+SELECT i.id AS item_id, ip.property_value, itype.expiring_soon_days
+FROM items i
+INNER JOIN item_properties ip ON i.id = ip.item_id
+INNER JOIN properties p ON ip.property_id = p.id
+INNER JOIN item_types itype ON i.type_id = itype.id
+WHERE p.value_type = 'expiry';

@@ -59,6 +59,7 @@
 	let propertyFilterValueLoadVersions = new SvelteMap<string, number>();
 	let itemsPerPage = $derived(pagination.perPage);
 	let itemOffset = $state(0);
+	let itemGroupsTotal = $state(0);
 	let itemsTotal = $state(0);
 	let itemPropertyTotals = $state<ItemPropertyTotal[]>([]);
 	let canManage = $derived(
@@ -66,7 +67,7 @@
 	);
 	let currentPage = $derived(Math.floor(itemOffset / itemsPerPage) + 1);
 	let hasPreviousPage = $derived(itemOffset > 0);
-	let hasNextPage = $derived(itemOffset + items.length < itemsTotal);
+	let hasNextPage = $derived(itemOffset + items.length < itemGroupsTotal);
 	let sortDialogOpen = $state(false);
 	let sortPropertyID = $derived(getSortPropertyID(page.url));
 	let sortOrder = $derived(getSortOrder(page.url));
@@ -195,6 +196,7 @@
 			const nextItems = await api.listItems({
 				limit: itemsPerPage,
 				offset,
+				grouped: true,
 				search,
 				typeID: itemTypeID,
 				locationID,
@@ -204,10 +206,15 @@
 				heldBy
 			});
 			if (version !== loadVersion) return;
+			if (nextItems.items.length === 0 && nextItems.total > 0 && offset >= nextItems.total) {
+				updateTableQuery({ page: Math.ceil(nextItems.total / itemsPerPage) });
+				return;
+			}
 
 			items = nextItems.items;
 			itemOffset = nextItems.offset;
-			itemsTotal = nextItems.total;
+			itemGroupsTotal = nextItems.total;
+			itemsTotal = nextItems.item_count;
 			itemPropertyTotals = nextItems.property_totals ?? [];
 			inventoryLoaded = true;
 		} catch (reason) {
@@ -274,9 +281,7 @@
 
 		try {
 			await api.consumeItem(item.id, status);
-			items = items.map((currentItem) =>
-				currentItem.id === item.id ? { ...currentItem, consumption: status } : currentItem
-			);
+			refreshInventory();
 			toast.success('Stanje stavke je promenjeno.');
 		} catch (reason) {
 			toast.error(reason instanceof ApiError ? reason.message : 'Stanje stavke nije promenjeno.');
@@ -483,7 +488,7 @@
 			onsortchange={sortItems}
 		/>
 		<PaginationFooter
-			total={itemsTotal}
+			total={itemGroupsTotal}
 			perPage={itemsPerPage}
 			page={currentPage}
 			{hasPreviousPage}

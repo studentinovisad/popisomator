@@ -1609,6 +1609,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
+                "description": "With ` + "`" + `grouped=true` + "`" + `, each row represents equivalent physical items. ` + "`" + `total` + "`" + ` then paginates grouped rows, while ` + "`" + `item_count` + "`" + ` is the matching physical-item count.",
                 "produces": [
                     "application/json"
                 ],
@@ -1696,6 +1697,12 @@ const docTemplate = `{
                         "default": "desc",
                         "description": "Sort order",
                         "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Group otherwise indistinguishable physical items",
+                        "name": "grouped",
                         "in": "query"
                     }
                 ],
@@ -3875,6 +3882,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty"
                     }
                 },
+                "quantity": {
+                    "description": "Quantity is the number of physical items represented by a grouped list row.",
+                    "type": "integer"
+                },
                 "request_status": {
                     "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus"
                 },
@@ -3923,7 +3934,7 @@ const docTemplate = `{
                     }
                 },
                 "value_count": {
-                    "description": "ValueCount is how many of the matched items carried the property. Compare it with\nItemsPage.Total to see whether the sum covers all of them.",
+                    "description": "ValueCount is how many of the matched physical items carried the property. Compare it with\nItemsPage.ItemCount to see whether the sum covers all of them.",
                     "type": "integer"
                 },
                 "value_type": {
@@ -4262,6 +4273,10 @@ const docTemplate = `{
         "github_com_studentinovisad_popisomator_backend_internal_dto.ItemsPage": {
             "type": "object",
             "properties": {
+                "item_count": {
+                    "description": "ItemCount is the matching physical-item count.",
+                    "type": "integer"
+                },
                 "items": {
                     "description": "Item page items",
                     "type": "array",

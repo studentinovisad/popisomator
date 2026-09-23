@@ -69,6 +69,7 @@ export type ItemRequestStatus = 'requested' | 'approved';
 
 export type Item = {
 	id: number;
+	quantity?: number;
 	consumption: ConsumptionStatus;
 	properties: ItemProperty[];
 	type_id: number;
@@ -82,7 +83,10 @@ export type ItemsPage = {
 	items: Item[];
 	limit: number;
 	offset: number;
+	// Number of grouped rows, used for pagination.
 	total: number;
+	// Number of physical items, used in the inventory summary and property totals.
+	item_count: number;
 	// Sums of the structured properties across every item matching the filters, not just this page.
 	property_totals: ItemPropertyTotal[];
 };
@@ -104,6 +108,7 @@ export type SortOrder = 'asc' | 'desc';
 export type HeldBy = 'nobody' | 'me';
 
 export type ListItemsParams = PageRequest & {
+	grouped?: boolean;
 	typeID?: number;
 	locationID?: number;
 	propertyFilters?: Record<number, PropertyValue>;

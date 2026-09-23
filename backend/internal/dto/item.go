@@ -8,7 +8,9 @@ import (
 )
 
 type Item struct {
-	ID            int64                        `json:"id"`
+	ID int64 `json:"id"`
+	// Quantity is the number of physical items represented by a grouped list row.
+	Quantity      int64                        `json:"quantity,omitempty"`
 	Consumption   repository.ConsumptionStatus `json:"consumption"`
 	Properties    []ItemProperty               `json:"properties"`
 	TypeID        int64                        `json:"type_id"`
@@ -30,6 +32,17 @@ func ToItemDTO(item repository.Item) Item {
 		itemDTO.LocationID = &item.LocationID.Int64
 	}
 
+	return itemDTO
+}
+
+func ToItemGroupDTO(item repository.ListItemGroupsRow) Item {
+	itemDTO := ToItemDTO(repository.Item{
+		ID:          item.ID,
+		Consumption: item.Consumption,
+		TypeID:      item.TypeID,
+		LocationID:  item.LocationID,
+	})
+	itemDTO.Quantity = item.Quantity
 	return itemDTO
 }
 
@@ -64,6 +77,8 @@ type ListItemsRequest struct {
 	SortPropertyID *int64 `validate:"omitempty,gt=0"`
 	Search         string `validate:"max=100"`
 	ViewerID       int64
+	// Grouped returns one row for otherwise indistinguishable physical items.
+	Grouped bool
 	// List only items held by user of ID.
 	// Held items are items which have been approved to a user via item requests.
 	// ID of 0 means to only show unheld/free items.
@@ -76,6 +91,8 @@ type ItemsPage struct {
 	Limit  int32  `json:"limit"`
 	Offset int32  `json:"offset"`
 	Total  int64  `json:"total"`
+	// ItemCount is the matching physical-item count.
+	ItemCount int64 `json:"item_count"`
 	// PropertyTotals sums the structured properties of every item matching the filters, not just the
 	// ones on this page.
 	PropertyTotals []ItemPropertyTotal `json:"property_totals"`
@@ -90,8 +107,8 @@ type ItemPropertyTotal struct {
 	PropertyName string          `json:"property_name"`
 	ValueType    string          `json:"value_type"`
 	Value        json.RawMessage `json:"value"`
-	// ValueCount is how many of the matched items carried the property. Compare it with
-	// ItemsPage.Total to see whether the sum covers all of them.
+	// ValueCount is how many of the matched physical items carried the property. Compare it with
+	// ItemsPage.ItemCount to see whether the sum covers all of them.
 	ValueCount int64 `json:"value_count"`
 }
 

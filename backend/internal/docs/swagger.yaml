@@ -346,6 +346,10 @@ definitions:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemProperty'
         type: array
+      quantity:
+        description: Quantity is the number of physical items represented by a grouped
+          list row.
+        type: integer
       request_status:
         $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_repository.RequestStatus'
       type_id:
@@ -379,8 +383,8 @@ definitions:
         type: array
       value_count:
         description: |-
-          ValueCount is how many of the matched items carried the property. Compare it with
-          ItemsPage.Total to see whether the sum covers all of them.
+          ValueCount is how many of the matched physical items carried the property. Compare it with
+          ItemsPage.ItemCount to see whether the sum covers all of them.
         type: integer
       value_type:
         type: string
@@ -606,6 +610,9 @@ definitions:
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemsPage:
     properties:
+      item_count:
+        description: ItemCount is the matching physical-item count.
+        type: integer
       items:
         description: Item page items
         items:
@@ -2054,6 +2061,9 @@ paths:
       - ItemTypes
   /items:
     get:
+      description: With `grouped=true`, each row represents equivalent physical items.
+        `total` then paginates grouped rows, while `item_count` is the matching physical-item
+        count.
       parameters:
       - description: Page size (default 20, max 50)
         in: query
@@ -2112,6 +2122,10 @@ paths:
         in: query
         name: order
         type: string
+      - description: Group otherwise indistinguishable physical items
+        in: query
+        name: grouped
+        type: boolean
       produces:
       - application/json
       responses:
