@@ -74,6 +74,7 @@ type Querier interface {
 	// diff and context, so nothing else has to be resolved to render it.
 	GetAuditLogEntry(ctx context.Context, id int64) (AuditLog, error)
 	GetExistingExpiryNotifications(ctx context.Context, arg GetExistingExpiryNotificationsParams) ([]int64, error)
+	GetExpiryValuesForItems(ctx context.Context) ([]GetExpiryValuesForItemsRow, error)
 	GetItemByID(ctx context.Context, id int64) (Item, error)
 	GetItemProperties(ctx context.Context, itemIds []int64) ([]GetItemPropertiesRow, error)
 	GetItemRequest(ctx context.Context, arg GetItemRequestParams) (GetItemRequestRow, error)

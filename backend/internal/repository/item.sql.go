@@ -190,6 +190,41 @@ func (q *Queries) DeleteItem(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getExpiryValuesForItems = `-- name: GetExpiryValuesForItems :many
+SELECT i.id AS item_id, ip.property_value, itype.expiring_soon_days
+FROM items i
+INNER JOIN item_properties ip ON i.id = ip.item_id
+INNER JOIN properties p ON ip.property_id = p.id
+INNER JOIN item_types itype ON i.type_id = itype.id
+WHERE p.value_type = 'expiry'
+`
+
+type GetExpiryValuesForItemsRow struct {
+	ItemID           int64           `json:"item_id"`
+	PropertyValue    json.RawMessage `json:"property_value"`
+	ExpiringSoonDays pgtype.Int2     `json:"expiring_soon_days"`
+}
+
+func (q *Queries) GetExpiryValuesForItems(ctx context.Context) ([]GetExpiryValuesForItemsRow, error) {
+	rows, err := q.db.Query(ctx, getExpiryValuesForItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExpiryValuesForItemsRow
+	for rows.Next() {
+		var i GetExpiryValuesForItemsRow
+		if err := rows.Scan(&i.ItemID, &i.PropertyValue, &i.ExpiringSoonDays); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getItemByID = `-- name: GetItemByID :one
 SELECT id, created_at, consumption, type_id, location_id FROM items
 WHERE id = $1 LIMIT 1
