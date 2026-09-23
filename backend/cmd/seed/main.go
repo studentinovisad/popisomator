@@ -155,7 +155,7 @@ func generateChemicalRows() []chemicalRow {
 	// positives fall inside the type's chemicalExpiringSoonDays window, so the shelf carries both
 	// warning states rather than being uniformly fresh - without that, an expiry notification has
 	// nothing truthful to point at. Cycled by index, so reruns produce the same inventory.
-	expiryOffsetDays := []int{-45, 6, 120, -12, 40, 2, 200, -3, 70, 11, -21, 25, 9, 320, -7, 55}
+	expiryOffsetDays := []int{-45, 16, 120, 32, 40, 72, 200, 43, 70, 11, 21, 25, 9, 320, -7, 55}
 
 	rows := make([]chemicalRow, 0, len(chemicals))
 	for i, chemical := range chemicals {
@@ -270,22 +270,6 @@ type notificationSeed struct {
 	// Read rows are the ones a recipient has already seen: no highlight, and sorted below every
 	// unread row no matter how much older the unread one is.
 	Read bool
-}
-
-var notificationSeeds = []notificationSeed{
-	// Unread, recent: what the badge counts and the page highlights on a first visit.
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 1},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 8},
-	// Unread but a month old, sitting below fresher unread rows and above every read one.
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 24 * 30},
-	// Already read, and deliberately newer than the row above to show read state outranking age.
-	// Shares a request with the manager below: a pending request is worth telling both of them about.
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 40, Read: true},
-	{Email: "admin@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 52, Read: true},
-	// The manager sees a smaller list, so the two accounts do not look identical.
-	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpiringSoon, AgeHours: 15},
-	{Email: "manager@popisomator.test", Kind: repository.NotificationKindItemExpiry, ExpiryType: repository.NotifdescExpiryTypeExpired, AgeHours: 36, Read: true},
 }
 
 // consumptionSeed is one item taken off the shelf.
@@ -534,10 +518,6 @@ func main() {
 
 	if err := trimLowStockNotifications(ctx); err != nil {
 		log.Fatalf("unable to trim low stock notifications: %v", err)
-	}
-
-	if err := seedNotifications(ctx, users, items); err != nil {
-		log.Fatalf("unable to seed notifications: %v", err)
 	}
 
 	fmt.Println("seeding complete")
@@ -816,68 +796,6 @@ func seedItemRequests(ctx, adminCtx context.Context, users map[string]dto.User, 
 		}
 
 		fmt.Printf("created %s request for item %d (%s)\n", requestStatus, item.ID, user.FullName)
-	}
-
-	return nil
-}
-
-func seedNotifications(ctx context.Context, users map[string]dto.User, items []seededItem) error {
-	ages := make([]int32, 0, len(notificationSeeds))
-	readFlags := make([]bool, 0, len(notificationSeeds))
-	notificationIDs := make([]int64, 0, len(notificationSeeds))
-
-	// Group the items by the state their expiry date actually puts them in, so an expiry
-	// notification is aimed at an item that backs up what it claims. picked walks each group in
-	// turn.
-	expiryPools := make(map[repository.NotifdescExpiryType][]seededItem)
-	for _, item := range items {
-		if state, ok := item.expiryState(); ok {
-			expiryPools[state] = append(expiryPools[state], item)
-		}
-	}
-	picked := make(map[repository.NotifdescExpiryType]int)
-
-	for _, seed := range notificationSeeds {
-		recipient, ok := users[seed.Email]
-		if !ok {
-			return fmt.Errorf("seed user %s was not created", seed.Email)
-		}
-
-		var created []int64
-		var err error
-		var description string
-
-		switch seed.Kind {
-		case repository.NotificationKindItemExpiry:
-			pool := expiryPools[seed.ExpiryType]
-			if len(pool) == 0 {
-				return fmt.Errorf("no seeded item is %q, so that notification would claim something the item's date contradicts", seed.ExpiryType)
-			}
-
-			// Cycle through the matching items so repeated seeds of one type spread over different
-			// items instead of all naming the same one.
-			item := pool[picked[seed.ExpiryType]%len(pool)]
-			picked[seed.ExpiryType]++
-
-			created, err = service.CreateItemExpiryNotifications(ctx, item.Item.ID, seed.ExpiryType)
-			description = fmt.Sprintf("%s, item %d expires in %d days", seed.ExpiryType, item.Item.ID, item.ExpiryOffsetDays)
-		default:
-			return fmt.Errorf("unknown notification kind %q", seed.Kind)
-		}
-		if err != nil {
-			return fmt.Errorf("creating %s notification for %s: %w", seed.Kind, seed.Email, err)
-		}
-
-		notificationIDs = append(notificationIDs, created...)
-		ages = append(ages, int32(seed.AgeHours))
-		readFlags = append(readFlags, seed.Read)
-		fmt.Println(notificationIDs, len(notificationIDs), ages, len(ages))
-
-		state := "unread"
-		if seed.Read {
-			state = "read"
-		}
-		fmt.Printf("created %s notification for %s (%s, %s, %dh old)\n", seed.Kind, recipient.FullName, description, state, seed.AgeHours)
 	}
 
 	return nil
