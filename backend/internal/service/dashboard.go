@@ -176,8 +176,9 @@ type dashboardGroupKey struct {
 	groupName string
 }
 
-type dashboardPropertyKey struct {
+type dashboardGroupPropertyKey struct {
 	typeID     int64
+	groupName  string
 	propertyID int64
 }
 
@@ -186,7 +187,13 @@ func sumPropertyTotalRows(rows []dto.PropertyTotalRow) dto.PropertyTotalRow {
 		PropertyID:   rows[0].PropertyID,
 		PropertyName: rows[0].PropertyName,
 		ValueType:    rows[0].ValueType,
-		Currency:     rows[0].Currency,
+	}
+
+	for _, row := range rows {
+		if row.Currency != "" {
+			sum.Currency = row.Currency
+			break
+		}
 	}
 
 	var totalAmount, valueCount int64
@@ -204,20 +211,26 @@ func sumPropertyTotalRows(rows []dto.PropertyTotalRow) dto.PropertyTotalRow {
 func buildConsumptionQuantity(rows []repository.SumConsumptionQuantityByMonthRow) []dto.TypeConsumptionQuantity {
 	typeOrder := make([]int64, 0)
 	typeNames := make(map[int64]string)
-	monthOrderByType := make(map[int64][]string)
-	monthRowsByType := make(map[int64]map[string][]dto.PropertyTotalRow)
-	periodRowsByKey := make(map[dashboardPropertyKey][]dto.PropertyTotalRow)
+	groupOrderByType := make(map[int64][]string)
+	monthOrderByGroup := make(map[dashboardGroupKey][]string)
+	monthRowsByGroup := make(map[dashboardGroupKey]map[string][]dto.PropertyTotalRow)
+	periodRowsByKey := make(map[dashboardGroupPropertyKey][]dto.PropertyTotalRow)
 
 	for _, row := range rows {
 		if _, seen := typeNames[row.TypeID]; !seen {
 			typeOrder = append(typeOrder, row.TypeID)
 			typeNames[row.TypeID] = row.TypeName
-			monthRowsByType[row.TypeID] = make(map[string][]dto.PropertyTotalRow)
+		}
+
+		groupKey := dashboardGroupKey{typeID: row.TypeID, groupName: row.GroupName}
+		if _, seen := monthRowsByGroup[groupKey]; !seen {
+			groupOrderByType[row.TypeID] = append(groupOrderByType[row.TypeID], row.GroupName)
+			monthRowsByGroup[groupKey] = make(map[string][]dto.PropertyTotalRow)
 		}
 
 		month := row.Month.Time.Format(time.DateOnly)
-		if _, seen := monthRowsByType[row.TypeID][month]; !seen {
-			monthOrderByType[row.TypeID] = append(monthOrderByType[row.TypeID], month)
+		if _, seen := monthRowsByGroup[groupKey][month]; !seen {
+			monthOrderByGroup[groupKey] = append(monthOrderByGroup[groupKey], month)
 		}
 
 		totalRow := dto.PropertyTotalRow{
@@ -228,36 +241,47 @@ func buildConsumptionQuantity(rows []repository.SumConsumptionQuantityByMonthRow
 			TotalAmount:  row.TotalAmount,
 			ValueCount:   row.ValueCount,
 		}
-		monthRowsByType[row.TypeID][month] = append(monthRowsByType[row.TypeID][month], totalRow)
+		monthRowsByGroup[groupKey][month] = append(monthRowsByGroup[groupKey][month], totalRow)
 
-		periodKey := dashboardPropertyKey{typeID: row.TypeID, propertyID: row.PropertyID}
+		periodKey := dashboardGroupPropertyKey{typeID: row.TypeID, groupName: row.GroupName, propertyID: row.PropertyID}
 		periodRowsByKey[periodKey] = append(periodRowsByKey[periodKey], totalRow)
 	}
 
 	result := make([]dto.TypeConsumptionQuantity, 0, len(typeOrder))
 	for _, typeID := range typeOrder {
-		months := monthOrderByType[typeID]
-		buckets := make([]dto.QuantityBucket, 0, len(months))
-		for _, month := range months {
-			buckets = append(buckets, dto.QuantityBucket{
-				Month:  month,
-				Totals: dto.BuildPropertyTotals(monthRowsByType[typeID][month]),
+		groupNames := groupOrderByType[typeID]
+		groups := make([]dto.GroupConsumptionQuantity, 0, len(groupNames))
+
+		for _, groupName := range groupNames {
+			groupKey := dashboardGroupKey{typeID: typeID, groupName: groupName}
+			months := monthOrderByGroup[groupKey]
+			buckets := make([]dto.QuantityBucket, 0, len(months))
+			for _, month := range months {
+				buckets = append(buckets, dto.QuantityBucket{
+					Month:  month,
+					Totals: dto.BuildPropertyTotals(monthRowsByGroup[groupKey][month]),
+				})
+			}
+
+			periodRows := make([]dto.PropertyTotalRow, 0)
+			for key, keyRows := range periodRowsByKey {
+				if key.typeID == typeID && key.groupName == groupName {
+					periodRows = append(periodRows, sumPropertyTotalRows(keyRows))
+				}
+			}
+			sort.Slice(periodRows, func(i, j int) bool { return periodRows[i].PropertyID < periodRows[j].PropertyID })
+
+			groups = append(groups, dto.GroupConsumptionQuantity{
+				Name:         stockGroupLabel(groupName, typeNames[typeID]),
+				Buckets:      buckets,
+				PeriodTotals: dto.BuildPropertyTotals(periodRows),
 			})
 		}
 
-		periodRows := make([]dto.PropertyTotalRow, 0)
-		for key, keyRows := range periodRowsByKey {
-			if key.typeID == typeID {
-				periodRows = append(periodRows, sumPropertyTotalRows(keyRows))
-			}
-		}
-		sort.Slice(periodRows, func(i, j int) bool { return periodRows[i].PropertyID < periodRows[j].PropertyID })
-
 		result = append(result, dto.TypeConsumptionQuantity{
-			TypeID:       typeID,
-			TypeName:     typeNames[typeID],
-			Buckets:      buckets,
-			PeriodTotals: dto.BuildPropertyTotals(periodRows),
+			TypeID:   typeID,
+			TypeName: typeNames[typeID],
+			Groups:   groups,
 		})
 	}
 

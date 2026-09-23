@@ -155,9 +155,15 @@ WITH axis AS (
   )::date AS month
 ),
 consumed AS (
-  SELECT items.id, items.type_id, date_trunc('month', audit_log.created_at)::date AS month
+  SELECT
+    items.id,
+    items.type_id,
+    item_types.name AS type_name,
+    render_item_derived_name(items.id, item_types.derived_name_format) AS group_name,
+    date_trunc('month', audit_log.created_at)::date AS month
   FROM audit_log
   JOIN items ON items.id = audit_log.target_id
+  JOIN item_types ON item_types.id = items.type_id
   WHERE audit_log.action = 'item_consume'
     AND audit_log.target_type = 'item'
     AND audit_log.changes->0->>'old' = 'not_consumed'
@@ -166,16 +172,22 @@ consumed AS (
       - make_interval(months => sqlc.arg('months')::int - 1)
     AND (sqlc.narg('type_id')::bigint IS NULL OR items.type_id = sqlc.narg('type_id'))
 ),
-relevant_properties AS (
-  SELECT DISTINCT item_type_properties.type_id, properties.id AS property_id, properties.name AS property_name, properties.value_type
-  FROM item_type_properties
-  JOIN properties ON properties.id = item_type_properties.property_id
-  WHERE properties.value_type IN ('price', 'mass', 'volume')
-    AND (sqlc.narg('type_id')::bigint IS NULL OR item_type_properties.type_id = sqlc.narg('type_id'))
+relevant_groups AS (
+  SELECT DISTINCT
+    consumed.type_id,
+    consumed.type_name,
+    consumed.group_name,
+    properties.id AS property_id,
+    properties.name AS property_name,
+    properties.value_type
+  FROM consumed
+  JOIN item_properties AS item_property ON item_property.item_id = consumed.id
+  JOIN properties ON properties.id = item_property.property_id AND properties.value_type IN ('price', 'mass', 'volume')
 ),
 sums AS (
   SELECT
     consumed.type_id,
+    consumed.group_name,
     consumed.month,
     properties.id AS property_id,
     COALESCE(item_property.property_value ->> 'currency', '')::text AS currency,
@@ -194,26 +206,27 @@ sums AS (
     ON unit_factor.value_type = properties.value_type
    AND unit_factor.unit_name = item_property.property_value ->> 'unit'
   WHERE properties.value_type = 'price' OR unit_factor.factor IS NOT NULL
-  GROUP BY consumed.type_id, consumed.month, properties.id, currency
+  GROUP BY consumed.type_id, consumed.group_name, consumed.month, properties.id, currency
 )
 SELECT
-  relevant_properties.type_id,
-  item_types.name AS type_name,
+  relevant_groups.type_id,
+  relevant_groups.type_name,
+  relevant_groups.group_name,
   axis.month,
-  relevant_properties.property_id,
-  relevant_properties.property_name,
-  relevant_properties.value_type,
+  relevant_groups.property_id,
+  relevant_groups.property_name,
+  relevant_groups.value_type,
   COALESCE(sums.currency, '')::text AS currency,
   COALESCE(sums.total_amount, '0')::text AS total_amount,
   COALESCE(sums.value_count, 0)::bigint AS value_count
-FROM relevant_properties
-JOIN item_types ON item_types.id = relevant_properties.type_id
+FROM relevant_groups
 CROSS JOIN axis
 LEFT JOIN sums
-  ON sums.type_id = relevant_properties.type_id
+  ON sums.type_id = relevant_groups.type_id
+ AND sums.group_name = relevant_groups.group_name
  AND sums.month = axis.month
- AND sums.property_id = relevant_properties.property_id
-ORDER BY item_types.name, relevant_properties.property_id, axis.month;
+ AND sums.property_id = relevant_groups.property_id
+ORDER BY relevant_groups.type_name, relevant_groups.group_name, relevant_groups.property_id, axis.month;
 
 -- name: ListMostConsumedGroups :many
 WITH consumed AS (

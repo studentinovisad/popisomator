@@ -1,19 +1,40 @@
 <script lang="ts">
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { Collapsible } from 'bits-ui';
-	import type { DashboardTypeConsumptionQuantity } from '$lib/api';
+	import type { DashboardTypeConsumptionQuantity, PropertyValueType } from '$lib/api';
 	import {
-		consumptionPropertyRows,
+		consumptionGroupRows,
 		formatMonthLong,
-		formatPropertyTotal
+		formatPropertyTotal,
+		sortGroupsByTotal,
+		sumRowsFooters
 	} from '$lib/domain/dashboard';
 
-	let { types }: { types: DashboardTypeConsumptionQuantity[] } = $props();
+	let {
+		types,
+		valueTypes
+	}: {
+		types: DashboardTypeConsumptionQuantity[];
+		valueTypes: PropertyValueType[];
+	} = $props();
+
+	const visibleTypes = $derived(
+		types
+			.map((type) => {
+				const groups = sortGroupsByTotal(
+					type.groups.filter((group) => consumptionGroupRows(group, valueTypes).length > 0),
+					valueTypes
+				);
+				const rows = groups.flatMap((group) => consumptionGroupRows(group, valueTypes));
+				return { ...type, groups, rows, footers: sumRowsFooters(rows) };
+			})
+			.filter((type) => type.groups.length > 0)
+	);
 </script>
 
 <div class="space-y-2">
-	{#each types as type (type.type_id)}
-		<Collapsible.Root open={types.length === 1} class="rounded-md border border-line">
+	{#each visibleTypes as type (type.type_id)}
+		<Collapsible.Root open={visibleTypes.length === 1} class="rounded-md border border-line">
 			<Collapsible.Trigger
 				class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-soft"
 			>
@@ -24,18 +45,18 @@
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-line text-xs text-muted">
-							<th class="px-3 py-2 text-left font-medium">Svojstvo</th>
-							{#each type.buckets as bucket (bucket.month)}
+							<th class="px-3 py-2 text-left font-medium">Naziv</th>
+							{#each type.groups[0].buckets as bucket (bucket.month)}
 								<th class="px-3 py-2 text-right font-medium">{formatMonthLong(bucket.month)}</th>
 							{/each}
 							<th class="px-3 py-2 text-right font-medium">Ukupno</th>
 						</tr>
 					</thead>
 					<tbody>
-						{#each consumptionPropertyRows(type) as row (row.propertyID)}
+						{#each type.rows as row (row.key)}
 							<tr class="border-b border-line last:border-0">
-								<td class="px-3 py-2 text-ink">{row.periodTotal.property_name}</td>
-								{#each row.cells as cell, index (type.buckets[index].month)}
+								<td class="px-3 py-2 text-ink">{row.label}</td>
+								{#each row.cells as cell, index (type.groups[0].buckets[index].month)}
 									<td class="px-3 py-2 text-right text-ink tabular-nums">
 										{cell ? formatPropertyTotal(cell) : '—'}
 									</td>
@@ -43,6 +64,19 @@
 								<td class="px-3 py-2 text-right font-semibold text-ink tabular-nums">
 									{formatPropertyTotal(row.periodTotal)}
 								</td>
+							</tr>
+						{/each}
+						{#each type.footers as group (group.label)}
+							<tr class="border-t-2 border-line font-semibold text-ink">
+								<td class="px-3 py-2">{group.label}</td>
+								{#each group.footer.cells as cell, index (type.groups[0].buckets[index].month)}
+									<td class="px-3 py-2 text-right tabular-nums">
+										{cell.value_count > 0 ? formatPropertyTotal(cell) : '—'}
+									</td>
+								{/each}
+								<td class="px-3 py-2 text-right tabular-nums"
+									>{formatPropertyTotal(group.footer.total)}</td
+								>
 							</tr>
 						{/each}
 					</tbody>

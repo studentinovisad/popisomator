@@ -34,11 +34,16 @@ type QuantityBucket struct {
 	Totals []ItemPropertyTotal `json:"totals"`
 }
 
-type TypeConsumptionQuantity struct {
-	TypeID       int64               `json:"type_id"`
-	TypeName     string              `json:"type_name"`
+type GroupConsumptionQuantity struct {
+	Name         string              `json:"name"`
 	Buckets      []QuantityBucket    `json:"buckets"`
 	PeriodTotals []ItemPropertyTotal `json:"period_totals"`
+}
+
+type TypeConsumptionQuantity struct {
+	TypeID   int64                      `json:"type_id"`
+	TypeName string                     `json:"type_name"`
+	Groups   []GroupConsumptionQuantity `json:"groups"`
 }
 
 type MostConsumedGroup struct {

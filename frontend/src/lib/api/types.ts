@@ -497,11 +497,16 @@ export type DashboardQuantityBucket = {
 	totals: ItemPropertyTotal[];
 };
 
+export type DashboardGroupConsumptionQuantity = {
+	name: string;
+	buckets: DashboardQuantityBucket[];
+	period_totals: ItemPropertyTotal[];
+};
+
 export type DashboardTypeConsumptionQuantity = {
 	type_id: number;
 	type_name: string;
-	buckets: DashboardQuantityBucket[];
-	period_totals: ItemPropertyTotal[];
+	groups: DashboardGroupConsumptionQuantity[];
 };
 
 export type DashboardMostConsumedGroup = {
