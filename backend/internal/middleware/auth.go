@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
@@ -29,26 +30,36 @@ func RequireAuth(next http.Handler) http.Handler {
 	})
 }
 
+func HasRoles(ctx context.Context, roles ...repository.UserRole) (bool, error) {
+	id, ok := ctx.Value("userID").(int64)
+	if !ok {
+		return false, errors.New("user ID not found in context")
+	}
+
+	user, err := service.GetUserDetails(ctx, id)
+	if err != nil {
+		return false, errors.New("error fetching user details")
+	}
+
+	for _, role := range roles {
+		if user.Role == role {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func RequireRoles(roles ...repository.UserRole) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id, ok := r.Context().Value("userID").(int64)
-			if !ok {
-				response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
-				return
-			}
-
-			user, err := service.GetUserDetails(r.Context(), id)
+			hasRole, err := HasRoles(r.Context(), roles...)
 			if err != nil {
-				response.WriteError(w, http.StatusInternalServerError, "error fetching user details")
+				response.WriteError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-
-			for _, role := range roles {
-				if user.Role == role {
-					next.ServeHTTP(w, r)
-					return
-				}
+			if hasRole {
+				next.ServeHTTP(w, r)
+				return
 			}
 
 			response.WriteError(w, http.StatusForbidden, "forbidden")

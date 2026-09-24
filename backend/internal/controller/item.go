@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/studentinovisad/popisomator/backend/internal/dto"
+	"github.com/studentinovisad/popisomator/backend/internal/middleware"
 	"github.com/studentinovisad/popisomator/backend/internal/pagination"
 	"github.com/studentinovisad/popisomator/backend/internal/repository"
 	"github.com/studentinovisad/popisomator/backend/internal/response"
@@ -239,12 +240,12 @@ func ConsumeItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userDetails, err := service.GetUserDetails(r.Context(), userID)
+	isManager, err := middleware.HasRoles(r.Context(), "admin", "manager")
 	if err != nil {
-		response.WriteError(w, http.StatusInternalServerError, "error fetching role")
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if userDetails.Role == "user" {
+	if !isManager {
 		isApproved, err := service.CheckItemApproval(r.Context(), userID, itemID)
 		if err != nil {
 			response.WriteError(w, http.StatusInternalServerError, "error checking for approval")
