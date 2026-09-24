@@ -21,6 +21,10 @@ func ConfigureJWT(secret string) {
 	hmacSecret = []byte(secret)
 }
 
+func generatePasswordHash(password []byte) ([]byte, error) {
+	return bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+}
+
 // Returns JWT token if successful, error if not
 func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 	if len(hmacSecret) == 0 {
@@ -85,7 +89,7 @@ func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error
 		return dto.User{}, err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := generatePasswordHash([]byte(req.Password))
 	if err != nil {
 		return dto.User{}, err
 	}
@@ -118,7 +122,7 @@ func ChangePassword(ctx context.Context, id int64, req dto.ChangePasswordRequest
 		return ErrIncorrectPassword
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	hash, err := generatePasswordHash([]byte(req.NewPassword))
 	if err != nil {
 		return err
 	}
@@ -139,7 +143,7 @@ func SetUserPassword(ctx context.Context, actorID int64, id int64, req dto.SetPa
 		return err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	hash, err := generatePasswordHash([]byte(req.NewPassword))
 	if err != nil {
 		return err
 	}
