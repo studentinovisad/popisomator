@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import KeyRound from '@lucide/svelte/icons/key-round';
+	import { Button } from 'bits-ui';
+	import ChangePasswordDialog from '$lib/components/auth/ChangePasswordDialog.svelte';
 	import { createAuthPage } from '$lib/state/auth-page.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { userRoleLabel } from '$lib/domain/users';
 
 	const authPage = createAuthPage({ unavailableMessage: 'Nalog trenutno nije dostupan.' });
+
+	let passwordDialogOpen = $state(false);
 
 	onMount(() => {
 		void authPage.load();
@@ -24,11 +29,26 @@
 		{#if authPage.state.user}
 			<section class="mx-auto max-w-3xl" aria-labelledby="account-heading">
 				<div class="border-b border-line pb-5">
-					<p class="text-sm text-muted">{userRoleLabel(authPage.state.user.role)}</p>
-					<h2 id="account-heading" class="mt-1 truncate text-xl font-semibold text-ink">
-						{authPage.state.user.full_name}
-					</h2>
+					<div class="min-w-0">
+						<p class="text-sm text-muted">{userRoleLabel(authPage.state.user.role)}</p>
+						<h2 id="account-heading" class="mt-1 truncate text-xl font-semibold text-ink">
+							{authPage.state.user.full_name}
+						</h2>
+					</div>
+					<div class="mt-3 flex items-center gap-2 sm:justify-end">
+						<Button.Root
+							class="inline-grid size-8 place-items-center rounded text-muted transition-colors hover:bg-soft hover:text-ink"
+							type="button"
+							onclick={() => (passwordDialogOpen = true)}
+							aria-label="Promeni lozinku"
+							title="Promeni lozinku"
+						>
+							<KeyRound class="size-4" aria-hidden="true" />
+						</Button.Root>
+					</div>
 				</div>
+
+				<ChangePasswordDialog bind:open={passwordDialogOpen} />
 
 				<section class="mt-3" aria-labelledby="account-details-heading">
 					<h3 id="account-details-heading" class="text-base font-semibold text-ink">

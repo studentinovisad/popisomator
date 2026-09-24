@@ -3225,6 +3225,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/password": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Change the currently authenticated user's own password",
+                "parameters": [
+                    {
+                        "description": "Old and new password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "invalid request / incorrect old password",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/users/{id}": {
             "get": {
                 "security": [
@@ -3373,6 +3417,69 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "invalid request / validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/password": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Set a user's password (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.SetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
                         }
@@ -3609,6 +3716,22 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "old_password": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket": {
             "type": "object",
             "properties": {
@@ -3780,6 +3903,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket"
                     }
                 },
+                "consumption_quantity": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity"
+                    }
+                },
                 "expired_backlog": {
                     "type": "integer"
                 },
@@ -3800,6 +3929,12 @@ const docTemplate = `{
                 },
                 "months": {
                     "type": "integer"
+                },
+                "most_consumed": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup"
+                    }
                 },
                 "stock_groups": {
                     "type": "array",
@@ -3850,11 +3985,37 @@ const docTemplate = `{
                 "total_count": {
                     "type": "integer"
                 },
+                "totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
+                },
                 "type_id": {
                     "type": "integer"
                 },
                 "type_name": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity": {
+            "type": "object",
+            "properties": {
+                "buckets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "period_totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
                 }
             }
         },
@@ -3926,6 +4087,9 @@ const docTemplate = `{
             "properties": {
                 "property_id": {
                     "type": "integer"
+                },
+                "property_name": {
+                    "type": "string"
                 },
                 "value": {
                     "type": "array",
@@ -4358,6 +4522,29 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup": {
+            "type": "object",
+            "properties": {
+                "consumed_count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.Notification": {
             "type": "object",
             "properties": {
@@ -4505,6 +4692,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "string"
+                },
+                "totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.RegistrationRequest": {
             "type": "object",
             "properties": {
@@ -4538,6 +4739,18 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.SetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password"
+            ],
+            "properties": {
+                "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.StockGroup": {
             "type": "object",
             "properties": {
@@ -4552,6 +4765,23 @@ const docTemplate = `{
                 },
                 "total_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity"
+                    }
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
                 }
             }
         },

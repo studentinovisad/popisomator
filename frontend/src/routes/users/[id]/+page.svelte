@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import KeyRound from '@lucide/svelte/icons/key-round';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { Button, Portal } from 'bits-ui';
 	import { api, ApiError, type UpdateUserRequest, type User, type UserRole } from '$lib/api';
+	import ChangePasswordDialog from '$lib/components/auth/ChangePasswordDialog.svelte';
 	import RoleSelect from '$lib/components/auth/RoleSelect.svelte';
 	import ProtectedPageState from '$lib/components/shared/ProtectedPageState.svelte';
 	import { emailError, requiredTextError } from '$lib/domain/form-validation';
@@ -26,10 +28,11 @@
 	let fullNameError = $state('');
 	let loading = $state(false);
 	let loadError = $state('');
+	let passwordDialogOpen = $state(false);
 	let role = $state<UserRole>('user');
 	let saving = $state(false);
 	let user = $state<User | null>(null);
-	let canChangeRole = $derived(user?.id !== authPage.state.user?.id);
+	let canManageOther = $derived(user?.id !== authPage.state.user?.id);
 
 	onMount(() => {
 		void authPage.load().then(() => {
@@ -97,7 +100,7 @@
 		const update: UpdateUserRequest = {};
 		if (fullName !== user.full_name) update.full_name = fullName;
 		if (email !== user.email) update.email = email;
-		if (canChangeRole && role !== user.role) update.role = role;
+		if (canManageOther && role !== user.role) update.role = role;
 		if (Object.keys(update).length === 0) {
 			cancelEditing();
 			return;
@@ -155,6 +158,18 @@
 						</h2>
 					</div>
 					<div class="mt-3 flex items-center gap-2 sm:justify-end">
+						{#if canManageOther}
+							<Button.Root
+								class="inline-grid size-8 place-items-center rounded text-muted transition-colors hover:bg-soft hover:text-ink"
+								type="button"
+								disabled={saving}
+								onclick={() => (passwordDialogOpen = true)}
+								aria-label="Promeni lozinku korisnika"
+								title="Promeni lozinku"
+							>
+								<KeyRound class="size-4" aria-hidden="true" />
+							</Button.Root>
+						{/if}
 						<Button.Root
 							class={`inline-grid size-8 place-items-center rounded transition-colors ${
 								editing ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-soft hover:text-ink'
@@ -170,6 +185,8 @@
 						</Button.Root>
 					</div>
 				</div>
+
+				<ChangePasswordDialog bind:open={passwordDialogOpen} userID={user.id} />
 
 				<section class="mt-3" aria-labelledby="user-details-heading">
 					<h3 id="user-details-heading" class="text-base font-semibold text-ink">Podaci naloga</h3>
@@ -232,7 +249,7 @@
 											value={role}
 											ariaLabel="Uloga korisnika"
 											compact={true}
-											disabled={!canChangeRole || saving}
+											disabled={!canManageOther || saving}
 											onvaluechange={(nextRole) => (role = nextRole)}
 										/>
 									{:else}

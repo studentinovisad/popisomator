@@ -21,6 +21,10 @@ func ConfigureJWT(secret string) {
 	hmacSecret = []byte(secret)
 }
 
+func generatePasswordHash(password []byte) ([]byte, error) {
+	return bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+}
+
 // Returns JWT token if successful, error if not
 func Login(ctx context.Context, req dto.LoginRequest) (string, error) {
 	if len(hmacSecret) == 0 {
@@ -85,7 +89,7 @@ func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error
 		return dto.User{}, err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := generatePasswordHash([]byte(req.Password))
 	if err != nil {
 		return dto.User{}, err
 	}
@@ -102,4 +106,51 @@ func CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.User, error
 	}
 
 	return dto.ToUserDTO(user), nil
+}
+
+func ChangePassword(ctx context.Context, id int64, req dto.ChangePasswordRequest) error {
+	if err := dto.Validate(req); err != nil {
+		return err
+	}
+
+	user, err := db.Queries.GetUserByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		return ErrIncorrectPassword
+	}
+
+	hash, err := generatePasswordHash([]byte(req.NewPassword))
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Queries.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: string(hash),
+	})
+	return err
+}
+
+func SetUserPassword(ctx context.Context, actorID int64, id int64, req dto.SetPasswordRequest) error {
+	if actorID == id {
+		return ErrCannotSetOwnPassword
+	}
+
+	if err := dto.Validate(req); err != nil {
+		return err
+	}
+
+	hash, err := generatePasswordHash([]byte(req.NewPassword))
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Queries.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: string(hash),
+	})
+	return err
 }

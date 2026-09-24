@@ -29,7 +29,9 @@ func writeServiceError(w http.ResponseWriter, err error, fallback string) {
 		errors.Is(err, service.ErrDerivedNamePropertyInUse),
 		errors.Is(err, service.ErrInvalidItemTypePropertyOrder),
 		errors.Is(err, service.ErrItemReservedByApproval),
-		errors.Is(err, service.ErrLocationCycleDetected):
+		errors.Is(err, service.ErrLocationCycleDetected),
+		errors.Is(err, service.ErrIncorrectPassword),
+		errors.Is(err, service.ErrCannotSetOwnPassword):
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 	case errors.As(err, &valErr):
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
