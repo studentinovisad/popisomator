@@ -116,6 +116,7 @@ func UpdateItemRequest(w http.ResponseWriter, r *http.Request) {
 	var req dto.ItemRequestUpdateRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
 	}
 	req.UserID = userID
 	req.ItemID = itemID
