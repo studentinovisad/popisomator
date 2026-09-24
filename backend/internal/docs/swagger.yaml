@@ -464,16 +464,6 @@ definitions:
     - item_id
     - user_id
     type: object
-  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest:
-    properties:
-      item_id:
-        type: integer
-      user_id:
-        type: integer
-    required:
-    - item_id
-    - user_id
-    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestPreparationItem:
     properties:
       consumption:
@@ -545,6 +535,16 @@ definitions:
         type: integer
       user_name:
         type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestUpdateRequest:
+    properties:
+      status:
+        enum:
+        - requested
+        - approved
+        type: string
+    required:
+    - status
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestUserOption:
     properties:
@@ -1474,15 +1474,19 @@ paths:
       summary: Create an item request (admin only)
       tags:
       - ItemRequests
-  /item-requests/{item_id}/{user_id}:
+  /item-requests/{user_id}/{item_id}:
     delete:
       parameters:
-      - description: Item request to delete
-        in: body
-        name: body
+      - description: User ID
+        in: path
+        name: user_id
         required: true
-        schema:
-          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
+        type: integer
+      - description: Item ID
+        in: path
+        name: item_id
+        required: true
+        type: integer
       responses:
         "200":
           description: OK
@@ -1507,17 +1511,27 @@ paths:
       summary: Delete an item request (manager/admin only)
       tags:
       - ItemRequests
-  /item-requests/approve:
+  /item-requests/{user_id}/{item_id}/approve:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Item request to approve
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Item ID
+        in: path
+        name: item_id
+        required: true
+        type: integer
+      - description: Fields to update
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestUpdateRequest'
       produces:
       - application/json
       responses:
@@ -1539,7 +1553,7 @@ paths:
             $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
       security:
       - CookieAuth: []
-      summary: Approve an item request (manager/admin only). Approving an item request
+      summary: Update an item request (manager/admin only). Approving an item request
         deletes other unapproved requests for the same item.
       tags:
       - ItemRequests
@@ -1606,39 +1620,6 @@ paths:
       security:
       - CookieAuth: []
       summary: Create an item request on behalf of logged in user
-      tags:
-      - ItemRequests
-  /item-requests/me/{item_id}:
-    get:
-      parameters:
-      - description: Item ID
-        in: path
-        name: item_id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequest'
-        "400":
-          description: invalid item id
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "401":
-          description: not logged in
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "404":
-          description: not found
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-      security:
-      - CookieAuth: []
-      summary: Get personal item request (that the logged in user created) by item
-        ID
       tags:
       - ItemRequests
   /item-requests/preparation-report:

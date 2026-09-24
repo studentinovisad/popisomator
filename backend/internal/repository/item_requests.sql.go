@@ -11,31 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const approveItemRequest = `-- name: ApproveItemRequest :one
-UPDATE item_requests
-SET status = 'approved'
-WHERE user_id = $1 AND item_id = $2 AND status = 'requested'
-RETURNING user_id, item_id, created_at, status, reason
-`
-
-type ApproveItemRequestParams struct {
-	UserID int64 `json:"user_id"`
-	ItemID int64 `json:"item_id"`
-}
-
-func (q *Queries) ApproveItemRequest(ctx context.Context, arg ApproveItemRequestParams) (ItemRequest, error) {
-	row := q.db.QueryRow(ctx, approveItemRequest, arg.UserID, arg.ItemID)
-	var i ItemRequest
-	err := row.Scan(
-		&i.UserID,
-		&i.ItemID,
-		&i.CreatedAt,
-		&i.Status,
-		&i.Reason,
-	)
-	return i, err
-}
-
 const checkItemsForRequests = `-- name: CheckItemsForRequests :many
 SELECT user_id, item_id, created_at, status, reason FROM item_requests
 WHERE item_id = ANY($1::bigint[])
@@ -451,4 +426,30 @@ func (q *Queries) LockItemForRequest(ctx context.Context, id int64) (int64, erro
 	var id_2 int64
 	err := row.Scan(&id_2)
 	return id_2, err
+}
+
+const updateItemRequest_Status = `-- name: UpdateItemRequest_Status :one
+UPDATE item_requests
+SET status = $3
+WHERE user_id = $1 AND item_id = $2 AND status != $3
+RETURNING user_id, item_id, created_at, status, reason
+`
+
+type UpdateItemRequest_StatusParams struct {
+	UserID int64         `json:"user_id"`
+	ItemID int64         `json:"item_id"`
+	Status RequestStatus `json:"status"`
+}
+
+func (q *Queries) UpdateItemRequest_Status(ctx context.Context, arg UpdateItemRequest_StatusParams) (ItemRequest, error) {
+	row := q.db.QueryRow(ctx, updateItemRequest_Status, arg.UserID, arg.ItemID, arg.Status)
+	var i ItemRequest
+	err := row.Scan(
+		&i.UserID,
+		&i.ItemID,
+		&i.CreatedAt,
+		&i.Status,
+		&i.Reason,
+	)
+	return i, err
 }

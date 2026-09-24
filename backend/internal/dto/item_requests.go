@@ -85,9 +85,10 @@ type ItemRequestCreatePersonalRequest struct {
 	Reason string `json:"reason"`
 }
 
-type ItemRequestIdentifierRequest struct {
-	UserID int64 `json:"user_id" validate:"required,gt=0"`
-	ItemID int64 `json:"item_id" validate:"required,gt=0"`
+type ItemRequestUpdateRequest struct {
+	Status string `json:"status" validate:"required,oneof=requested approved"`
+	UserID int64  `json:"-"`
+	ItemID int64  `json:"-"`
 }
 
 type ItemRequestsListRequest struct {

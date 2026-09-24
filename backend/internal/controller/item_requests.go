@@ -84,64 +84,43 @@ func CreatePersonalItemRequest(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, itemRequest)
 }
 
-// GetPersonalItemRequest godoc
-// @Summary Get personal item request (that the logged in user created) by item ID
+// UpdateItemRequest godoc
+// @Summary Update an item request (manager/admin only). Approving an item request deletes other unapproved requests for the same item.
 // @Tags ItemRequests
+// @Accept json
 // @Produce json
 // @Security CookieAuth
+// @Param user_id path int true "User ID"
 // @Param item_id path int true "Item ID"
+// @Param body body dto.ItemRequestUpdateRequest true "Fields to update"
 // @Success 200 {object} dto.ItemRequest
-// @Failure 400 {object} response.Error "invalid item id"
+// @Failure 400 {object} response.Error "invalid request"
 // @Failure 401 {object} response.Error "not logged in"
-// @Failure 404 {object} response.Error "not found"
-// @Router /item-requests/me/{item_id} [get]
-func GetPersonalItemRequest(w http.ResponseWriter, r *http.Request) {
+// @Failure 403 {object} response.Error "forbidden"
+// @Router /item-requests/{user_id}/{item_id}/approve [post]
+func UpdateItemRequest(w http.ResponseWriter, r *http.Request) {
+	body := http.MaxBytesReader(w, r.Body, 1024*2)
+
+	userID, err := strconv.ParseInt(r.PathValue("user_id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid item id")
+		return
+	}
+
 	itemID, err := strconv.ParseInt(r.PathValue("item_id"), 10, 64)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid item id")
 		return
 	}
 
-	userID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		response.WriteError(w, http.StatusInternalServerError, "user ID not found in context")
-		return
-	}
-
-	itemRequest, err := service.GetItemRequest(r.Context(), dto.ItemRequestIdentifierRequest{
-		ItemID: itemID,
-		UserID: userID,
-	})
-	if err != nil {
-		writeServiceError(w, err, "couldn't get item request")
-		return
-	}
-
-	response.WriteJSON(w, http.StatusOK, itemRequest)
-}
-
-// ApproveItemRequest godoc
-// @Summary Approve an item request (manager/admin only). Approving an item request deletes other unapproved requests for the same item.
-// @Tags ItemRequests
-// @Accept json
-// @Produce json
-// @Security CookieAuth
-// @Param body body dto.ItemRequestIdentifierRequest true "Item request to approve"
-// @Success 200 {object} dto.ItemRequest
-// @Failure 400 {object} response.Error "invalid request"
-// @Failure 401 {object} response.Error "not logged in"
-// @Failure 403 {object} response.Error "forbidden"
-// @Router /item-requests/approve [post]
-func ApproveItemRequest(w http.ResponseWriter, r *http.Request) {
-	body := http.MaxBytesReader(w, r.Body, 1024*2)
-
-	var req dto.ItemRequestIdentifierRequest
+	var req dto.ItemRequestUpdateRequest
 	if err := json.NewDecoder(body).Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid request")
-		return
 	}
+	req.UserID = userID
+	req.ItemID = itemID
 
-	itemRequest, err := service.ApproveItemRequest(r.Context(), req)
+	itemRequest, err := service.UpdateItemRequest(r.Context(), req)
 	if err != nil {
 		writeServiceError(w, err, "couldn't approve item request")
 		return
@@ -365,12 +344,7 @@ func DeleteItemRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := dto.ItemRequestIdentifierRequest{
-		UserID: userID,
-		ItemID: itemID,
-	}
-
-	if err := service.DeleteItemRequest(r.Context(), req); err != nil {
+	if err := service.DeleteItemRequest(r.Context(), userID, itemID); err != nil {
 		writeServiceError(w, err, "couldn't delete request")
 		return
 	}

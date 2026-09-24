@@ -65,14 +65,10 @@ func CreateItemRequest(ctx context.Context, req dto.ItemRequestCreateRequest) (d
 	return itemRequestDTO, nil
 }
 
-func GetItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) (dto.ItemRequest, error) {
-	if err := dto.Validate(req); err != nil {
-		return dto.ItemRequest{}, err
-	}
-
+func GetItemRequest(ctx context.Context, userID, itemID int64) (dto.ItemRequest, error) {
 	itemRequest, err := db.Queries.GetItemRequest(ctx, repository.GetItemRequestParams{
-		UserID: req.UserID,
-		ItemID: req.ItemID,
+		UserID: userID,
+		ItemID: itemID,
 	})
 	if err != nil {
 		return dto.ItemRequest{}, err
@@ -104,7 +100,7 @@ func CheckItemApproval(ctx context.Context, userID, itemID int64) (bool, error) 
 	return false, nil
 }
 
-func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) (dto.ItemRequest, error) {
+func UpdateItemRequest(ctx context.Context, req dto.ItemRequestUpdateRequest) (dto.ItemRequest, error) {
 	if err := dto.Validate(req); err != nil {
 		return dto.ItemRequest{}, err
 	}
@@ -120,29 +116,37 @@ func ApproveItemRequest(ctx context.Context, req dto.ItemRequestIdentifierReques
 		return dto.ItemRequest{}, err
 	}
 
-	itemRequest, err := queriesTx.ApproveItemRequest(ctx, repository.ApproveItemRequestParams{
+	itemRequest, err := queriesTx.UpdateItemRequest_Status(ctx, repository.UpdateItemRequest_StatusParams{
 		UserID: req.UserID,
 		ItemID: req.ItemID,
+		Status: repository.RequestStatus(req.Status),
 	})
 	if err != nil {
 		return dto.ItemRequest{}, err
 	}
 
-	_, err = CreateItemRequestNotifications(ctx, queriesTx, req.UserID, req.ItemID, true)
-	if err != nil {
-		return dto.ItemRequest{}, err
-	}
+	switch req.Status {
+	case "approved":
+		_, err = CreateItemRequestNotifications(ctx, queriesTx, req.UserID, req.ItemID, true)
+		if err != nil {
+			return dto.ItemRequest{}, err
+		}
 
-	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestApprove,
-		req.ItemID, req.UserID, itemRequest.Reason, ""); err != nil {
-		return dto.ItemRequest{}, err
-	}
+		if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestApprove,
+			req.ItemID, req.UserID, itemRequest.Reason, ""); err != nil {
+			return dto.ItemRequest{}, err
+		}
 
-	// Approving one request cancels every other pending one for the item. Those are not recorded:
-	// this entry sits above each of their own request entries, so reading the item's history already
-	// says whose claim it ended.
-	if _, err := queriesTx.DeleteNonApprovedItemRequests(ctx, req.ItemID); err != nil {
-		return dto.ItemRequest{}, err
+		// Approving one request cancels every other pending one for the item. Those are not recorded:
+		// this entry sits above each of their own request entries, so reading the item's history already
+		// says whose claim it ended.
+		if _, err := queriesTx.DeleteNonApprovedItemRequests(ctx, req.ItemID); err != nil {
+			return dto.ItemRequest{}, err
+		}
+	case "requested":
+		if err := DeleteItemRequestNotifications(ctx, queriesTx, req.ItemID); err != nil {
+			return dto.ItemRequest{}, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -340,11 +344,7 @@ func nullableRequestStatus(status *string) repository.NullRequestStatus {
 	}
 }
 
-func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest) error {
-	if err := dto.Validate(req); err != nil {
-		return err
-	}
-
+func DeleteItemRequest(ctx context.Context, userID, itemID int64) error {
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		return err
@@ -352,15 +352,15 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 	defer tx.Rollback(ctx)
 	queriesTx := db.Queries.WithTx(tx)
 
-	if _, err := queriesTx.LockItemForRequest(ctx, req.ItemID); err != nil {
+	if _, err := queriesTx.LockItemForRequest(ctx, itemID); err != nil {
 		return err
 	}
 
 	// Read before deleting: the status is what separates turning down a pending request from taking
 	// an already approved item back, and the reason is gone with the row.
 	existing, err := queriesTx.GetItemRequest(ctx, repository.GetItemRequestParams{
-		UserID: req.UserID,
-		ItemID: req.ItemID,
+		UserID: userID,
+		ItemID: itemID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -370,8 +370,8 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 	}
 
 	rowsAffected, err := queriesTx.DeleteItemRequest(ctx, repository.DeleteItemRequestParams{
-		UserID: req.UserID,
-		ItemID: req.ItemID,
+		UserID: userID,
+		ItemID: itemID,
 	})
 	if err != nil {
 		return err
@@ -381,7 +381,7 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 	}
 
 	if err := auditItemRequest(ctx, queriesTx, repository.AuditActionItemRequestDelete,
-		req.ItemID, req.UserID, existing.ItemRequest.Reason, string(existing.ItemRequest.Status)); err != nil {
+		itemID, userID, existing.ItemRequest.Reason, string(existing.ItemRequest.Status)); err != nil {
 		return err
 	}
 
@@ -391,7 +391,7 @@ func DeleteItemRequest(ctx context.Context, req dto.ItemRequestIdentifierRequest
 
 	// Taking an approved item back puts it on the shelf again, which can end a shortage. Turning down
 	// a pending request moves nothing, but re-counting is cheap next to working out which case it was.
-	reconcileLowStockAfterItemRequestChange(ctx, req.ItemID)
+	reconcileLowStockAfterItemRequestChange(ctx, itemID)
 
 	return nil
 }

@@ -261,14 +261,10 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.ListPersonalItemRequests),
 	))
-	mux.Handle("GET /item-requests/me/{item_id}", middleware.Chain(
-		middleware.RequireAuth,
-		middleware.Handle(controller.GetPersonalItemRequest),
-	))
-	mux.Handle("POST /item-requests/approve", middleware.Chain(
+	mux.Handle("PATCH /item-requests/{user_id}/{item_id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),
-		middleware.Handle(controller.ApproveItemRequest),
+		middleware.Handle(controller.UpdateItemRequest),
 	))
 	mux.Handle("DELETE /item-requests/{user_id}/{item_id}", middleware.Chain(
 		middleware.RequireAuth,

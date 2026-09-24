@@ -794,7 +794,8 @@ func seedItemRequests(ctx, adminCtx context.Context, users map[string]dto.User, 
 
 		requestStatus := "pending"
 		if seed.Approved {
-			if _, err := service.ApproveItemRequest(adminCtx, dto.ItemRequestIdentifierRequest{
+			if _, err := service.UpdateItemRequest(adminCtx, dto.ItemRequestUpdateRequest{
+				Status: "approved",
 				UserID: itemRequest.UserID,
 				ItemID: itemRequest.ItemID,
 			}); err != nil {

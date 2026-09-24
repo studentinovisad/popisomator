@@ -90,10 +90,10 @@ JOIN users ON users.id = item_requests.user_id
 WHERE (user_id = sqlc.arg('viewer_id') OR item_requests.status = 'approved')
   AND item_id = ANY(sqlc.arg('item_ids')::bigint[]);
 
--- name: ApproveItemRequest :one
+-- name: UpdateItemRequest_Status :one
 UPDATE item_requests
-SET status = 'approved'
-WHERE user_id = $1 AND item_id = $2 AND status = 'requested'
+SET status = $3
+WHERE user_id = $1 AND item_id = $2 AND status != $3
 RETURNING *;
 
 -- name: DeleteItemRequest :execrows
