@@ -30,6 +30,8 @@
 	} from '$lib/state/preparation-report-print-context';
 	import { getTableFilter, getTablePage, updateTableQuery } from '$lib/state/table-query';
 	import { toast } from 'svelte-sonner';
+	import { RotateCcw } from '@lucide/svelte';
+	import ItemRequestApprovedControls from '../inventory/ItemRequestApprovedControls.svelte';
 
 	const printContext = getContext<PreparationReportPrintContext>(preparationReportPrintContextKey);
 	let { onloaderror }: { onloaderror?: (message: string) => void } = $props();
@@ -145,14 +147,29 @@
 		}
 	}
 
-	async function decide(itemRequest: ItemRequestSummary, approve: boolean) {
+	export type DecisionAction = 'approve' | 'decline' | 'delete' | 'revert';
+	async function decide(itemRequest: ItemRequestSummary, action: DecisionAction) {
 		try {
-			if (approve) {
-				await api.approveItemRequest(itemRequest.user_id, itemRequest.item_id);
-			} else {
-				await api.denyItemRequest(itemRequest.user_id, itemRequest.item_id);
+			let toastText = '???';
+			switch (action) {
+				case 'approve':
+					await api.updateItemRequest(itemRequest.user_id, itemRequest.item_id, {status: "approved"});
+					toastText = "Zahtev je odobren.";
+					break;
+				case 'delete': case 'decline':
+					await api.denyItemRequest(itemRequest.user_id, itemRequest.item_id);
+					if (action == 'decline') {
+						toastText = "Zahtev je odbijen."
+					} else {
+						toastText = "Odobrenje je uklonjeno."
+					}
+					break;
+				case 'revert':
+					await api.updateItemRequest(itemRequest.user_id, itemRequest.item_id , {status: "requested"});
+					toastText = "Zahtev je vraćen na čekanje."
+					break;
 			}
-			toast.success(approve ? 'Zahtev je odobren.' : 'Zahtev je odbijen.');
+			toast.success(toastText);
 			requestsPage.reloadAfterDelete();
 		} catch (reason) {
 			toast.error(reason instanceof ApiError ? reason.message : 'Zahtev nije obrađen.');
@@ -345,18 +362,9 @@
 						</td>
 						<td class="px-4 py-3 align-middle">
 							{#if itemRequest.status === 'requested'}
-								<RegistrationApproval onclick={(approved) => void decide(itemRequest, approved)} />
+								<RegistrationApproval onclick={(approved) => void decide(itemRequest, approved ? 'approve' : 'decline')} />
 							{:else}
-								<div class="flex justify-end">
-									<Button.Root
-										class="inline-flex size-9 items-center justify-center rounded-md border border-danger bg-surface text-danger transition-colors hover:bg-danger-soft"
-										onclick={() => void decide(itemRequest, false)}
-										aria-label="Ukloni odobrenje"
-										title="Ukloni odobrenje"
-									>
-										<Trash2 class="size-4" aria-hidden="true" />
-									</Button.Root>
-								</div>
+								<ItemRequestApprovedControls onclick={(isDelete) => void decide(itemRequest, isDelete ? 'delete' : 'revert')}/>
 							{/if}
 						</td>
 					</tr>
@@ -387,18 +395,9 @@
 					</p>
 					<div class="mt-3">
 						{#if itemRequest.status === 'requested'}
-							<RegistrationApproval onclick={(approved) => void decide(itemRequest, approved)} />
+							<RegistrationApproval onclick={(approved) => void decide(itemRequest, approved ? 'approve' : 'decline')} />
 						{:else}
-							<div class="flex justify-end">
-								<Button.Root
-									class="inline-flex size-9 items-center justify-center rounded-md border border-danger bg-surface text-danger transition-colors hover:bg-danger-soft"
-									onclick={() => void decide(itemRequest, false)}
-									aria-label="Ukloni odobrenje"
-									title="Ukloni odobrenje"
-								>
-									<Trash2 class="size-4" aria-hidden="true" />
-								</Button.Root>
-							</div>
+							<ItemRequestApprovedControls onclick={(isDelete) => void decide(itemRequest, isDelete ? 'delete' : 'revert')}/>
 						{/if}
 					</div>
 				</li>

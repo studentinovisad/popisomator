@@ -23,13 +23,17 @@ func getRecipientsByRoles(ctx context.Context, roles ...repository.UserRole) ([]
 	return recipientIDs, nil
 }
 
+func DeleteItemRequestNotifications(ctx context.Context, queries repository.Querier, itemID int64) error {
+	_, err := queries.DeleteItemRequestNotifications(ctx, itemID)
+	return err
+}
+
 func CreateItemRequestNotifications(ctx context.Context, queries repository.Querier, userID, itemID int64, approvedNotification bool) ([]int64, error) {
 	var recipientIDs []int64
 	if approvedNotification {
 		recipientIDs = []int64{userID}
 
-		_, err := queries.DeleteItemRequestNotifications(ctx, itemID)
-		if err != nil {
+		if err := DeleteItemRequestNotifications(ctx, queries, itemID); err != nil {
 			return nil, err
 		}
 	} else {
@@ -188,10 +192,7 @@ func ListNotifications(ctx context.Context, recipient_id int64, limit, offset in
 		notif := dto.ToNotificationDTO(row.Notification)
 		switch notif.Kind {
 		case repository.NotificationKindItemRequest:
-			itemRequest, err := GetItemRequest(ctx, dto.ItemRequestIdentifierRequest{
-				UserID: row.ItemRequestUserID.Int64,
-				ItemID: row.ItemRequestItemID.Int64,
-			})
+			itemRequest, err := GetItemRequest(ctx, row.ItemRequestUserID.Int64, row.ItemRequestItemID.Int64)
 			if err != nil {
 				return dto.NotificationsPage{}, err
 			}

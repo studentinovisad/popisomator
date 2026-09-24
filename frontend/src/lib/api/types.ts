@@ -330,6 +330,10 @@ export type ListItemRequestsParams = {
 	createdTo?: string;
 };
 
+export type ItemRequestUpdateRequest = {
+	status: ItemRequestStatus;
+}
+
 export type NotificationKind = 'item_request' | 'item_expiry' | 'item_low_stock';
 export type NotificationExpiryType = 'expiring_soon' | 'expired';
 

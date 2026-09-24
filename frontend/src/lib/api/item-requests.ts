@@ -5,6 +5,7 @@ import type {
 	ItemRequestPreparationReport,
 	ItemRequestPreparationReportParams,
 	ItemRequestsPage,
+	ItemRequestUpdateRequest,
 	ItemRequestUserOption,
 	ListItemRequestsParams
 } from '$lib/api/types';
@@ -43,10 +44,10 @@ export const itemRequestsApi = {
 		if (createdTo) query.set('created_to', createdTo);
 		return request<ItemRequestPreparationReport>(`/item-requests/preparation-report?${query}`);
 	},
-	approveItemRequest: (userID: number, itemID: number) =>
+	updateItemRequest: (userID: number, itemID: number, payload: ItemRequestUpdateRequest) =>
 		request<ItemRequest>(
-			'/item-requests/approve',
-			jsonRequest('POST', { user_id: userID, item_id: itemID })
+			`/item-requests/${userID}/${itemID}`,
+			jsonRequest('PATCH', payload)
 		),
 	denyItemRequest: (userID: number, itemID: number) =>
 		request<void>(`/item-requests/${userID}/${itemID}`, { method: 'DELETE' })
