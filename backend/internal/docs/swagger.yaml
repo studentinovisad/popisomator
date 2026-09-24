@@ -1388,38 +1388,6 @@ paths:
       tags:
       - Operational
   /item-requests:
-    delete:
-      parameters:
-      - description: Item request to delete
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: invalid request
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "401":
-          description: not logged in
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "403":
-          description: forbidden
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "404":
-          description: not found
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-      security:
-      - CookieAuth: []
-      summary: Delete an item request (manager/admin only)
-      tags:
-      - ItemRequests
     get:
       parameters:
       - description: Page size (default 20, max 50)
@@ -1504,6 +1472,39 @@ paths:
       security:
       - CookieAuth: []
       summary: Create an item request (admin only)
+      tags:
+      - ItemRequests
+  /item-requests/{item_id}/{user_id}:
+    delete:
+      parameters:
+      - description: Item request to delete
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete an item request (manager/admin only)
       tags:
       - ItemRequests
   /item-requests/approve:

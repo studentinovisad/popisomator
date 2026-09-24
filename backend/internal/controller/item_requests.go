@@ -344,20 +344,30 @@ func ListPersonalItemRequests(w http.ResponseWriter, r *http.Request) {
 // @Summary Delete an item request (manager/admin only)
 // @Tags ItemRequests
 // @Security CookieAuth
-// @Param body body dto.ItemRequestIdentifierRequest true "Item request to delete"
+// @Param user_id path int true "User ID"
+// @Param item_id path int true "Item ID"
 // @Success 200
 // @Failure 400 {object} response.Error "invalid request"
 // @Failure 401 {object} response.Error "not logged in"
 // @Failure 403 {object} response.Error "forbidden"
 // @Failure 404 {object} response.Error "not found"
-// @Router /item-requests [delete]
+// @Router /item-requests/{user_id}/{item_id} [delete]
 func DeleteItemRequest(w http.ResponseWriter, r *http.Request) {
-	body := http.MaxBytesReader(w, r.Body, 1024*2)
-
-	var req dto.ItemRequestIdentifierRequest
-	if err := json.NewDecoder(body).Decode(&req); err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid request")
+	userID, err := strconv.ParseInt(r.PathValue("user_id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid item id")
 		return
+	}
+
+	itemID, err := strconv.ParseInt(r.PathValue("item_id"), 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid item id")
+		return
+	}
+
+	req := dto.ItemRequestIdentifierRequest{
+		UserID: userID,
+		ItemID: itemID,
 	}
 
 	if err := service.DeleteItemRequest(r.Context(), req); err != nil {

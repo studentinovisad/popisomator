@@ -135,11 +135,11 @@ func New() *http.ServeMux {
 		middleware.RequireAuth,
 		middleware.Handle(controller.GetLocation),
 	))
-  mux.Handle("PATCH /locations/{id}", middleware.Chain(
-        middleware.RequireAuth,
-        middleware.RequireRoles("manager", "admin"),
-        middleware.Handle(controller.UpdateLocation),
-  ))
+	mux.Handle("PATCH /locations/{id}", middleware.Chain(
+		middleware.RequireAuth,
+		middleware.RequireRoles("manager", "admin"),
+		middleware.Handle(controller.UpdateLocation),
+	))
 	mux.Handle("DELETE /locations/{id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),
@@ -270,7 +270,7 @@ func New() *http.ServeMux {
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.ApproveItemRequest),
 	))
-	mux.Handle("DELETE /item-requests", middleware.Chain(
+	mux.Handle("DELETE /item-requests/{user_id}/{item_id}", middleware.Chain(
 		middleware.RequireAuth,
 		middleware.RequireRoles("manager", "admin"),
 		middleware.Handle(controller.DeleteItemRequest),
