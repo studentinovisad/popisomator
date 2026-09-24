@@ -279,6 +279,10 @@ definitions:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket'
         type: array
+      consumption_quantity:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity'
+        type: array
       expired_backlog:
         type: integer
       expiring_by_month:
@@ -293,6 +297,10 @@ definitions:
         type: integer
       months:
         type: integer
+      most_consumed:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup'
+        type: array
       stock_groups:
         items:
           $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.DashboardStockGroup'
@@ -325,10 +333,27 @@ definitions:
         type: string
       total_count:
         type: integer
+      totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
       type_id:
         type: integer
       type_name:
         type: string
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity:
+    properties:
+      buckets:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket'
+        type: array
+      name:
+        type: string
+      period_totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.Item:
     properties:
@@ -377,6 +402,8 @@ definitions:
     properties:
       property_id:
         type: integer
+      property_name:
+        type: string
       value:
         items:
           type: integer
@@ -668,6 +695,21 @@ definitions:
       month:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup:
+    properties:
+      consumed_count:
+        type: integer
+      name:
+        type: string
+      totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
+      type_id:
+        type: integer
+      type_name:
+        type: string
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.Notification:
     properties:
       created_at:
@@ -764,6 +806,15 @@ definitions:
       value_type:
         type: string
     type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket:
+    properties:
+      month:
+        type: string
+      totals:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal'
+        type: array
+    type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.RegistrationRequest:
     properties:
       email:
@@ -796,6 +847,17 @@ definitions:
         type: string
       total_count:
         type: integer
+    type: object
+  github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity'
+        type: array
+      type_id:
+        type: integer
+      type_name:
+        type: string
     type: object
   github_com_studentinovisad_popisomator_backend_internal_dto.UpdateItemRequest:
     properties:
@@ -1307,38 +1369,6 @@ paths:
       tags:
       - Operational
   /item-requests:
-    delete:
-      parameters:
-      - description: Item request to delete
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: invalid request
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "401":
-          description: not logged in
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "403":
-          description: forbidden
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-        "404":
-          description: not found
-          schema:
-            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
-      security:
-      - CookieAuth: []
-      summary: Delete an item request (manager/admin only)
-      tags:
-      - ItemRequests
     get:
       parameters:
       - description: Page size (default 20, max 50)
@@ -1423,6 +1453,39 @@ paths:
       security:
       - CookieAuth: []
       summary: Create an item request (admin only)
+      tags:
+      - ItemRequests
+  /item-requests/{item_id}/{user_id}:
+    delete:
+      parameters:
+      - description: Item request to delete
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "401":
+          description: not logged in
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error'
+      security:
+      - CookieAuth: []
+      summary: Delete an item request (manager/admin only)
       tags:
       - ItemRequests
   /item-requests/approve:

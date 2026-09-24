@@ -551,57 +551,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "tags": [
-                    "ItemRequests"
-                ],
-                "summary": "Delete an item request (manager/admin only)",
-                "parameters": [
-                    {
-                        "description": "Item request to delete",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "invalid request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "not logged in",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
-                        }
-                    }
-                }
             }
         },
         "/item-requests/approve": {
@@ -924,6 +873,59 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/item-requests/{item_id}/{user_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "tags": [
+                    "ItemRequests"
+                ],
+                "summary": "Delete an item request (manager/admin only)",
+                "parameters": [
+                    {
+                        "description": "Item request to delete",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemRequestIdentifierRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "not logged in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_response.Error"
                         }
@@ -3780,6 +3782,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ConsumptionBucket"
                     }
                 },
+                "consumption_quantity": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity"
+                    }
+                },
                 "expired_backlog": {
                     "type": "integer"
                 },
@@ -3800,6 +3808,12 @@ const docTemplate = `{
                 },
                 "months": {
                     "type": "integer"
+                },
+                "most_consumed": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup"
+                    }
                 },
                 "stock_groups": {
                     "type": "array",
@@ -3850,11 +3864,37 @@ const docTemplate = `{
                 "total_count": {
                     "type": "integer"
                 },
+                "totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
+                },
                 "type_id": {
                     "type": "integer"
                 },
                 "type_name": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity": {
+            "type": "object",
+            "properties": {
+                "buckets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "period_totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
                 }
             }
         },
@@ -3926,6 +3966,9 @@ const docTemplate = `{
             "properties": {
                 "property_id": {
                     "type": "integer"
+                },
+                "property_name": {
+                    "type": "string"
                 },
                 "value": {
                     "type": "array",
@@ -4358,6 +4401,29 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.MostConsumedGroup": {
+            "type": "object",
+            "properties": {
+                "consumed_count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.Notification": {
             "type": "object",
             "properties": {
@@ -4505,6 +4571,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.QuantityBucket": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "string"
+                },
+                "totals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.ItemPropertyTotal"
+                    }
+                }
+            }
+        },
         "github_com_studentinovisad_popisomator_backend_internal_dto.RegistrationRequest": {
             "type": "object",
             "properties": {
@@ -4552,6 +4632,23 @@ const docTemplate = `{
                 },
                 "total_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_studentinovisad_popisomator_backend_internal_dto.TypeConsumptionQuantity": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_studentinovisad_popisomator_backend_internal_dto.GroupConsumptionQuantity"
+                    }
+                },
+                "type_id": {
+                    "type": "integer"
+                },
+                "type_name": {
+                    "type": "string"
                 }
             }
         },

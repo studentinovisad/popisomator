@@ -49,5 +49,5 @@ export const itemRequestsApi = {
 			jsonRequest('POST', { user_id: userID, item_id: itemID })
 		),
 	denyItemRequest: (userID: number, itemID: number) =>
-		request<void>('/item-requests', jsonRequest('DELETE', { user_id: userID, item_id: itemID }))
+		request<void>(`/item-requests/${userID}/${itemID}`, { method: 'DELETE' })
 };
