@@ -1511,8 +1511,7 @@ paths:
       summary: Delete an item request (manager/admin only)
       tags:
       - ItemRequests
-  /item-requests/{user_id}/{item_id}/approve:
-    post:
+    patch:
       consumes:
       - application/json
       parameters:

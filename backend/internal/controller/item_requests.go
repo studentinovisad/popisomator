@@ -97,7 +97,7 @@ func CreatePersonalItemRequest(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} response.Error "invalid request"
 // @Failure 401 {object} response.Error "not logged in"
 // @Failure 403 {object} response.Error "forbidden"
-// @Router /item-requests/{user_id}/{item_id}/approve [post]
+// @Router /item-requests/{user_id}/{item_id} [patch]
 func UpdateItemRequest(w http.ResponseWriter, r *http.Request) {
 	body := http.MaxBytesReader(w, r.Body, 1024*2)
 

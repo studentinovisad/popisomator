@@ -829,10 +829,8 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/item-requests/{user_id}/{item_id}/approve": {
-            "post": {
+            },
+            "patch": {
                 "security": [
                     {
                         "CookieAuth": []
